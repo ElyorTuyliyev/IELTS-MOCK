@@ -1,13 +1,13 @@
 import styled from '@emotion/styled'
 
-export const PrizeQuizzesPageRoot = styled.div`
-  .prize-page {
+export const QuestionsPageRoot = styled.div`
+  .question-page {
     display: flex;
     flex-direction: column;
     gap: 22px;
   }
 
-  .prize-page__head {
+  .question-page__head {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -15,24 +15,41 @@ export const PrizeQuizzesPageRoot = styled.div`
     flex-wrap: wrap;
   }
 
-  .prize-page__title {
+  .question-page__title {
     margin: 0;
     color: #111827;
     font-size: clamp(1.65rem, 2vw, 2rem);
     font-weight: 700;
   }
 
-  .prize-page__primary-button {
+  .question-page__head-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .question-page__utility-button,
+  .question-page__primary-button {
     min-height: 46px;
     padding: 0 18px;
     border-radius: 14px;
-    background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
-    color: #ffffff;
     font-weight: 700;
     text-transform: none;
   }
 
-  .prize-table {
+  .question-page__utility-button {
+    border: 1px solid #d8def0;
+    background: #ffffff;
+    color: #0f172a;
+  }
+
+  .question-page__primary-button {
+    background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
+    color: #ffffff;
+  }
+
+  .question-table {
     overflow: hidden;
     border: 1px solid #dbe2f1;
     border-radius: 22px;
@@ -40,7 +57,7 @@ export const PrizeQuizzesPageRoot = styled.div`
     box-shadow: 0 12px 30px rgba(15, 23, 42, 0.04);
   }
 
-  .prize-table__filters {
+  .question-table__filters {
     display: flex;
     justify-content: space-between;
     gap: 14px;
@@ -49,34 +66,34 @@ export const PrizeQuizzesPageRoot = styled.div`
     flex-wrap: wrap;
   }
 
-  .prize-table__search {
+  .question-table__search {
     width: min(100%, 340px);
   }
 
-  .prize-table__search .MuiOutlinedInput-root,
-  .prize-table__select .MuiOutlinedInput-root {
+  .question-table__search .MuiOutlinedInput-root,
+  .question-table__select .MuiOutlinedInput-root {
     min-height: 46px;
     border-radius: 12px;
     background: #ffffff;
   }
 
-  .prize-table__search-icon {
+  .question-table__search-icon {
     color: #334155;
     font-size: 1.15rem;
     line-height: 1;
   }
 
-  .prize-table__actions {
+  .question-table__actions {
     display: flex;
     gap: 12px;
     flex-wrap: wrap;
   }
 
-  .prize-table__select {
-    min-width: 160px;
+  .question-table__select {
+    min-width: 184px;
   }
 
-  .prize-table__ghost-button {
+  .question-table__ghost-button {
     min-height: 46px;
     padding: 0 16px;
     border: 1px solid #d8def0;
@@ -171,130 +188,54 @@ export const PrizeQuizzesPageRoot = styled.div`
     display: none;
   }
 
-  .prize-table__name {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    min-width: 0;
-  }
-
-  .prize-table__avatar {
-    display: grid;
-    place-items: center;
-    width: 46px;
-    height: 46px;
-    border-radius: 50%;
-    background: var(--avatar-gradient, linear-gradient(135deg, #7c3aed 0%, #c084fc 100%));
-    color: #ffffff;
-    font-size: 0.76rem;
-    font-weight: 700;
-    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
-  }
-
-  .prize-table__name-text,
-  .prize-table__date,
-  .prize-table__category {
-    color: #111827;
-    font-weight: 600;
-  }
-
-  .prize-table__name-text {
-    margin: 0;
-    font-size: 1rem;
-    white-space: nowrap;
-  }
-
-  .prize-table__description {
+  .question-table__title,
+  .question-table__meta,
+  .question-table__type {
     display: block;
     width: 100%;
-    color: #334155;
-    font-weight: 500;
+    color: #111827;
     font-size: 0.98rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
-  .prize-table__level {
+  .question-table__title,
+  .question-table__type,
+  .question-table__meta--strong {
+    font-weight: 600;
+  }
+
+  .question-table__error-rate {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    width: fit-content;
-    padding: 7px 11px;
-    border: 1px solid #dbe2f1;
-    border-radius: 10px;
-    background: #ffffff;
-    color: #111827;
-    font-weight: 600;
+    gap: 10px;
     white-space: nowrap;
   }
 
-  .prize-table__level-bars {
+  .question-table__error-bars {
     display: flex;
-    align-items: flex-end;
-    gap: 3px;
-    min-width: 15px;
-  }
-
-  .prize-table__level-bar {
-    width: 3px;
-    border-radius: 999px;
-    background: var(--level-color, #fb923c);
-    height: var(--bar-height, 10px);
-    opacity: var(--bar-opacity, 1);
-  }
-
-  .prize-table__level-text {
-    font-size: 0.96rem;
-    line-height: 1;
-  }
-
-  .prize-table__pill {
-    display: inline-flex;
-    justify-content: center;
     align-items: center;
-    width: fit-content;
-    min-height: 34px;
-    min-width: 102px;
-    padding: 7px 16px;
-    border-radius: 9px;
-    font-size: 0.92rem;
+    gap: 4px;
+  }
+
+  .question-table__error-bar {
+    width: 24px;
+    height: 8px;
+    border-radius: 999px;
+    background: #e7dbff;
+  }
+
+  .question-table__error-bar--active {
+    background: #7c3aed;
+  }
+
+  .question-table__error-text {
+    color: #475569;
     font-weight: 600;
-    line-height: 1;
-    white-space: nowrap;
   }
 
-  .prize-table__pill--completed {
-    background: #ecfdf5;
-    color: #2bb6a3;
-  }
-
-  .prize-table__pill--active {
-    background: #fff7ed;
-    color: #f97316;
-  }
-
-  .prize-table__pill--pending {
-    background: #fffaf0;
-    color: #eab308;
-  }
-
-  .prize-table__pill--draft {
-    background: #fdf2ff;
-    color: #f472d0;
-  }
-
-  .prize-table__pill--advancing {
-    background: #f472d0;
-    color: #ffffff;
-  }
-
-  .prize-table__pill--prize-quiz {
-    background: #67ace7;
-    color: #ffffff;
-  }
-
-  .prize-table__action-buttons {
+  .question-table__action-buttons {
     display: flex;
     align-items: center;
     justify-content: flex-start;
@@ -302,7 +243,7 @@ export const PrizeQuizzesPageRoot = styled.div`
     width: 100%;
   }
 
-  .prize-table__icon-button {
+  .question-table__icon-button {
     width: 34px;
     height: 34px;
     border: 1px solid #dbe2f1;
@@ -313,7 +254,7 @@ export const PrizeQuizzesPageRoot = styled.div`
     line-height: 1;
   }
 
-  .prize-table__footer {
+  .question-table__footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -323,14 +264,14 @@ export const PrizeQuizzesPageRoot = styled.div`
     flex-wrap: wrap;
   }
 
-  .prize-table__pagination {
+  .question-table__pagination {
     display: flex;
     align-items: center;
     gap: 10px;
   }
 
-  .prize-table__page-button,
-  .prize-table__show-button {
+  .question-table__page-button,
+  .question-table__show-button {
     min-width: 44px;
     height: 44px;
     border: 1px solid #dbe2f1;
@@ -341,7 +282,7 @@ export const PrizeQuizzesPageRoot = styled.div`
     font-size: 1.1rem;
   }
 
-  .prize-table__page-number {
+  .question-table__page-number {
     min-width: 34px;
     height: 34px;
     color: #111827;
@@ -350,18 +291,18 @@ export const PrizeQuizzesPageRoot = styled.div`
     text-transform: none;
   }
 
-  .prize-table__page-number--active {
+  .question-table__page-number--active {
     border: 1px solid #dbe2f1;
     border-radius: 12px;
     background: #f8fafc;
   }
 
-  .prize-table__page-ellipsis {
+  .question-table__page-ellipsis {
     color: #475569;
     font-weight: 700;
   }
 
-  .prize-table__footer-meta {
+  .question-table__footer-meta {
     display: flex;
     align-items: center;
     gap: 16px;
@@ -371,7 +312,7 @@ export const PrizeQuizzesPageRoot = styled.div`
     font-weight: 500;
   }
 
-  .prize-table__show-button {
+  .question-table__show-button {
     padding: 0 16px;
     font-size: 0.98rem;
   }
@@ -385,14 +326,14 @@ export const PrizeQuizzesPageRoot = styled.div`
   }
 
   @media (max-width: 1380px) {
-    .prize-table {
+    .question-table {
       overflow-x: auto;
     }
 
     .MuiDataGrid-main,
     .MuiDataGrid-columnHeaders,
     .MuiDataGrid-virtualScroller {
-      min-width: 1080px;
+      min-width: 1320px;
     }
   }
 `

@@ -1,5 +1,12 @@
-import { useMemo, useState } from "react";
-import { Box, Button, MenuItem, TextField, Typography } from "@mui/material";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Box,
+  Button,
+  InputAdornment,
+  MenuItem,
+  TextField,
+  Typography,
+} from "@mui/material";
 import { DataGrid, type GridPaginationModel } from "@mui/x-data-grid";
 
 import { Layout } from "../../components/layout";
@@ -10,6 +17,22 @@ import {
 } from "./constants/PrizeQuizzesPage.constants";
 import type { PrizeQuizStatus } from "./constants/PrizeQuizzesPage.constants";
 import { PrizeQuizzesPageRoot } from "./PrizeQuizzesPage.style";
+
+function getVisiblePages(currentPage: number, totalPages: number) {
+  if (totalPages <= 5) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  if (currentPage <= 3) {
+    return [1, 2, 3, "ellipsis-left", totalPages] as const;
+  }
+
+  if (currentPage >= totalPages - 2) {
+    return [1, "ellipsis-right", totalPages - 2, totalPages - 1, totalPages] as const;
+  }
+
+  return [1, "ellipsis-left", currentPage, "ellipsis-right", totalPages] as const;
+}
 
 export function PrizeQuizzesPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -48,6 +71,23 @@ export function PrizeQuizzesPage() {
   );
 
   const columns = useMemo(() => createPrizeQuizColumns(), []);
+  const currentPage = paginationModel.page + 1;
+  const totalPages = Math.max(1, Math.ceil(rows.length / paginationModel.pageSize));
+  const visiblePages = getVisiblePages(currentPage, totalPages);
+  const rangeStart = rows.length === 0 ? 0 : paginationModel.page * paginationModel.pageSize + 1;
+  const rangeEnd =
+    rows.length === 0
+      ? 0
+      : Math.min((paginationModel.page + 1) * paginationModel.pageSize, rows.length);
+
+  useEffect(() => {
+    if (paginationModel.page > totalPages - 1) {
+      setPaginationModel((currentState) => ({
+        ...currentState,
+        page: Math.max(0, totalPages - 1),
+      }));
+    }
+  }, [paginationModel.page, totalPages]);
 
   return (
     <Layout>
@@ -70,6 +110,15 @@ export function PrizeQuizzesPage() {
                 type="search"
                 placeholder="Search..."
                 aria-label="Search prize quizzes"
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Box className="prize-table__search-icon">⌕</Box>
+                      </InputAdornment>
+                    ),
+                  },
+                }}
                 value={searchTerm}
                 onChange={(event) => {
                   setSearchTerm(event.target.value);
@@ -115,12 +164,27 @@ export function PrizeQuizzesPage() {
             <DataGrid
               rows={rows}
               columns={columns}
+              pagination
               checkboxSelection
               disableRowSelectionOnClick
               disableColumnMenu
-              pageSizeOptions={[8, 16, 24]}
+              disableColumnResize
+              hideFooter
+              autoHeight
+              rowHeight={66}
+              columnHeaderHeight={54}
+              pageSizeOptions={[PRIZE_QUIZ_PAGE_SIZE]}
               paginationModel={paginationModel}
               onPaginationModelChange={setPaginationModel}
+              localeText={{
+                noRowsLabel:
+                  "No prize quizzes matched the current search or status filter.",
+              }}
+              slotProps={{
+                pagination: {
+                  labelRowsPerPage: "Rows per page:",
+                },
+              }}
               initialState={{
                 pagination: {
                   paginationModel: {
@@ -133,6 +197,71 @@ export function PrizeQuizzesPage() {
                 border: 0,
               }}
             />
+
+            <Box className="prize-table__footer">
+              <Box className="prize-table__pagination">
+                <Button
+                  className="prize-table__page-button"
+                  variant="outlined"
+                  disabled={currentPage === 1}
+                  onClick={() =>
+                    setPaginationModel((currentState) => ({
+                      ...currentState,
+                      page: Math.max(0, currentState.page - 1),
+                    }))
+                  }
+                >
+                  ‹
+                </Button>
+
+                {visiblePages.map((item) =>
+                  typeof item === "number" ? (
+                    <Button
+                      key={item}
+                      className={`prize-table__page-number${
+                        item === currentPage ? " prize-table__page-number--active" : ""
+                      }`}
+                      variant="text"
+                      onClick={() =>
+                        setPaginationModel((currentState) => ({
+                          ...currentState,
+                          page: item - 1,
+                        }))
+                      }
+                    >
+                      {item}
+                    </Button>
+                  ) : (
+                    <span key={item} className="prize-table__page-ellipsis">
+                      ...
+                    </span>
+                  ),
+                )}
+
+                <Button
+                  className="prize-table__page-button"
+                  variant="outlined"
+                  disabled={currentPage === totalPages}
+                  onClick={() =>
+                    setPaginationModel((currentState) => ({
+                      ...currentState,
+                      page: Math.min(totalPages - 1, currentState.page + 1),
+                    }))
+                  }
+                >
+                  ›
+                </Button>
+              </Box>
+
+              <Box className="prize-table__footer-meta">
+                <span>
+                  Showing {rangeStart} to {rangeEnd} of {rows.length} entries
+                </span>
+                <Button className="prize-table__show-button" variant="outlined">
+                  Show {paginationModel.pageSize} ⌃
+                </Button>
+              </Box>
+            </Box>
           </Box>
         </Box>
       </PrizeQuizzesPageRoot>

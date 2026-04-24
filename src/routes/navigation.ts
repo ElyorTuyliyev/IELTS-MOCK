@@ -27,8 +27,25 @@ export const SIDEBAR_ROUTE_GROUPS: SidebarRouteGroup[] = [
           { label: 'Prize Quizzes', path: ROUTES_PATH.prizeQuizzes },
         ],
       },
-      { label: 'LMS', icon: 'L', path: ROUTES_PATH.lms },
-      { label: 'Questions', icon: 'Q', path: ROUTES_PATH.questions },
+      {
+        label: 'LMS',
+        icon: 'L',
+        path: ROUTES_PATH.lms,
+        children: [
+          { label: 'Courses', path: ROUTES_PATH.courses },
+          { label: 'Courseware', path: ROUTES_PATH.courseware },
+        ],
+      },
+      {
+        label: 'Questions',
+        icon: 'Q',
+        path: ROUTES_PATH.questions,
+        children: [
+          { label: 'All Questions', path: ROUTES_PATH.allQuestions },
+          { label: 'Batch Import', path: ROUTES_PATH.batchImport },
+          { label: 'Import Records', path: ROUTES_PATH.importRecords },
+        ],
+      },
       { label: 'Students', icon: 'S', path: ROUTES_PATH.students },
     ],
   },

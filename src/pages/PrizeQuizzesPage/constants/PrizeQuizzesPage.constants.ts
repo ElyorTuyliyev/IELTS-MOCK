@@ -21,7 +21,7 @@ export type PrizeQuizGridRow = PrizeQuizRow & {
 
 export const PRIZE_QUIZ_PAGE_SIZE = 8
 
-export const PRIZE_QUIZZES: PrizeQuizRow[] = [
+const BASE_PRIZE_QUIZZES: PrizeQuizRow[] = [
   {
     name: 'Exam Sphere',
     description: 'A comprehensive challenge hub',
@@ -143,3 +143,5 @@ export const PRIZE_QUIZZES: PrizeQuizRow[] = [
     levelTone: 'blue',
   },
 ]
+
+export const PRIZE_QUIZZES: PrizeQuizRow[] = Array.from({ length: 5 }, () => BASE_PRIZE_QUIZZES).flat()
