@@ -1,0 +1,6 @@
+export { DashboardPage } from './DashboardPage'
+export { FeaturePage } from './FeaturePage/FeaturePage'
+export { HomePage } from './HomePage'
+export { PrizeQuizzesPage } from './PrizeQuizzesPage'
+export { SignInPage } from './SignInPage'
+export { SignUpPage } from './SignUpPage'
