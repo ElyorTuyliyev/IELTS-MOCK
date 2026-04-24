@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-import { Box, Button, Typography } from "@mui/material";
+import { Box, IconButton, Typography } from "@mui/material";
 import type { GridColDef } from "@mui/x-data-grid";
 
 import type {
@@ -17,20 +17,47 @@ const levelToneMap = {
   blue: "#67ace7",
 } as const;
 
+const levelBarBaseHeights = [8, 12, 16] as const;
+
 const getStatusClassName = (status: PrizeQuizStatus) =>
   `prize-table__pill prize-table__pill--${status.toLowerCase()}`;
 
 const getTypeClassName = (type: PrizeQuizType) =>
   `prize-table__pill prize-table__pill--${type.toLowerCase().replace(/\s+/g, "-")}`;
 
+function getLevelBarMetrics(level: string) {
+  const [scoreText, totalText] = level.split("/");
+  const score = Number(scoreText);
+  const total = Number(totalText);
+
+  if (!Number.isFinite(score) || !Number.isFinite(total) || total <= 0) {
+    return levelBarBaseHeights.map((height) => ({
+      height,
+      opacity: 0.45,
+    }));
+  }
+
+  const ratio = Math.max(0, Math.min(score / total, 1));
+
+  return levelBarBaseHeights.map((baseHeight, index) => {
+    const segmentProgress = Math.max(0, Math.min(ratio * levelBarBaseHeights.length - index, 1));
+
+    return {
+      height: Math.max(5, Math.round(baseHeight * (0.4 + segmentProgress * 0.6))),
+      opacity: 0.28 + segmentProgress * 0.72,
+    };
+  });
+}
+
 export function createPrizeQuizColumns(): GridColDef<PrizeQuizGridRow>[] {
   return [
     {
       field: "name",
       headerName: "Name",
-      flex: 1.2,
-      minWidth: 210,
+      flex: 1.15,
+      minWidth: 240,
       sortable: false,
+      headerAlign: "left",
       renderCell: (params) => (
         <Box className="prize-table__name">
           <Box
@@ -52,9 +79,10 @@ export function createPrizeQuizColumns(): GridColDef<PrizeQuizGridRow>[] {
     {
       field: "description",
       headerName: "Description",
-      flex: 1.1,
-      minWidth: 180,
+      flex: 1.15,
+      minWidth: 240,
       sortable: false,
+      headerAlign: "left",
       renderCell: (params) => (
         <span className="prize-table__description">
           {params.row.description}
@@ -64,34 +92,40 @@ export function createPrizeQuizColumns(): GridColDef<PrizeQuizGridRow>[] {
     {
       field: "level",
       headerName: "Level",
-      minWidth: 128,
+      minWidth: 136,
       sortable: false,
-      renderCell: (params) => (
-        <Box className="prize-table__level">
-          <Box className="prize-table__level-bars">
-            {[8, 12, 16].map((barHeight, index) => (
-              <Box
-                key={`${params.row.id}-bar-${index}`}
-                className="prize-table__level-bar"
-                sx={
-                  {
-                    "--bar-height": `${barHeight}px`,
-                    "--bar-opacity": index === 2 ? 1 : 0.52,
-                    "--level-color": levelToneMap[params.row.levelTone],
-                  } as CSSProperties
-                }
-              />
-            ))}
+      headerAlign: "left",
+      renderCell: (params) => {
+        const levelBars = getLevelBarMetrics(params.row.level);
+
+        return (
+          <Box className="prize-table__level">
+            <Box className="prize-table__level-bars" aria-hidden="true">
+              {levelBars.map((bar, index) => (
+                <Box
+                  key={`${params.row.id}-bar-${index}`}
+                  className="prize-table__level-bar"
+                  sx={
+                    {
+                      "--bar-height": `${bar.height}px`,
+                      "--bar-opacity": bar.opacity,
+                      "--level-color": levelToneMap[params.row.levelTone],
+                    } as CSSProperties
+                  }
+                />
+              ))}
+            </Box>
+            <span className="prize-table__level-text">{params.row.level}</span>
           </Box>
-          <span>{params.row.level}</span>
-        </Box>
-      ),
+        );
+      },
     },
     {
       field: "createdDate",
       headerName: "Created Date",
-      minWidth: 130,
+      minWidth: 138,
       sortable: false,
+      headerAlign: "left",
       renderCell: (params) => (
         <span className="prize-table__date">{params.row.createdDate}</span>
       ),
@@ -99,8 +133,9 @@ export function createPrizeQuizColumns(): GridColDef<PrizeQuizGridRow>[] {
     {
       field: "examStatus",
       headerName: "Exam Status",
-      minWidth: 132,
+      minWidth: 146,
       sortable: false,
+      headerAlign: "left",
       renderCell: (params) => (
         <span className={getStatusClassName(params.row.examStatus)}>
           {params.row.examStatus}
@@ -110,8 +145,9 @@ export function createPrizeQuizColumns(): GridColDef<PrizeQuizGridRow>[] {
     {
       field: "category",
       headerName: "Category",
-      minWidth: 108,
+      minWidth: 110,
       sortable: false,
+      headerAlign: "left",
       renderCell: (params) => (
         <span className="prize-table__category">{params.row.category}</span>
       ),
@@ -119,8 +155,9 @@ export function createPrizeQuizColumns(): GridColDef<PrizeQuizGridRow>[] {
     {
       field: "status",
       headerName: "Status",
-      minWidth: 126,
+      minWidth: 130,
       sortable: false,
+      headerAlign: "left",
       renderCell: (params) => (
         <span className={getTypeClassName(params.row.status)}>
           {params.row.status}
@@ -130,18 +167,25 @@ export function createPrizeQuizColumns(): GridColDef<PrizeQuizGridRow>[] {
     {
       field: "actions",
       headerName: "Action",
-      minWidth: 108,
+      minWidth: 110,
       sortable: false,
       filterable: false,
       disableColumnMenu: true,
+      headerAlign: "left",
       renderCell: () => (
         <Box className="prize-table__action-buttons">
-          <Button className="prize-table__icon-button" variant="outlined">
+          <IconButton
+            className="prize-table__icon-button"
+            aria-label="Delete prize quiz"
+          >
             🗑
-          </Button>
-          <Button className="prize-table__icon-button" variant="outlined">
+          </IconButton>
+          <IconButton
+            className="prize-table__icon-button"
+            aria-label="Edit prize quiz"
+          >
             ✎
-          </Button>
+          </IconButton>
         </Box>
       ),
     },
