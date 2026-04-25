@@ -12,6 +12,7 @@ import {
   QuestionsPage,
   SignInPage,
   SignUpPage,
+  StatisticsPage,
 } from '../pages'
 import { ROUTES_PATH } from './paths'
 
@@ -123,13 +124,7 @@ const appRoutes: AppRouteConfig[] = [
   },
   {
     path: ROUTES_PATH.statistics,
-    element: (
-      <FeaturePage
-        eyebrow="Analytics"
-        title="Statistics"
-        description="Charts, performance trends, and reporting blocks can now be built here independently."
-      />
-    ),
+    element: <StatisticsPage />,
   },
   {
     path: ROUTES_PATH.certificates,

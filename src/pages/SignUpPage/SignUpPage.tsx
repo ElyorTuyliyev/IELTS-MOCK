@@ -1,6 +1,5 @@
-import type { FormEvent } from "react";
-import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Controller, type SubmitHandler, useForm } from "react-hook-form";
 import {
   Box,
   Button,
@@ -112,15 +111,49 @@ function FacebookIcon() {
   );
 }
 
+type SignUpFormValues = {
+  fullName: string;
+  email: string;
+  password: string;
+  rememberAccount: boolean;
+};
+
 export function SignUpPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [fullName, setFullname] = useState("");
-  const [password, setPassword] = useState("");
-  const [rememberAccount, setRememberAccount] = useState(false);
+  const { control, handleSubmit, register } = useForm<SignUpFormValues>({
+    defaultValues: {
+      fullName: "",
+      email: "",
+      password: "",
+      rememberAccount: false,
+    },
+  });
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const onSubmit: SubmitHandler<SignUpFormValues> = (values) => {
+    // #region agent log
+    fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "393b5a",
+      },
+      body: JSON.stringify({
+        sessionId: "393b5a",
+        runId: "post-fix",
+        hypothesisId: "H9",
+        location: "SignUpPage.tsx:handleSubmit",
+        message: "Sign up submit snapshot",
+        data: {
+          fullNameLength: values.fullName.trim().length,
+          emailTrimmedLength: values.email.trim().length,
+          passwordLength: values.password.length,
+          rememberAccount: values.rememberAccount,
+          source: "react-hook-form",
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
     navigate(ROUTES_PATH.home);
   };
 
@@ -309,7 +342,7 @@ export function SignUpPage() {
           <Box
             component="form"
             className="sign-up-page__form-card"
-            onSubmit={handleSubmit}
+            onSubmit={handleSubmit(onSubmit)}
           >
             <Box className="sign-up-page__form-badge">
               <MailIcon />
@@ -363,8 +396,31 @@ export function SignUpPage() {
                 className="sign-up-page__field"
                 type="text"
                 placeholder="Enter your name"
-                value={fullName}
-                onChange={(event) => setFullname(event.target.value)}
+                {...register("fullName", {
+                  onChange: (event) => {
+                    const nextFullName = event.target.value;
+                    // #region agent log
+                    fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        "X-Debug-Session-Id": "393b5a",
+                      },
+                      body: JSON.stringify({
+                        sessionId: "393b5a",
+                        runId: "post-fix",
+                        hypothesisId: "H10",
+                        location: "SignUpPage.tsx:fullNameOnChange",
+                        message: "Full name field changed",
+                        data: {
+                          length: nextFullName.length,
+                        },
+                        timestamp: Date.now(),
+                      }),
+                    }).catch(() => {});
+                    // #endregion
+                  },
+                })}
                 slotProps={{
                   input: {
                     startAdornment: (
@@ -391,8 +447,7 @@ export function SignUpPage() {
                 className="sign-up-page__field"
                 type="email"
                 placeholder="Enter your email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                {...register("email")}
                 slotProps={{
                   input: {
                     startAdornment: (
@@ -420,8 +475,7 @@ export function SignUpPage() {
                 className="sign-up-page__field"
                 type="password"
                 placeholder="Enter your password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
+                {...register("password")}
                 slotProps={{
                   input: {
                     startAdornment: (
@@ -440,11 +494,15 @@ export function SignUpPage() {
               <FormControlLabel
                 className="sign-up-page__checkbox-label"
                 control={
-                  <Checkbox
-                    checked={rememberAccount}
-                    onChange={(event) =>
-                      setRememberAccount(event.target.checked)
-                    }
+                  <Controller
+                    name="rememberAccount"
+                    control={control}
+                    render={({ field }) => (
+                      <Checkbox
+                        checked={field.value}
+                        onChange={(event) => field.onChange(event.target.checked)}
+                      />
+                    )}
                   />
                 }
                 label="I agree to all Term, Privacy an Police and Fees "

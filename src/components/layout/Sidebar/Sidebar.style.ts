@@ -231,4 +231,23 @@ export const SidebarRoot = styled(Box)`
     color: #64748b;
     font-size: 0.875rem;
   }
+
+  .sidebar__logout {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    border-radius: 14px;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
+    background: #fff7f7;
+    text-transform: none;
+    font-weight: 700;
+  }
+
+  .sidebar__logout-icon {
+    font-size: 0.95rem;
+    line-height: 1;
+  }
 `

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { type ChangeEvent, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Box,
@@ -10,6 +10,7 @@ import {
   Typography,
 } from '@mui/material'
 
+import { RichTextEditor } from '../../components/common/RichTextEditor/RichTextEditor'
 import { Layout } from '../../components/layout'
 import { ROUTES_PATH } from '../../routes'
 import {
@@ -35,6 +36,18 @@ type AnswerOption = {
 }
 
 const letterLabels = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+
+const emptyEditorValue = '<p></p>'
+
+function isEffectivelyEmptyHtml(value: string): boolean {
+  const normalized = value
+    .replace(/<p><\/p>/g, '')
+    .replace(/<p><br><\/p>/g, '')
+    .replace(/&nbsp;/g, '')
+    .replace(/<[^>]+>/g, '')
+    .trim()
+  return normalized.length === 0
+}
 
 function createOption(label: string, text = ''): AnswerOption {
   return {
@@ -71,14 +84,14 @@ export function AddQuestionPage() {
   const [difficulty, setDifficulty] = useState('Core')
   const [status, setStatus] = useState('Draft')
   const [timeLimit, setTimeLimit] = useState('90')
-  const [questionStem, setQuestionStem] = useState('')
+  const [questionStem, setQuestionStem] = useState(emptyEditorValue)
   const [instruction, setInstruction] = useState(
-    'Choose the correct answer based on the recording.',
+    '<p>Choose the correct answer based on the recording.</p>',
   )
-  const [sourceMaterial, setSourceMaterial] = useState('')
-  const [teacherNote, setTeacherNote] = useState('')
+  const [sourceMaterial, setSourceMaterial] = useState(emptyEditorValue)
+  const [teacherNote, setTeacherNote] = useState(emptyEditorValue)
   const [acceptedAnswers, setAcceptedAnswers] = useState('')
-  const [explanation, setExplanation] = useState('')
+  const [explanation, setExplanation] = useState(emptyEditorValue)
   const [category, setCategory] = useState('IELTS Mock Test 01')
   const [tags, setTags] = useState('listening, mcq, part-1')
   const [alias, setAlias] = useState('Q-L1-001')
@@ -86,6 +99,11 @@ export function AddQuestionPage() {
   const [points, setPoints] = useState('1.0')
   const [followUp, setFollowUp] = useState('')
   const [sampleResponse, setSampleResponse] = useState('')
+  const [listeningAudioFile, setListeningAudioFile] = useState<File | null>(null)
+  const [supportingImageFile, setSupportingImageFile] = useState<File | null>(null)
+  const [supportingImagePreviewUrl, setSupportingImagePreviewUrl] = useState('')
+  const [speakingAudioFile, setSpeakingAudioFile] = useState<File | null>(null)
+  const [publishErrors, setPublishErrors] = useState<string[]>([])
   const [answerOptions, setAnswerOptions] = useState<AnswerOption[]>(
     createOptionsByTemplate('listening-mcq'),
   )
@@ -96,23 +114,89 @@ export function AddQuestionPage() {
 
   const answerMode: AnswerMode = selectedTemplate.answerMode
 
+  useEffect(() => {
+    if (!supportingImageFile) {
+      setSupportingImagePreviewUrl('')
+      return
+    }
+    const objectUrl = URL.createObjectURL(supportingImageFile)
+    setSupportingImagePreviewUrl(objectUrl)
+    // #region agent log
+    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': '393b5a',
+      },
+      body: JSON.stringify({
+        sessionId: '393b5a',
+        runId: 'post-fix',
+        hypothesisId: 'H24',
+        location: 'AddQuestionPage.tsx:useEffect[supportingImagePreviewUrl]',
+        message: 'Supporting image preview URL created',
+        data: {
+          module: selectedModule,
+          hasImage: true,
+          imageName: supportingImageFile.name,
+          previewUrlLength: objectUrl.length,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
+    return () => {
+      URL.revokeObjectURL(objectUrl)
+    }
+  }, [supportingImageFile, selectedModule])
+
   const handleTemplateSelect = (template: QuestionTemplate) => {
     setSelectedTemplateId(template.id)
     setSelectedModule(template.module)
     setPart(PART_OPTIONS[template.module][0])
     setInstruction(
       template.answerMode === 'essay'
-        ? 'Write at least 150 words and organise your response clearly.'
+        ? '<p>Write at least 150 words and organise your response clearly.</p>'
         : template.answerMode === 'speaking'
-          ? 'You have 1 minute to prepare and speak for up to 2 minutes.'
+          ? '<p>You have 1 minute to prepare and speak for up to 2 minutes.</p>'
           : template.answerMode === 'text'
-            ? 'Write NO MORE THAN TWO WORDS AND/OR A NUMBER for each answer.'
-            : 'Choose the correct answer based on the task requirements.',
+            ? '<p>Write NO MORE THAN TWO WORDS AND/OR A NUMBER for each answer.</p>'
+            : '<p>Choose the correct answer based on the task requirements.</p>',
     )
     setAnswerOptions(createOptionsByTemplate(template.id))
+    setQuestionStem(emptyEditorValue)
+    setSourceMaterial(emptyEditorValue)
+    setTeacherNote(emptyEditorValue)
+    setExplanation(emptyEditorValue)
     setAcceptedAnswers('')
     setFollowUp('')
     setSampleResponse('')
+    setListeningAudioFile(null)
+    setSupportingImageFile(null)
+    setSpeakingAudioFile(null)
+    setPublishErrors([])
+    // #region agent log
+    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': '393b5a',
+      },
+      body: JSON.stringify({
+        sessionId: '393b5a',
+        runId: 'pre-fix',
+        hypothesisId: 'H11',
+        location: 'AddQuestionPage.tsx:handleTemplateSelect',
+        message: 'Template switched and rich fields reset',
+        data: {
+          templateId: template.id,
+          module: template.module,
+          answerMode: template.answerMode,
+          audioReset: true,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
   }
 
   const handleModuleChange = (module: IeltsModule) => {
@@ -162,6 +246,202 @@ export function AddQuestionPage() {
 
       return nextOptions
     })
+  }
+
+  const handleQuestionStemChange = (nextValue: string) => {
+    setQuestionStem(nextValue)
+    // #region agent log
+    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': '393b5a',
+      },
+      body: JSON.stringify({
+        sessionId: '393b5a',
+        runId: 'pre-fix',
+        hypothesisId: 'H12',
+        location: 'AddQuestionPage.tsx:handleQuestionStemChange',
+        message: 'Question stem rich text changed',
+        data: {
+          htmlLength: nextValue.length,
+          hasFormattingTag:
+            nextValue.includes('<strong>') ||
+            nextValue.includes('<em>') ||
+            nextValue.includes('<ul>') ||
+            nextValue.includes('<ol>'),
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
+  }
+
+  const handlePublishQuestion = () => {
+    const validationSnapshot = {
+      titleMissing: title.trim().length === 0,
+      instructionMissing: isEffectivelyEmptyHtml(instruction),
+      questionStemMissing: isEffectivelyEmptyHtml(questionStem),
+      sourceMaterialMissing: isEffectivelyEmptyHtml(sourceMaterial),
+      listeningAudioMissing: selectedModule === 'Listening' && !listeningAudioFile,
+      speakingAudioMissing: selectedModule === 'Speaking' && !speakingAudioFile,
+      visualMaterialMissing:
+        (selectedModule === 'Reading' || selectedModule === 'Writing') &&
+        !supportingImageFile,
+      speakingFollowUpMissing:
+        selectedModule === 'Speaking' && followUp.trim().length === 0,
+      writingSampleMissing:
+        selectedModule === 'Writing' && sampleResponse.trim().length === 0,
+      readingAnswersMissing:
+        selectedModule === 'Reading' &&
+        answerOptions.some((option) => option.text.trim().length === 0),
+    }
+    const nextPublishErrors: string[] = []
+    if (validationSnapshot.titleMissing) nextPublishErrors.push('Question title is required.')
+    if (validationSnapshot.instructionMissing)
+      nextPublishErrors.push('Instruction cannot be empty.')
+    if (validationSnapshot.questionStemMissing)
+      nextPublishErrors.push('Question stem cannot be empty.')
+    if (validationSnapshot.sourceMaterialMissing)
+      nextPublishErrors.push('Source material cannot be empty.')
+    if (validationSnapshot.listeningAudioMissing)
+      nextPublishErrors.push('Listening module requires an audio file.')
+    if (validationSnapshot.speakingAudioMissing)
+      nextPublishErrors.push('Speaking module requires an audio prompt file.')
+    if (validationSnapshot.visualMaterialMissing)
+      nextPublishErrors.push('Reading/Writing modules require a supporting image.')
+    if (validationSnapshot.speakingFollowUpMissing)
+      nextPublishErrors.push('Speaking module requires examiner follow-up notes.')
+    if (validationSnapshot.writingSampleMissing)
+      nextPublishErrors.push('Writing module requires a sample high-band response.')
+    if (validationSnapshot.readingAnswersMissing)
+      nextPublishErrors.push('Reading options must have text for all answers.')
+    setPublishErrors(nextPublishErrors)
+
+    // #region agent log
+    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': '393b5a',
+      },
+      body: JSON.stringify({
+        sessionId: '393b5a',
+        runId: 'pre-fix',
+        hypothesisId: 'H17-H21',
+        location: 'AddQuestionPage.tsx:handlePublishQuestion',
+        message: 'Publish payload + module validation snapshot',
+        data: {
+          templateId: selectedTemplateId,
+          module: selectedModule,
+          titleLength: title.trim().length,
+          instructionHtmlLength: instruction.length,
+          questionStemHtmlLength: questionStem.length,
+          sourceMaterialHtmlLength: sourceMaterial.length,
+          explanationHtmlLength: explanation.length,
+          answerOptionsCount: answerOptions.length,
+          hasListeningAudio: Boolean(listeningAudioFile),
+          listeningAudioName: listeningAudioFile?.name ?? null,
+          listeningAudioSize: listeningAudioFile?.size ?? null,
+          hasSupportingImage: Boolean(supportingImageFile),
+          supportingImageName: supportingImageFile?.name ?? null,
+          supportingImageSize: supportingImageFile?.size ?? null,
+          hasSpeakingAudio: Boolean(speakingAudioFile),
+          speakingAudioName: speakingAudioFile?.name ?? null,
+          speakingAudioSize: speakingAudioFile?.size ?? null,
+          validationSnapshot,
+          blockedByValidation: nextPublishErrors.length > 0,
+          validationErrorCount: nextPublishErrors.length,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
+  }
+
+  const handleListeningAudioChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null
+    setListeningAudioFile(file)
+    // #region agent log
+    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': '393b5a',
+      },
+      body: JSON.stringify({
+        sessionId: '393b5a',
+        runId: 'pre-fix',
+        hypothesisId: 'H14',
+        location: 'AddQuestionPage.tsx:handleListeningAudioChange',
+        message: 'Listening audio selected',
+        data: {
+          hasFile: Boolean(file),
+          fileName: file?.name ?? null,
+          mimeType: file?.type ?? null,
+          size: file?.size ?? null,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
+  }
+
+  const handleSupportingImageChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null
+    setSupportingImageFile(file)
+    // #region agent log
+    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': '393b5a',
+      },
+      body: JSON.stringify({
+        sessionId: '393b5a',
+        runId: 'pre-fix',
+        hypothesisId: 'H22',
+        location: 'AddQuestionPage.tsx:handleSupportingImageChange',
+        message: 'Supporting image selected',
+        data: {
+          module: selectedModule,
+          hasFile: Boolean(file),
+          fileName: file?.name ?? null,
+          mimeType: file?.type ?? null,
+          size: file?.size ?? null,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
+  }
+
+  const handleSpeakingAudioChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null
+    setSpeakingAudioFile(file)
+    // #region agent log
+    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': '393b5a',
+      },
+      body: JSON.stringify({
+        sessionId: '393b5a',
+        runId: 'pre-fix',
+        hypothesisId: 'H23',
+        location: 'AddQuestionPage.tsx:handleSpeakingAudioChange',
+        message: 'Speaking audio selected',
+        data: {
+          hasFile: Boolean(file),
+          fileName: file?.name ?? null,
+          mimeType: file?.type ?? null,
+          size: file?.size ?? null,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
   }
 
   return (
@@ -403,6 +683,96 @@ export function AddQuestionPage() {
                   <Box className="add-question-card__head">
                     <Box>
                       <Typography component="h3" className="add-question-card__title">
+                        Media Attachments
+                      </Typography>
+                      <Typography component="p" className="add-question-card__copy">
+                        Upload assets required for IELTS task delivery (audio and visuals).
+                      </Typography>
+                    </Box>
+                    <span className="add-question-card__badge">Module specific</span>
+                  </Box>
+
+                  <Box className="add-question-form__grid">
+                    {(selectedModule === 'Reading' || selectedModule === 'Writing') && (
+                      <Box className="add-question-form__field add-question-form__field--span-2">
+                        <label className="add-question-form__label">
+                          Supporting image (required for {selectedModule})
+                        </label>
+                        <TextField
+                          fullWidth
+                          type="file"
+                          slotProps={{
+                            htmlInput: {
+                              accept: 'image/*',
+                            },
+                          }}
+                          onChange={handleSupportingImageChange}
+                        />
+                        {supportingImageFile && (
+                          <Typography component="p" className="add-question-form__hint">
+                            Selected image: {supportingImageFile.name} ({Math.ceil(supportingImageFile.size / 1024)} KB)
+                          </Typography>
+                        )}
+                        {selectedModule === 'Reading' && supportingImagePreviewUrl && (
+                          <Box className="add-question-form__image-preview">
+                            <img src={supportingImagePreviewUrl} alt="Reading passage visual" />
+                          </Box>
+                        )}
+                      </Box>
+                    )}
+
+                    {selectedModule === 'Listening' && (
+                      <Box className="add-question-form__field add-question-form__field--span-2">
+                        <label className="add-question-form__label">
+                          Listening audio (required)
+                        </label>
+                        <TextField
+                          fullWidth
+                          type="file"
+                          slotProps={{
+                            htmlInput: {
+                              accept: 'audio/*',
+                            },
+                          }}
+                          onChange={handleListeningAudioChange}
+                        />
+                        {listeningAudioFile && (
+                          <Typography component="p" className="add-question-form__hint">
+                            Selected audio: {listeningAudioFile.name} ({Math.ceil(listeningAudioFile.size / 1024)} KB)
+                          </Typography>
+                        )}
+                      </Box>
+                    )}
+
+                    {selectedModule === 'Speaking' && (
+                      <Box className="add-question-form__field add-question-form__field--span-2">
+                        <label className="add-question-form__label">
+                          Speaking prompt audio (required)
+                        </label>
+                        <TextField
+                          fullWidth
+                          type="file"
+                          slotProps={{
+                            htmlInput: {
+                              accept: 'audio/*',
+                            },
+                          }}
+                          onChange={handleSpeakingAudioChange}
+                        />
+                        {speakingAudioFile && (
+                          <Typography component="p" className="add-question-form__hint">
+                            Selected audio: {speakingAudioFile.name} ({Math.ceil(speakingAudioFile.size / 1024)} KB)
+                          </Typography>
+                        )}
+                      </Box>
+                    )}
+                  </Box>
+                </Box>
+
+                <Box className="add-question-card">
+                  <Box className="add-question-card__head">
+                    <Box>
+                      <Typography component="h3" className="add-question-card__title">
                         Prompt Design
                       </Typography>
                       <Typography component="p" className="add-question-card__copy">
@@ -420,23 +790,19 @@ export function AddQuestionPage() {
                       <label className="add-question-form__label">
                         {selectedTemplate.instructionLabel}
                       </label>
-                      <TextField
-                        multiline
-                        fullWidth
-                        placeholder="Write concise candidate instructions that match IELTS wording."
+                      <RichTextEditor
                         value={instruction}
-                        onChange={(event) => setInstruction(event.target.value)}
+                        placeholder="Write concise candidate instructions that match IELTS wording."
+                        onChange={setInstruction}
                       />
                     </Box>
 
                     <Box className="add-question-form__field add-question-form__field--span-4 add-question-form__textarea">
                       <label className="add-question-form__label">Question stem</label>
-                      <TextField
-                        multiline
-                        fullWidth
-                        placeholder="Enter the exact question prompt shown to the candidate."
+                      <RichTextEditor
                         value={questionStem}
-                        onChange={(event) => setQuestionStem(event.target.value)}
+                        placeholder="Enter the exact question prompt shown to the candidate."
+                        onChange={handleQuestionStemChange}
                       />
                     </Box>
 
@@ -444,23 +810,19 @@ export function AddQuestionPage() {
                       <label className="add-question-form__label">
                         {selectedTemplate.sourceLabel}
                       </label>
-                      <TextField
-                        multiline
-                        fullWidth
-                        placeholder={selectedTemplate.sourcePlaceholder}
+                      <RichTextEditor
                         value={sourceMaterial}
-                        onChange={(event) => setSourceMaterial(event.target.value)}
+                        placeholder={selectedTemplate.sourcePlaceholder}
+                        onChange={setSourceMaterial}
                       />
                     </Box>
 
                     <Box className="add-question-form__field add-question-form__field--span-4 add-question-form__textarea add-question-form__textarea--short">
                       <label className="add-question-form__label">Teacher / reviewer note</label>
-                      <TextField
-                        multiline
-                        fullWidth
-                        placeholder="Add distractor rationale, paragraph references, or examiner guidance."
+                      <RichTextEditor
                         value={teacherNote}
-                        onChange={(event) => setTeacherNote(event.target.value)}
+                        placeholder="Add distractor rationale, paragraph references, or examiner guidance."
+                        onChange={setTeacherNote}
                       />
                     </Box>
                   </Box>
@@ -682,12 +1044,10 @@ export function AddQuestionPage() {
                       <label className="add-question-form__label">
                         Feedback / answer rationale
                       </label>
-                      <TextField
-                        multiline
-                        fullWidth
-                        placeholder="Explain why the answer is correct and what makes the distractors or common errors misleading."
+                      <RichTextEditor
                         value={explanation}
-                        onChange={(event) => setExplanation(event.target.value)}
+                        placeholder="Explain why the answer is correct and what makes the distractors or common errors misleading."
+                        onChange={setExplanation}
                       />
                     </Box>
                   </Box>
@@ -740,11 +1100,27 @@ export function AddQuestionPage() {
                     <Button className="add-question-form__secondary" variant="outlined">
                       Save Draft
                     </Button>
-                    <Button className="add-question-form__primary" variant="contained">
+                    <Button
+                      className="add-question-form__primary"
+                      variant="contained"
+                      onClick={handlePublishQuestion}
+                    >
                       Publish Question
                     </Button>
                   </Box>
                 </Box>
+                {publishErrors.length > 0 && (
+                  <Box className="add-question-form__publish-errors">
+                    <Typography component="p" className="add-question-form__publish-errors-title">
+                      Resolve these before publishing:
+                    </Typography>
+                    <Box component="ul" className="add-question-form__publish-errors-list">
+                      {publishErrors.map((errorMessage) => (
+                        <li key={errorMessage}>{errorMessage}</li>
+                      ))}
+                    </Box>
+                  </Box>
+                )}
               </Box>
             </Box>
           </Box>
