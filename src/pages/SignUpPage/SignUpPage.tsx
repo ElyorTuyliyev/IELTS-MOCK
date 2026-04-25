@@ -126,76 +126,76 @@ export function SignUpPage() {
 
   return (
     <SignUpPageRoot>
-      <Box className="sign-in-page">
-        <Box component="section" className="sign-in-page__hero">
+      <Box className="sign-up-page">
+        <Box component="section" className="sign-up-page__hero">
           <Box
             component={Link}
             to={ROUTES_PATH.home}
-            className="sign-in-page__brand"
+            className="sign-up-page__brand"
           >
-            <Box component="span" className="sign-in-page__brand-mark">
+            <Box component="span" className="sign-up-page__brand-mark">
               <SparkIcon />
             </Box>
-            <Typography component="span" className="sign-in-page__brand-name">
+            <Typography component="span" className="sign-up-page__brand-name">
               IELTS Study
             </Typography>
           </Box>
 
-          <Box className="sign-in-page__hero-copy">
-            <Typography component="h1" className="sign-in-page__hero-title">
+          <Box className="sign-up-page__hero-copy">
+            <Typography component="h1" className="sign-up-page__hero-title">
               "Secure Your IELTS Study Online Exam System - Please Sign In"
             </Typography>
-            <Typography component="p" className="sign-in-page__hero-text">
+            <Typography component="p" className="sign-up-page__hero-text">
               Access your personalized online learning and examination portal
               with IELTS Study. Sign in to track progress, take exams, and
               enhance your knowledge anytime, anywhere.
             </Typography>
           </Box>
 
-          <Box className="sign-in-page__visual">
-            <Box className="sign-in-page__visual-shape" />
+          <Box className="sign-up-page__visual">
+            <Box className="sign-up-page__visual-shape" />
 
-            <Box component="article" className="sign-in-page__chart-card">
-              <Box className="sign-in-page__chart-card-header">
+            <Box component="article" className="sign-up-page__chart-card">
+              <Box className="sign-up-page__chart-card-header">
                 <Box>
                   <Typography
                     component="h2"
-                    className="sign-in-page__card-title"
+                    className="sign-up-page__card-title"
                   >
                     Exam Taken Times
                   </Typography>
                   <Typography
                     component="p"
-                    className="sign-in-page__card-subtitle"
+                    className="sign-up-page__card-subtitle"
                   >
                     Taken records of last years
                   </Typography>
                 </Box>
 
-                <Box className="sign-in-page__legend">
-                  <Box component="span" className="sign-in-page__legend-item">
+                <Box className="sign-up-page__legend">
+                  <Box component="span" className="sign-up-page__legend-item">
                     <Box
                       component="span"
-                      className="sign-in-page__legend-dot sign-in-page__legend-dot--primary"
+                      className="sign-up-page__legend-dot sign-up-page__legend-dot--primary"
                     />
                     Active Exams
                   </Box>
-                  <Box component="span" className="sign-in-page__legend-item">
+                  <Box component="span" className="sign-up-page__legend-item">
                     <Box
                       component="span"
-                      className="sign-in-page__legend-dot sign-in-page__legend-dot--muted"
+                      className="sign-up-page__legend-dot sign-up-page__legend-dot--muted"
                     />
                     Active Exam Takers
                   </Box>
                 </Box>
               </Box>
 
-              <Box className="sign-in-page__chart">
+              <Box className="sign-up-page__chart">
                 {chartBars.map((height, index) => (
                   <Box
                     key={index}
                     component="span"
-                    className="sign-in-page__chart-bar"
+                    className="sign-up-page__chart-bar"
                     sx={{ height: `${height}%` }}
                   />
                 ))}
@@ -239,31 +239,31 @@ export function SignUpPage() {
 
             <Box
               component="article"
-              className="sign-in-page__floating-card sign-in-page__floating-card--top"
+              className="sign-up-page__floating-card sign-up-page__floating-card--top"
             >
-              <Box className="sign-in-page__floating-card-header">
+              <Box className="sign-up-page__floating-card-header">
                 <Typography
                   component="h3"
-                  className="sign-in-page__floating-card-title"
+                  className="sign-up-page__floating-card-title"
                 >
                   Question statistics
                 </Typography>
                 <Typography
                   component="span"
-                  className="sign-in-page__floating-card-arrow"
+                  className="sign-up-page__floating-card-arrow"
                 >
                   &#8599;
                 </Typography>
               </Box>
               <Typography
                 component="p"
-                className="sign-in-page__floating-card-label"
+                className="sign-up-page__floating-card-label"
               >
                 Total Question
               </Typography>
               <Typography
                 component="strong"
-                className="sign-in-page__floating-card-value"
+                className="sign-up-page__floating-card-value"
               >
                 20
               </Typography>
@@ -271,61 +271,61 @@ export function SignUpPage() {
 
             <Box
               component="article"
-              className="sign-in-page__floating-card sign-in-page__floating-card--bottom"
+              className="sign-up-page__floating-card sign-up-page__floating-card--bottom"
             >
               <Typography
                 component="h3"
-                className="sign-in-page__floating-card-title"
+                className="sign-up-page__floating-card-title"
               >
                 Exam statistics
               </Typography>
               <Typography
                 component="p"
-                className="sign-in-page__floating-card-label"
+                className="sign-up-page__floating-card-label"
               >
                 Total Exam
               </Typography>
               <Typography
                 component="strong"
-                className="sign-in-page__floating-card-value"
+                className="sign-up-page__floating-card-value"
               >
                 27
               </Typography>
             </Box>
           </Box>
 
-          <Box className="sign-in-page__pagination" aria-hidden="true">
+          <Box className="sign-up-page__pagination" aria-hidden="true">
             {paginationDots.map((dot) => (
               <Box
                 key={dot}
                 component="span"
-                className={`sign-in-page__pagination-dot${dot === 1 ? " sign-in-page__pagination-dot--active" : ""}`}
+                className={`sign-up-page__pagination-dot${dot === 1 ? " sign-up-page__pagination-dot--active" : ""}`}
               />
             ))}
           </Box>
         </Box>
 
-        <Box component="section" className="sign-in-page__form-section">
+        <Box component="section" className="sign-up-page__form-section">
           <Box
             component="form"
-            className="sign-in-page__form-card"
+            className="sign-up-page__form-card"
             onSubmit={handleSubmit}
           >
-            <Box className="sign-in-page__form-badge">
+            <Box className="sign-up-page__form-badge">
               <MailIcon />
             </Box>
 
-            <Typography component="h2" className="sign-in-page__form-title">
+            <Typography component="h2" className="sign-up-page__form-title">
               Welcome Back IELTS Study
             </Typography>
-            <Typography component="p" className="sign-in-page__form-subtitle">
+            <Typography component="p" className="sign-up-page__form-subtitle">
               Welcome back! Please enter your details.
             </Typography>
 
-            <Box className="sign-in-page__social-actions">
+            <Box className="sign-up-page__social-actions">
               <Button
                 type="button"
-                className="sign-in-page__social-button"
+                className="sign-up-page__social-button"
                 variant="outlined"
               >
                 <GoogleIcon />
@@ -333,7 +333,7 @@ export function SignUpPage() {
               </Button>
               <Button
                 type="button"
-                className="sign-in-page__social-button"
+                className="sign-up-page__social-button"
                 variant="outlined"
               >
                 <FacebookIcon />
@@ -341,26 +341,26 @@ export function SignUpPage() {
               </Button>
             </Box>
 
-            <Box className="sign-in-page__divider">
+            <Box className="sign-up-page__divider">
               <Typography
                 component="span"
-                className="sign-in-page__divider-label"
+                className="sign-up-page__divider-label"
               >
                 Or with email
               </Typography>
             </Box>
 
-            <Box className="sign-in-page__field-group">
+            <Box className="sign-up-page__field-group">
               <Typography
                 component="label"
                 htmlFor="email"
-                className="sign-in-page__field-label"
+                className="sign-up-page__field-label"
               >
                 Full name
               </Typography>
               <TextField
                 id="email"
-                className="sign-in-page__field"
+                className="sign-up-page__field"
                 type="text"
                 placeholder="Enter your name"
                 value={fullName}
@@ -369,7 +369,7 @@ export function SignUpPage() {
                   input: {
                     startAdornment: (
                       <InputAdornment position="start">
-                        <Box className="sign-in-page__field-icon">
+                        <Box className="sign-up-page__field-icon">
                           <MailIcon />
                         </Box>
                       </InputAdornment>
@@ -378,17 +378,17 @@ export function SignUpPage() {
                 }}
               />
             </Box>
-            <Box className="sign-in-page__field-group">
+            <Box className="sign-up-page__field-group">
               <Typography
                 component="label"
                 htmlFor="email"
-                className="sign-in-page__field-label"
+                className="sign-up-page__field-label"
               >
                 Email
               </Typography>
               <TextField
                 id="email"
-                className="sign-in-page__field"
+                className="sign-up-page__field"
                 type="email"
                 placeholder="Enter your email"
                 value={email}
@@ -397,7 +397,7 @@ export function SignUpPage() {
                   input: {
                     startAdornment: (
                       <InputAdornment position="start">
-                        <Box className="sign-in-page__field-icon">
+                        <Box className="sign-up-page__field-icon">
                           <MailIcon />
                         </Box>
                       </InputAdornment>
@@ -407,17 +407,17 @@ export function SignUpPage() {
               />
             </Box>
 
-            <Box className="sign-in-page__field-group">
+            <Box className="sign-up-page__field-group">
               <Typography
                 component="label"
                 htmlFor="password"
-                className="sign-in-page__field-label"
+                className="sign-up-page__field-label"
               >
                 Password
               </Typography>
               <TextField
                 id="password"
-                className="sign-in-page__field"
+                className="sign-up-page__field"
                 type="password"
                 placeholder="Enter your password"
                 value={password}
@@ -426,7 +426,7 @@ export function SignUpPage() {
                   input: {
                     startAdornment: (
                       <InputAdornment position="start">
-                        <Box className="sign-in-page__field-icon">
+                        <Box className="sign-up-page__field-icon">
                           <LockIcon />
                         </Box>
                       </InputAdornment>
@@ -436,9 +436,9 @@ export function SignUpPage() {
               />
             </Box>
 
-            <Box className="sign-in-page__form-meta">
+            <Box className="sign-up-page__form-meta">
               <FormControlLabel
-                className="sign-in-page__checkbox-label"
+                className="sign-up-page__checkbox-label"
                 control={
                   <Checkbox
                     checked={rememberAccount}
@@ -453,18 +453,18 @@ export function SignUpPage() {
 
             <Button
               type="submit"
-              className="sign-in-page__submit-button"
+              className="sign-up-page__submit-button"
               variant="contained"
             >
               Sign Up
             </Button>
 
-            <Typography component="p" className="sign-in-page__footer-text">
+            <Typography component="p" className="sign-up-page__footer-text">
               Don&apos;t have an account?{" "}
               <Typography
                 component={Link}
                 to={ROUTES_PATH.signIn}
-                className="sign-in-page__footer-link"
+                className="sign-up-page__footer-link"
               >
                 Sign in account
               </Typography>

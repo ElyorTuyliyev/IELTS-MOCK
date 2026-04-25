@@ -1,7 +1,7 @@
 import styled from '@emotion/styled'
 
 export const SignUpPageRoot = styled.div`
-  .sign-in-page {
+  .sign-up-page {
     display: grid;
     grid-template-columns: minmax(0, 1.15fr) minmax(420px, 0.85fr);
     min-height: 100vh;
@@ -9,12 +9,12 @@ export const SignUpPageRoot = styled.div`
     background: #353b4c;
   }
 
-  .sign-in-page__hero,
-  .sign-in-page__form-section {
+  .sign-up-page__hero,
+  .sign-up-page__form-section {
     min-width: 0;
   }
 
-  .sign-in-page__hero {
+  .sign-up-page__hero {
     position: relative;
     display: flex;
     flex-direction: column;
@@ -27,7 +27,7 @@ export const SignUpPageRoot = styled.div`
       linear-gradient(180deg, #f0ebff 0%, #f6f3ff 55%, #efecff 100%);
   }
 
-  .sign-in-page__hero::before {
+  .sign-up-page__hero::before {
     content: '';
     position: absolute;
     inset: auto -4% 14% -8%;
@@ -41,7 +41,7 @@ export const SignUpPageRoot = styled.div`
     pointer-events: none;
   }
 
-  .sign-in-page__brand {
+  .sign-up-page__brand {
     position: relative;
     z-index: 1;
     display: inline-flex;
@@ -52,7 +52,7 @@ export const SignUpPageRoot = styled.div`
     text-decoration: none;
   }
 
-  .sign-in-page__brand-mark {
+  .sign-up-page__brand-mark {
     display: grid;
     place-items: center;
     width: 56px;
@@ -63,18 +63,18 @@ export const SignUpPageRoot = styled.div`
     box-shadow: 0 18px 32px rgba(111, 77, 221, 0.24);
   }
 
-  .sign-in-page__brand-mark svg {
+  .sign-up-page__brand-mark svg {
     width: 24px;
     height: 24px;
   }
 
-  .sign-in-page__brand-name {
+  .sign-up-page__brand-name {
     font-size: 21px;
     font-weight: 700;
     color: #19161f;
   }
 
-  .sign-in-page__hero-copy {
+  .sign-up-page__hero-copy {
     position: relative;
     z-index: 1;
     max-width: 760px;
@@ -83,7 +83,7 @@ export const SignUpPageRoot = styled.div`
     text-align: center;
   }
 
-  .sign-in-page__hero-title {
+  .sign-up-page__hero-title {
     margin: 0;
     font-size: clamp(44px, 4.4vw, 64px);
     line-height: 1.14;
@@ -91,7 +91,7 @@ export const SignUpPageRoot = styled.div`
     color: #09090f;
   }
 
-  .sign-in-page__hero-text {
+  .sign-up-page__hero-text {
     max-width: 720px;
     margin: 26px auto 0;
     font-size: 18px;
@@ -99,14 +99,14 @@ export const SignUpPageRoot = styled.div`
     color: #53596b;
   }
 
-  .sign-in-page__visual {
+  .sign-up-page__visual {
     position: relative;
     z-index: 1;
     min-height: 520px;
     padding-top: 84px;
   }
 
-  .sign-in-page__visual-shape {
+  .sign-up-page__visual-shape {
     position: absolute;
     right: 4%;
     bottom: 24px;
@@ -118,7 +118,7 @@ export const SignUpPageRoot = styled.div`
     filter: blur(1px);
   }
 
-  .sign-in-page__chart-card {
+  .sign-up-page__chart-card {
     position: relative;
     width: min(100%, 700px);
     min-height: 420px;
@@ -131,27 +131,27 @@ export const SignUpPageRoot = styled.div`
     backdrop-filter: blur(10px);
   }
 
-  .sign-in-page__chart-card-header {
+  .sign-up-page__chart-card-header {
     display: flex;
     justify-content: space-between;
     gap: 20px;
     align-items: flex-start;
   }
 
-  .sign-in-page__card-title {
+  .sign-up-page__card-title {
     margin: 0;
     font-size: 18px;
     line-height: 1.25;
     color: #181622;
   }
 
-  .sign-in-page__card-subtitle {
+  .sign-up-page__card-subtitle {
     margin: 22px 0 0;
     font-size: 16px;
     color: #5e6374;
   }
 
-  .sign-in-page__legend {
+  .sign-up-page__legend {
     display: flex;
     gap: 22px;
     flex-wrap: wrap;
@@ -160,13 +160,13 @@ export const SignUpPageRoot = styled.div`
     color: #565c6e;
   }
 
-  .sign-in-page__legend-item {
+  .sign-up-page__legend-item {
     display: inline-flex;
     align-items: center;
     gap: 10px;
   }
 
-  .sign-in-page__legend-dot {
+  .sign-up-page__legend-dot {
     display: inline-flex;
     width: 14px;
     height: 14px;
@@ -176,18 +176,18 @@ export const SignUpPageRoot = styled.div`
       0 0 0 5px rgba(117, 71, 239, 0.14);
   }
 
-  .sign-in-page__legend-dot--primary {
+  .sign-up-page__legend-dot--primary {
     background: #7547ef;
   }
 
-  .sign-in-page__legend-dot--muted {
+  .sign-up-page__legend-dot--muted {
     background: #c7b7f8;
     box-shadow:
       inset 0 0 0 2px rgba(255, 255, 255, 0.72),
       0 0 0 5px rgba(199, 183, 248, 0.22);
   }
 
-  .sign-in-page__chart {
+  .sign-up-page__chart {
     position: relative;
     display: flex;
     align-items: end;
@@ -198,7 +198,7 @@ export const SignUpPageRoot = styled.div`
     color: #7a4df4;
   }
 
-  .sign-in-page__chart::before {
+  .sign-up-page__chart::before {
     content: '';
     position: absolute;
     inset: 0 0 34px;
@@ -212,7 +212,7 @@ export const SignUpPageRoot = styled.div`
     pointer-events: none;
   }
 
-  .sign-in-page__chart-bar {
+  .sign-up-page__chart-bar {
     position: relative;
     z-index: 1;
     flex: 1;
@@ -221,7 +221,7 @@ export const SignUpPageRoot = styled.div`
     background: linear-gradient(180deg, rgba(192, 176, 248, 0.72), rgba(225, 216, 255, 0.5));
   }
 
-  .sign-in-page__chart svg {
+  .sign-up-page__chart svg {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -230,7 +230,7 @@ export const SignUpPageRoot = styled.div`
     filter: drop-shadow(0 12px 18px rgba(122, 77, 244, 0.18));
   }
 
-  .sign-in-page__floating-card {
+  .sign-up-page__floating-card {
     position: absolute;
     border: 1px solid rgba(212, 217, 235, 0.9);
     border-radius: 22px;
@@ -238,21 +238,21 @@ export const SignUpPageRoot = styled.div`
     box-shadow: 0 18px 42px rgba(157, 128, 239, 0.18);
   }
 
-  .sign-in-page__floating-card--top {
+  .sign-up-page__floating-card--top {
     top: 8px;
     right: 10%;
     width: min(100%, 330px);
     padding: 18px 18px 16px;
   }
 
-  .sign-in-page__floating-card--bottom {
+  .sign-up-page__floating-card--bottom {
     left: clamp(-8px, 1vw, 18px);
     bottom: -12px;
     width: min(100%, 290px);
     padding: 18px 18px 14px;
   }
 
-  .sign-in-page__floating-card--top::after {
+  .sign-up-page__floating-card--top::after {
     content: '';
     position: absolute;
     right: 20px;
@@ -266,7 +266,7 @@ export const SignUpPageRoot = styled.div`
     opacity: 0.95;
   }
 
-  .sign-in-page__floating-card--bottom::after {
+  .sign-up-page__floating-card--bottom::after {
     content: '';
     position: absolute;
     right: 18px;
@@ -282,39 +282,39 @@ export const SignUpPageRoot = styled.div`
     opacity: 0.92;
   }
 
-  .sign-in-page__floating-card-header {
+  .sign-up-page__floating-card-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
   }
 
-  .sign-in-page__floating-card-title {
+  .sign-up-page__floating-card-title {
     margin: 0;
     font-size: 17px;
     font-weight: 700;
     color: #191622;
   }
 
-  .sign-in-page__floating-card-arrow {
+  .sign-up-page__floating-card-arrow {
     font-size: 26px;
     line-height: 1;
     color: #191622;
   }
 
-  .sign-in-page__floating-card-label {
+  .sign-up-page__floating-card-label {
     margin: 18px 0 6px;
     font-size: 15px;
     color: #676d7d;
   }
 
-  .sign-in-page__floating-card-value {
+  .sign-up-page__floating-card-value {
     font-size: 28px;
     line-height: 1;
     color: #14111b;
   }
 
-  .sign-in-page__pagination {
+  .sign-up-page__pagination {
     position: relative;
     z-index: 1;
     display: flex;
@@ -322,7 +322,7 @@ export const SignUpPageRoot = styled.div`
     gap: 12px;
   }
 
-  .sign-in-page__pagination-dot {
+  .sign-up-page__pagination-dot {
     width: 18px;
     height: 8px;
     border-radius: 999px;
@@ -330,12 +330,12 @@ export const SignUpPageRoot = styled.div`
     transition: width 180ms ease;
   }
 
-  .sign-in-page__pagination-dot--active {
+  .sign-up-page__pagination-dot--active {
     width: 34px;
     background: #8a60f5;
   }
 
-  .sign-in-page__form-section {
+  .sign-up-page__form-section {
     display: grid;
     place-items: center;
     padding: 40px 32px;
@@ -344,7 +344,7 @@ export const SignUpPageRoot = styled.div`
       linear-gradient(180deg, #ffffff 0%, #fbf9ff 100%);
   }
 
-  .sign-in-page__form-card {
+  .sign-up-page__form-card {
     width: min(100%, 640px);
     padding: 46px 48px 42px;
     border: 1px solid #ebe6fb;
@@ -357,7 +357,7 @@ export const SignUpPageRoot = styled.div`
       0 18px 44px rgba(162, 134, 237, 0.12);
   }
 
-  .sign-in-page__form-badge {
+  .sign-up-page__form-badge {
     display: grid;
     place-items: center;
     width: 94px;
@@ -373,12 +373,12 @@ export const SignUpPageRoot = styled.div`
     color: #ffffff;
   }
 
-  .sign-in-page__form-badge svg {
+  .sign-up-page__form-badge svg {
     width: 24px;
     height: 24px;
   }
 
-  .sign-in-page__form-title {
+  .sign-up-page__form-title {
     margin: 34px 0 0;
     text-align: center;
     font-size: clamp(36px, 3.2vw, 54px);
@@ -387,21 +387,21 @@ export const SignUpPageRoot = styled.div`
     color: #0d0c14;
   }
 
-  .sign-in-page__form-subtitle {
+  .sign-up-page__form-subtitle {
     margin: 18px 0 0;
     text-align: center;
     font-size: 18px;
     color: #5a6071;
   }
 
-  .sign-in-page__social-actions {
+  .sign-up-page__social-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px;
     margin-top: 34px;
   }
 
-  .sign-in-page__social-button {
+  .sign-up-page__social-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -416,26 +416,26 @@ export const SignUpPageRoot = styled.div`
     text-transform: none;
   }
 
-  .sign-in-page__social-button svg {
+  .sign-up-page__social-button svg {
     width: 22px;
     height: 22px;
     flex-shrink: 0;
   }
 
-  .sign-in-page__divider {
+  .sign-up-page__divider {
     position: relative;
     margin: 28px 0 30px;
     text-align: center;
   }
 
-  .sign-in-page__divider::before {
+  .sign-up-page__divider::before {
     content: '';
     position: absolute;
     inset: 50% 0 auto;
     border-top: 1px solid #e1e5f0;
   }
 
-  .sign-in-page__divider-label {
+  .sign-up-page__divider-label {
     position: relative;
     z-index: 1;
     display: inline-block;
@@ -445,32 +445,32 @@ export const SignUpPageRoot = styled.div`
     color: #6b7183;
   }
 
-  .sign-in-page__field-group {
+  .sign-up-page__field-group {
     display: grid;
     gap: 10px;
   }
 
-  .sign-in-page__field-group + .sign-in-page__field-group {
+  .sign-up-page__field-group + .sign-up-page__field-group {
     margin-top: 18px;
   }
 
-  .sign-in-page__field-label {
+  .sign-up-page__field-label {
     font-size: 16px;
     font-weight: 700;
     color: #1c1924;
   }
 
-  .sign-in-page__field .MuiOutlinedInput-root {
+  .sign-up-page__field .MuiOutlinedInput-root {
     min-height: 58px;
     border-radius: 16px;
     background: #ffffff;
   }
 
-  .sign-in-page__field .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  .sign-up-page__field .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
     border-color: #9b78ff;
   }
 
-  .sign-in-page__field-icon {
+  .sign-up-page__field-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -479,12 +479,12 @@ export const SignUpPageRoot = styled.div`
     color: #606677;
   }
 
-  .sign-in-page__field-icon svg {
+  .sign-up-page__field-icon svg {
     width: 100%;
     height: 100%;
   }
 
-  .sign-in-page__form-meta {
+  .sign-up-page__form-meta {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -492,20 +492,20 @@ export const SignUpPageRoot = styled.div`
     margin-top: 14px;
   }
 
-  .sign-in-page__checkbox-label {
+  .sign-up-page__checkbox-label {
     margin: 0;
     color: #555b6c;
   }
 
-  .sign-in-page__checkbox-label .MuiCheckbox-root {
+  .sign-up-page__checkbox-label .MuiCheckbox-root {
     color: #8154f4;
   }
 
-  .sign-in-page__checkbox-label .MuiTypography-root {
+  .sign-up-page__checkbox-label .MuiTypography-root {
     font-size: 15px;
   }
 
-  .sign-in-page__forgot-link {
+  .sign-up-page__forgot-link {
     font-size: 15px;
     font-weight: 700;
     color: #1f1929;
@@ -513,7 +513,7 @@ export const SignUpPageRoot = styled.div`
     text-underline-offset: 3px;
   }
 
-  .sign-in-page__submit-button {
+  .sign-up-page__submit-button {
     min-height: 58px;
     margin-top: 28px;
     border-radius: 16px;
@@ -525,14 +525,14 @@ export const SignUpPageRoot = styled.div`
     text-transform: none;
   }
 
-  .sign-in-page__footer-text {
+  .sign-up-page__footer-text {
     margin: 26px 0 0;
     text-align: center;
     font-size: 16px;
     color: #5a6071;
   }
 
-  .sign-in-page__footer-link {
+  .sign-up-page__footer-link {
     font-size: inherit;
     font-weight: 700;
     color: #8557f5;
@@ -541,94 +541,94 @@ export const SignUpPageRoot = styled.div`
   }
 
   @media (max-width: 1200px) {
-    .sign-in-page {
+    .sign-up-page {
       grid-template-columns: minmax(0, 1fr);
     }
 
-    .sign-in-page__hero {
+    .sign-up-page__hero {
       min-height: 860px;
     }
   }
 
   @media (max-width: 767px) {
-    .sign-in-page {
+    .sign-up-page {
       padding: 12px;
     }
 
-    .sign-in-page__hero {
+    .sign-up-page__hero {
       min-height: auto;
       padding: 24px 18px;
     }
 
-    .sign-in-page__hero-title {
+    .sign-up-page__hero-title {
       font-size: 34px;
     }
 
-    .sign-in-page__hero-text {
+    .sign-up-page__hero-text {
       margin-top: 18px;
       font-size: 16px;
     }
 
-    .sign-in-page__visual {
+    .sign-up-page__visual {
       min-height: 440px;
       padding-top: 48px;
     }
 
-    .sign-in-page__chart-card {
+    .sign-up-page__chart-card {
       min-height: 360px;
       padding: 22px 16px 18px;
       margin-top: 96px;
     }
 
-    .sign-in-page__chart-card-header {
+    .sign-up-page__chart-card-header {
       flex-direction: column;
     }
 
-    .sign-in-page__card-subtitle {
+    .sign-up-page__card-subtitle {
       margin-top: 10px;
       font-size: 14px;
     }
 
-    .sign-in-page__chart {
+    .sign-up-page__chart {
       gap: 12px;
       height: 230px;
       padding-inline: 10px;
     }
 
-    .sign-in-page__chart-bar {
+    .sign-up-page__chart-bar {
       max-width: 18px;
     }
 
-    .sign-in-page__floating-card--top {
+    .sign-up-page__floating-card--top {
       right: 4%;
       width: 240px;
       padding: 16px;
     }
 
-    .sign-in-page__floating-card--bottom {
+    .sign-up-page__floating-card--bottom {
       width: 220px;
       padding: 16px;
     }
 
-    .sign-in-page__form-section {
+    .sign-up-page__form-section {
       padding: 20px 14px 26px;
     }
 
-    .sign-in-page__form-card {
+    .sign-up-page__form-card {
       padding: 30px 18px 24px;
       border-radius: 24px;
     }
 
-    .sign-in-page__form-title {
+    .sign-up-page__form-title {
       margin-top: 24px;
       font-size: 34px;
     }
 
-    .sign-in-page__social-actions {
+    .sign-up-page__social-actions {
       grid-template-columns: minmax(0, 1fr);
     }
 
-    .sign-in-page__form-meta {
+    .sign-up-page__form-meta {
       flex-direction: column;
       align-items: flex-start;
     }
