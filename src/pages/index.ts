@@ -1,4 +1,5 @@
 export { AddQuestionPage } from './AddQuestionPage'
+export { AllStudentsPage } from './AllStudentsPage'
 export { CoursesPage } from './CoursesPage'
 export { DashboardPage } from './DashboardPage'
 export { FeaturePage } from './FeaturePage/FeaturePage'

@@ -100,7 +100,7 @@ export function Sidebar() {
           </Box>
           <Box className="sidebar__brand-copy">
             <Typography component="strong" className="sidebar__brand-title">
-              Tabor Study
+              IELTS Study
             </Typography>
             <Typography component="span" className="sidebar__brand-text">
               Assessment workspace

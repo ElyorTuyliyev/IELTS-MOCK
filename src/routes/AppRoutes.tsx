@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 
 import {
   AddQuestionPage,
+  AllStudentsPage,
   CoursesPage,
   DashboardPage,
   FeaturePage,
@@ -84,11 +85,29 @@ const appRoutes: AppRouteConfig[] = [
   },
   {
     path: ROUTES_PATH.students,
+    element: <Navigate to={ROUTES_PATH.allStudents} replace />,
+  },
+  {
+    path: ROUTES_PATH.allStudents,
+    element: <AllStudentsPage />,
+  },
+  {
+    path: ROUTES_PATH.signupForms,
     element: (
       <FeaturePage
         eyebrow="People"
-        title="Students"
-        description="Use this route for student lists, enrollment, profile details, and exam participation history."
+        title="Signup Forms"
+        description="Use this page for student registration forms, onboarding flows, and field customization."
+      />
+    ),
+  },
+  {
+    path: ROUTES_PATH.studentSettings,
+    element: (
+      <FeaturePage
+        eyebrow="People"
+        title="Student Settings"
+        description="Manage student-facing settings, login fields, access rules, and profile preferences here."
       />
     ),
   },

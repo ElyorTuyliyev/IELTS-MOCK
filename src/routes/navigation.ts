@@ -46,7 +46,16 @@ export const SIDEBAR_ROUTE_GROUPS: SidebarRouteGroup[] = [
           { label: 'Import Records', path: ROUTES_PATH.importRecords },
         ],
       },
-      { label: 'Students', icon: 'S', path: ROUTES_PATH.students },
+      {
+        label: 'Students',
+        icon: 'S',
+        path: ROUTES_PATH.students,
+        children: [
+          { label: 'All students', path: ROUTES_PATH.allStudents },
+          { label: 'Signup Forms', path: ROUTES_PATH.signupForms },
+          { label: 'Student Settings', path: ROUTES_PATH.studentSettings },
+        ],
+      },
     ],
   },
   {
