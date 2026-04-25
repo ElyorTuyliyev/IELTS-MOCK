@@ -281,6 +281,65 @@ export const AddQuestionPageRoot = styled.div`
     line-height: 1.5;
   }
 
+  .rich-text-editor {
+    border: 1px solid #dbe2f1;
+    border-radius: 14px;
+    background: #ffffff;
+  }
+
+  .rich-text-editor__toolbar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 10px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+    border-top-left-radius: 14px;
+    border-top-right-radius: 14px;
+  }
+
+  .rich-text-editor__toolbar button {
+    min-height: 32px;
+    padding: 0 10px;
+    border: 1px solid #dbe2f1;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #334155;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .rich-text-editor__toolbar button.is-active {
+    border-color: #c4b5fd;
+    background: #f5f3ff;
+    color: #6d28d9;
+  }
+
+  .rich-text-editor__container {
+    padding: 12px;
+  }
+
+  .rich-text-editor__content {
+    min-height: 100%;
+    color: #0f172a;
+    line-height: 1.6;
+    outline: none;
+  }
+
+  .rich-text-editor__content p {
+    margin: 0 0 10px;
+  }
+
+  .rich-text-editor__content ul,
+  .rich-text-editor__content ol {
+    margin: 0 0 10px 20px;
+  }
+
+  .rich-text-editor__content h3 {
+    margin: 0 0 10px;
+    font-size: 1rem;
+  }
+
   .add-question-form__toggle-row {
     display: flex;
     gap: 10px;
@@ -390,6 +449,42 @@ export const AddQuestionPageRoot = styled.div`
     display: flex;
     gap: 12px;
     flex-wrap: wrap;
+  }
+
+  .add-question-form__publish-errors {
+    padding: 14px 16px;
+    border: 1px solid #fecaca;
+    border-radius: 14px;
+    background: #fff7f7;
+    color: #991b1b;
+  }
+
+  .add-question-form__publish-errors-title {
+    margin: 0 0 8px;
+    font-weight: 700;
+  }
+
+  .add-question-form__publish-errors-list {
+    margin: 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 4px;
+  }
+
+  .add-question-form__image-preview {
+    margin-top: 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #f8fafc;
+  }
+
+  .add-question-form__image-preview img {
+    display: block;
+    width: 100%;
+    max-height: 260px;
+    object-fit: contain;
+    background: #f8fafc;
   }
 
   .add-question-form__secondary,

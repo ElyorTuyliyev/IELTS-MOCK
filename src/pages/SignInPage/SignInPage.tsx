@@ -1,6 +1,5 @@
-import type { FormEvent } from "react";
-import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Controller, type SubmitHandler, useForm } from "react-hook-form";
 import {
   Box,
   Button,
@@ -112,14 +111,46 @@ function FacebookIcon() {
   );
 }
 
+type SignInFormValues = {
+  email: string;
+  password: string;
+  rememberAccount: boolean;
+};
+
 export function SignInPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [rememberAccount, setRememberAccount] = useState(false);
+  const { control, handleSubmit, register } = useForm<SignInFormValues>({
+    defaultValues: {
+      email: "",
+      password: "",
+      rememberAccount: false,
+    },
+  });
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const onSubmit: SubmitHandler<SignInFormValues> = (values) => {
+    // #region agent log
+    fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "393b5a",
+      },
+      body: JSON.stringify({
+        sessionId: "393b5a",
+        runId: "post-fix",
+        hypothesisId: "H6",
+        location: "SignInPage.tsx:handleSubmit",
+        message: "Sign in submit snapshot",
+        data: {
+          emailTrimmedLength: values.email.trim().length,
+          passwordLength: values.password.length,
+          rememberAccount: values.rememberAccount,
+          source: "react-hook-form",
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
     navigate(ROUTES_PATH.home);
   };
 
@@ -308,7 +339,7 @@ export function SignInPage() {
           <Box
             component="form"
             className="sign-in-page__form-card"
-            onSubmit={handleSubmit}
+            onSubmit={handleSubmit(onSubmit)}
           >
             <Box className="sign-in-page__form-badge">
               <MailIcon />
@@ -362,8 +393,32 @@ export function SignInPage() {
                 className="sign-in-page__field"
                 type="email"
                 placeholder="Enter your email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                {...register("email", {
+                  onChange: (event) => {
+                    const nextEmail = event.target.value;
+                    // #region agent log
+                    fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        "X-Debug-Session-Id": "393b5a",
+                      },
+                      body: JSON.stringify({
+                        sessionId: "393b5a",
+                        runId: "post-fix",
+                        hypothesisId: "H7",
+                        location: "SignInPage.tsx:emailOnChange",
+                        message: "Email field changed",
+                        data: {
+                          hasAtSymbol: nextEmail.includes("@"),
+                          length: nextEmail.length,
+                        },
+                        timestamp: Date.now(),
+                      }),
+                    }).catch(() => {});
+                    // #endregion
+                  },
+                })}
                 slotProps={{
                   input: {
                     startAdornment: (
@@ -391,8 +446,7 @@ export function SignInPage() {
                 className="sign-in-page__field"
                 type="password"
                 placeholder="Enter your password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
+                {...register("password")}
                 slotProps={{
                   input: {
                     startAdornment: (
@@ -411,11 +465,39 @@ export function SignInPage() {
               <FormControlLabel
                 className="sign-in-page__checkbox-label"
                 control={
-                  <Checkbox
-                    checked={rememberAccount}
-                    onChange={(event) =>
-                      setRememberAccount(event.target.checked)
-                    }
+                  <Controller
+                    name="rememberAccount"
+                    control={control}
+                    render={({ field }) => (
+                      <Checkbox
+                        checked={field.value}
+                        onChange={(event) => {
+                          const checked = event.target.checked;
+                          // #region agent log
+                          fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "application/json",
+                              "X-Debug-Session-Id": "393b5a",
+                            },
+                            body: JSON.stringify({
+                              sessionId: "393b5a",
+                              runId: "post-fix",
+                              hypothesisId: "H8",
+                              location: "SignInPage.tsx:rememberCheckbox",
+                              message: "Remember account toggled",
+                              data: {
+                                checked,
+                                previousValue: field.value,
+                              },
+                              timestamp: Date.now(),
+                            }),
+                          }).catch(() => {});
+                          // #endregion
+                          field.onChange(checked);
+                        }}
+                      />
+                    )}
                   />
                 }
                 label="Save account"

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Box,
   Button,
@@ -9,13 +9,14 @@ import {
   Typography,
 } from "@mui/material";
 
-import { SIDEBAR_ROUTE_GROUPS } from "../../../routes";
+import { ROUTES_PATH, SIDEBAR_ROUTE_GROUPS } from "../../../routes";
 import { SidebarRoot } from "./Sidebar.style";
 
 const SIDEBAR_ACCORDION_STORAGE_KEY = "sidebar-expanded-items";
 
 export function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedItems, setExpandedItems] = useState<
     Record<string, boolean | undefined>
@@ -80,6 +81,31 @@ export function Sidebar() {
 
   const collapseAccordionItems = () => {
     setExpandedItems({});
+  };
+
+  const handleLogout = () => {
+    // #region agent log
+    fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "393b5a",
+      },
+      body: JSON.stringify({
+        sessionId: "393b5a",
+        runId: "post-fix",
+        hypothesisId: "H25",
+        location: "Sidebar.tsx:handleLogout",
+        message: "Sidebar logout clicked",
+        data: {
+          fromPath: location.pathname,
+          toPath: ROUTES_PATH.signIn,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+    navigate(ROUTES_PATH.signIn);
   };
 
   useEffect(() => {
@@ -269,6 +295,12 @@ export function Sidebar() {
         <span className="sidebar__profile-arrow" aria-hidden="true">
           ˅
         </span>
+      </Button>
+      <Button className="sidebar__logout" variant="outlined" onClick={handleLogout}>
+        <span className="sidebar__logout-icon" aria-hidden="true">
+          ⇦
+        </span>
+        Logout
       </Button>
     </SidebarRoot>
   );
