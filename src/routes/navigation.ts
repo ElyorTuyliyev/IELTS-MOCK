@@ -64,7 +64,6 @@ export const SIDEBAR_ROUTE_GROUPS: SidebarRouteGroup[] = [
       { label: 'Results Database', icon: 'R', path: ROUTES_PATH.resultsDatabase },
       { label: 'Statistics', icon: 'T', path: ROUTES_PATH.statistics },
       { label: 'Certificates', icon: 'C', path: ROUTES_PATH.certificates },
-      { label: 'Surveys', icon: 'V', path: ROUTES_PATH.surveys },
     ],
   },
   {
