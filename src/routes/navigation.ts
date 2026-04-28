@@ -1,4 +1,5 @@
 import { ROUTES_PATH } from './paths'
+import { USER_ROLES, type UserRole } from '../store/slices/authSlice'
 
 export type SidebarRouteGroup = {
   title: string
@@ -6,9 +7,11 @@ export type SidebarRouteGroup = {
     label: string
     icon: string
     path?: string
+    allowedRoles?: UserRole[]
     children?: Array<{
       label: string
       path?: string
+      allowedRoles?: UserRole[]
     }>
   }>
 }
@@ -18,6 +21,13 @@ export const SIDEBAR_ROUTE_GROUPS: SidebarRouteGroup[] = [
     title: 'Main',
     items: [
       { label: 'Dashboard', icon: 'D', path: ROUTES_PATH.dashboard },
+      {
+        label: 'Admin',
+        icon: 'A',
+        path: ROUTES_PATH.admin,
+        allowedRoles: [USER_ROLES.superAdmin],
+      },
+      { label: 'Centers', icon: 'C', path: ROUTES_PATH.center },
       {
         label: 'Exams',
         icon: 'E',

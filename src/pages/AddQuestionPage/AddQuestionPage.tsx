@@ -1,5 +1,5 @@
-import { type ChangeEvent, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { type ChangeEvent, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Box,
   Button,
@@ -8,11 +8,11 @@ import {
   MenuItem,
   TextField,
   Typography,
-} from '@mui/material'
+} from "@mui/material";
 
-import { RichTextEditor } from '../../components/common/RichTextEditor/RichTextEditor'
-import { Layout } from '../../components/layout'
-import { ROUTES_PATH } from '../../routes'
+import { RichTextEditor } from "../../components/common/RichTextEditor/RichTextEditor";
+import { Layout } from "../../components/layout";
+import { ROUTES_PATH } from "../../routes";
 import {
   BAND_OPTIONS,
   DIFFICULTY_OPTIONS,
@@ -20,120 +20,125 @@ import {
   PART_OPTIONS,
   QUESTION_TEMPLATES,
   STATUS_OPTIONS,
-} from './AddQuestionPage.constants'
+} from "./AddQuestionPage.constants";
 import type {
   AnswerMode,
   IeltsModule,
   QuestionTemplate,
-} from './AddQuestionPage.constants'
-import { AddQuestionPageRoot } from './AddQuestionPage.style'
+} from "./AddQuestionPage.constants";
+import { AddQuestionPageRoot } from "./AddQuestionPage.style";
 
 type AnswerOption = {
-  id: string
-  label: string
-  text: string
-  isCorrect: boolean
-}
+  id: string;
+  label: string;
+  text: string;
+  isCorrect: boolean;
+};
 
-const letterLabels = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+const letterLabels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-const emptyEditorValue = '<p></p>'
+const emptyEditorValue = "<p></p>";
 
 function isEffectivelyEmptyHtml(value: string): boolean {
   const normalized = value
-    .replace(/<p><\/p>/g, '')
-    .replace(/<p><br><\/p>/g, '')
-    .replace(/&nbsp;/g, '')
-    .replace(/<[^>]+>/g, '')
-    .trim()
-  return normalized.length === 0
+    .replace(/<p><\/p>/g, "")
+    .replace(/<p><br><\/p>/g, "")
+    .replace(/&nbsp;/g, "")
+    .replace(/<[^>]+>/g, "")
+    .trim();
+  return normalized.length === 0;
 }
 
-function createOption(label: string, text = ''): AnswerOption {
+function createOption(label: string, text = ""): AnswerOption {
   return {
     id: `option-${label}`,
     label,
     text,
-    isCorrect: label === 'A',
-  }
+    isCorrect: label === "A",
+  };
 }
 
 function createOptionsByTemplate(templateId: string): AnswerOption[] {
-  if (templateId === 'reading-tfng') {
+  if (templateId === "reading-tfng") {
     return [
-      { id: 'option-t', label: 'A', text: 'True', isCorrect: true },
-      { id: 'option-f', label: 'B', text: 'False', isCorrect: false },
-      { id: 'option-ng', label: 'C', text: 'Not Given', isCorrect: false },
-    ]
+      { id: "option-t", label: "A", text: "True", isCorrect: true },
+      { id: "option-f", label: "B", text: "False", isCorrect: false },
+      { id: "option-ng", label: "C", text: "Not Given", isCorrect: false },
+    ];
   }
 
   return [
-    createOption('A'),
-    createOption('B'),
-    createOption('C'),
-    createOption('D'),
-  ]
+    createOption("A"),
+    createOption("B"),
+    createOption("C"),
+    createOption("D"),
+  ];
 }
 
 export function AddQuestionPage() {
-  const [selectedTemplateId, setSelectedTemplateId] = useState('listening-mcq')
-  const [selectedModule, setSelectedModule] = useState<IeltsModule>('Listening')
-  const [title, setTitle] = useState('')
-  const [part, setPart] = useState(PART_OPTIONS.Listening[0])
-  const [bandTarget, setBandTarget] = useState('6.5')
-  const [difficulty, setDifficulty] = useState('Core')
-  const [status, setStatus] = useState('Draft')
-  const [timeLimit, setTimeLimit] = useState('90')
-  const [questionStem, setQuestionStem] = useState(emptyEditorValue)
+  const [selectedTemplateId, setSelectedTemplateId] = useState("listening-mcq");
+  const [selectedModule, setSelectedModule] =
+    useState<IeltsModule>("Listening");
+  const [title, setTitle] = useState("");
+  const [part, setPart] = useState(PART_OPTIONS.Listening[0]);
+  const [bandTarget, setBandTarget] = useState("6.5");
+  const [difficulty, setDifficulty] = useState("Core");
+  const [status, setStatus] = useState("Draft");
+  const [timeLimit, setTimeLimit] = useState("90");
+  const [questionStem, setQuestionStem] = useState(emptyEditorValue);
   const [instruction, setInstruction] = useState(
-    '<p>Choose the correct answer based on the recording.</p>',
-  )
-  const [sourceMaterial, setSourceMaterial] = useState(emptyEditorValue)
-  const [teacherNote, setTeacherNote] = useState(emptyEditorValue)
-  const [acceptedAnswers, setAcceptedAnswers] = useState('')
-  const [explanation, setExplanation] = useState(emptyEditorValue)
-  const [category, setCategory] = useState('IELTS Mock Test 01')
-  const [tags, setTags] = useState('listening, mcq, part-1')
-  const [alias, setAlias] = useState('Q-L1-001')
-  const [scoreMode, setScoreMode] = useState<'band' | 'raw'>('raw')
-  const [points, setPoints] = useState('1.0')
-  const [followUp, setFollowUp] = useState('')
-  const [sampleResponse, setSampleResponse] = useState('')
-  const [listeningAudioFile, setListeningAudioFile] = useState<File | null>(null)
-  const [supportingImageFile, setSupportingImageFile] = useState<File | null>(null)
-  const [supportingImagePreviewUrl, setSupportingImagePreviewUrl] = useState('')
-  const [speakingAudioFile, setSpeakingAudioFile] = useState<File | null>(null)
-  const [publishErrors, setPublishErrors] = useState<string[]>([])
+    "<p>Choose the correct answer based on the recording.</p>",
+  );
+  const [sourceMaterial, setSourceMaterial] = useState(emptyEditorValue);
+  const [teacherNote, setTeacherNote] = useState(emptyEditorValue);
+  const [acceptedAnswers, setAcceptedAnswers] = useState("");
+  const [explanation, setExplanation] = useState(emptyEditorValue);
+  const [category, setCategory] = useState("IELTS Mock Test 01");
+  const [tags, setTags] = useState("listening, mcq, part-1");
+  const [alias, setAlias] = useState("Q-L1-001");
+  const [scoreMode, setScoreMode] = useState<"band" | "raw">("raw");
+  const [points, setPoints] = useState("1.0");
+  const [followUp, setFollowUp] = useState("");
+  const [sampleResponse, setSampleResponse] = useState("");
+  const [listeningAudioFile, setListeningAudioFile] = useState<File | null>(
+    null,
+  );
+  const [supportingImageFile, setSupportingImageFile] = useState<File | null>(
+    null,
+  );
+  const [supportingImagePreviewUrl, setSupportingImagePreviewUrl] =
+    useState("");
+  const [speakingAudioFile, setSpeakingAudioFile] = useState<File | null>(null);
+  const [publishErrors, setPublishErrors] = useState<string[]>([]);
   const [answerOptions, setAnswerOptions] = useState<AnswerOption[]>(
-    createOptionsByTemplate('listening-mcq'),
-  )
+    createOptionsByTemplate("listening-mcq"),
+  );
 
   const selectedTemplate =
     QUESTION_TEMPLATES.find((template) => template.id === selectedTemplateId) ??
-    QUESTION_TEMPLATES[0]
+    QUESTION_TEMPLATES[0];
 
-  const answerMode: AnswerMode = selectedTemplate.answerMode
+  const answerMode: AnswerMode = selectedTemplate.answerMode;
 
   useEffect(() => {
     if (!supportingImageFile) {
-      setSupportingImagePreviewUrl('')
-      return
+      setSupportingImagePreviewUrl("");
+      return;
     }
-    const objectUrl = URL.createObjectURL(supportingImageFile)
-    setSupportingImagePreviewUrl(objectUrl)
-    // #region agent log
-    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-      method: 'POST',
+    const objectUrl = URL.createObjectURL(supportingImageFile);
+    setSupportingImagePreviewUrl(objectUrl);
+    fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': '393b5a',
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "393b5a",
       },
       body: JSON.stringify({
-        sessionId: '393b5a',
-        runId: 'post-fix',
-        hypothesisId: 'H24',
-        location: 'AddQuestionPage.tsx:useEffect[supportingImagePreviewUrl]',
-        message: 'Supporting image preview URL created',
+        sessionId: "393b5a",
+        runId: "post-fix",
+        hypothesisId: "H24",
+        location: "AddQuestionPage.tsx:useEffect[supportingImagePreviewUrl]",
+        message: "Supporting image preview URL created",
         data: {
           module: selectedModule,
           hasImage: true,
@@ -142,51 +147,50 @@ export function AddQuestionPage() {
         },
         timestamp: Date.now(),
       }),
-    }).catch(() => {})
+    }).catch(() => {});
     // #endregion
     return () => {
-      URL.revokeObjectURL(objectUrl)
-    }
-  }, [supportingImageFile, selectedModule])
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [supportingImageFile, selectedModule]);
 
   const handleTemplateSelect = (template: QuestionTemplate) => {
-    setSelectedTemplateId(template.id)
-    setSelectedModule(template.module)
-    setPart(PART_OPTIONS[template.module][0])
+    setSelectedTemplateId(template.id);
+    setSelectedModule(template.module);
+    setPart(PART_OPTIONS[template.module][0]);
     setInstruction(
-      template.answerMode === 'essay'
-        ? '<p>Write at least 150 words and organise your response clearly.</p>'
-        : template.answerMode === 'speaking'
-          ? '<p>You have 1 minute to prepare and speak for up to 2 minutes.</p>'
-          : template.answerMode === 'text'
-            ? '<p>Write NO MORE THAN TWO WORDS AND/OR A NUMBER for each answer.</p>'
-            : '<p>Choose the correct answer based on the task requirements.</p>',
-    )
-    setAnswerOptions(createOptionsByTemplate(template.id))
-    setQuestionStem(emptyEditorValue)
-    setSourceMaterial(emptyEditorValue)
-    setTeacherNote(emptyEditorValue)
-    setExplanation(emptyEditorValue)
-    setAcceptedAnswers('')
-    setFollowUp('')
-    setSampleResponse('')
-    setListeningAudioFile(null)
-    setSupportingImageFile(null)
-    setSpeakingAudioFile(null)
-    setPublishErrors([])
-    // #region agent log
-    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-      method: 'POST',
+      template.answerMode === "essay"
+        ? "<p>Write at least 150 words and organise your response clearly.</p>"
+        : template.answerMode === "speaking"
+          ? "<p>You have 1 minute to prepare and speak for up to 2 minutes.</p>"
+          : template.answerMode === "text"
+            ? "<p>Write NO MORE THAN TWO WORDS AND/OR A NUMBER for each answer.</p>"
+            : "<p>Choose the correct answer based on the task requirements.</p>",
+    );
+    setAnswerOptions(createOptionsByTemplate(template.id));
+    setQuestionStem(emptyEditorValue);
+    setSourceMaterial(emptyEditorValue);
+    setTeacherNote(emptyEditorValue);
+    setExplanation(emptyEditorValue);
+    setAcceptedAnswers("");
+    setFollowUp("");
+    setSampleResponse("");
+    setListeningAudioFile(null);
+    setSupportingImageFile(null);
+    setSpeakingAudioFile(null);
+    setPublishErrors([]);
+    fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': '393b5a',
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "393b5a",
       },
       body: JSON.stringify({
-        sessionId: '393b5a',
-        runId: 'pre-fix',
-        hypothesisId: 'H11',
-        location: 'AddQuestionPage.tsx:handleTemplateSelect',
-        message: 'Template switched and rich fields reset',
+        sessionId: "393b5a",
+        runId: "pre-fix",
+        hypothesisId: "H11",
+        location: "AddQuestionPage.tsx:handleTemplateSelect",
+        message: "Template switched and rich fields reset",
         data: {
           templateId: template.id,
           module: template.module,
@@ -195,87 +199,94 @@ export function AddQuestionPage() {
         },
         timestamp: Date.now(),
       }),
-    }).catch(() => {})
+    }).catch(() => {});
     // #endregion
-  }
+  };
 
   const handleModuleChange = (module: IeltsModule) => {
     const moduleTemplate =
       QUESTION_TEMPLATES.find((template) => template.module === module) ??
-      QUESTION_TEMPLATES[0]
+      QUESTION_TEMPLATES[0];
 
-    handleTemplateSelect(moduleTemplate)
-  }
+    handleTemplateSelect(moduleTemplate);
+  };
 
-  const updateOption = (id: string, field: 'text' | 'isCorrect', value: string | boolean) => {
+  const updateOption = (
+    id: string,
+    field: "text" | "isCorrect",
+    value: string | boolean,
+  ) => {
     setAnswerOptions((currentOptions) => {
-      if (field === 'isCorrect' && answerMode === 'single' && value === true) {
+      if (field === "isCorrect" && answerMode === "single" && value === true) {
         return currentOptions.map((option) => ({
           ...option,
           isCorrect: option.id === id,
-        }))
+        }));
       }
 
       return currentOptions.map((option) =>
         option.id === id ? { ...option, [field]: value } : option,
-      )
-    })
-  }
+      );
+    });
+  };
 
   const addOption = () => {
     setAnswerOptions((currentOptions) => {
-      const nextLabel = letterLabels[currentOptions.length] ?? `O${currentOptions.length + 1}`
-      return [...currentOptions, createOption(nextLabel)]
-    })
-  }
+      const nextLabel =
+        letterLabels[currentOptions.length] ?? `O${currentOptions.length + 1}`;
+      return [...currentOptions, createOption(nextLabel)];
+    });
+  };
 
   const removeOption = (id: string) => {
     setAnswerOptions((currentOptions) => {
       if (currentOptions.length <= 2) {
-        return currentOptions
+        return currentOptions;
       }
 
-      const nextOptions = currentOptions.filter((option) => option.id !== id)
+      const nextOptions = currentOptions.filter((option) => option.id !== id);
 
-      if (answerMode === 'single' && nextOptions.every((option) => !option.isCorrect)) {
+      if (
+        answerMode === "single" &&
+        nextOptions.every((option) => !option.isCorrect)
+      ) {
         return nextOptions.map((option, index) => ({
           ...option,
           isCorrect: index === 0,
-        }))
+        }));
       }
 
-      return nextOptions
-    })
-  }
+      return nextOptions;
+    });
+  };
 
   const handleQuestionStemChange = (nextValue: string) => {
-    setQuestionStem(nextValue)
-    // #region agent log
-    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-      method: 'POST',
+    setQuestionStem(nextValue);
+    fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': '393b5a',
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "393b5a",
       },
       body: JSON.stringify({
-        sessionId: '393b5a',
-        runId: 'pre-fix',
-        hypothesisId: 'H12',
-        location: 'AddQuestionPage.tsx:handleQuestionStemChange',
-        message: 'Question stem rich text changed',
+        sessionId: "393b5a",
+        runId: "pre-fix",
+        hypothesisId: "H12",
+        location: "AddQuestionPage.tsx:handleQuestionStemChange",
+        message: "Question stem rich text changed",
         data: {
           htmlLength: nextValue.length,
           hasFormattingTag:
-            nextValue.includes('<strong>') ||
-            nextValue.includes('<em>') ||
-            nextValue.includes('<ul>') ||
-            nextValue.includes('<ol>'),
+            nextValue.includes("<strong>") ||
+            nextValue.includes("<em>") ||
+            nextValue.includes("<ul>") ||
+            nextValue.includes("<ol>"),
         },
         timestamp: Date.now(),
       }),
-    }).catch(() => {})
+    }).catch(() => {});
     // #endregion
-  }
+  };
 
   const handlePublishQuestion = () => {
     const validationSnapshot = {
@@ -283,54 +294,61 @@ export function AddQuestionPage() {
       instructionMissing: isEffectivelyEmptyHtml(instruction),
       questionStemMissing: isEffectivelyEmptyHtml(questionStem),
       sourceMaterialMissing: isEffectivelyEmptyHtml(sourceMaterial),
-      listeningAudioMissing: selectedModule === 'Listening' && !listeningAudioFile,
-      speakingAudioMissing: selectedModule === 'Speaking' && !speakingAudioFile,
+      listeningAudioMissing:
+        selectedModule === "Listening" && !listeningAudioFile,
+      speakingAudioMissing: selectedModule === "Speaking" && !speakingAudioFile,
       visualMaterialMissing:
-        (selectedModule === 'Reading' || selectedModule === 'Writing') &&
+        (selectedModule === "Reading" || selectedModule === "Writing") &&
         !supportingImageFile,
       speakingFollowUpMissing:
-        selectedModule === 'Speaking' && followUp.trim().length === 0,
+        selectedModule === "Speaking" && followUp.trim().length === 0,
       writingSampleMissing:
-        selectedModule === 'Writing' && sampleResponse.trim().length === 0,
+        selectedModule === "Writing" && sampleResponse.trim().length === 0,
       readingAnswersMissing:
-        selectedModule === 'Reading' &&
+        selectedModule === "Reading" &&
         answerOptions.some((option) => option.text.trim().length === 0),
-    }
-    const nextPublishErrors: string[] = []
-    if (validationSnapshot.titleMissing) nextPublishErrors.push('Question title is required.')
+    };
+    const nextPublishErrors: string[] = [];
+    if (validationSnapshot.titleMissing)
+      nextPublishErrors.push("Question title is required.");
     if (validationSnapshot.instructionMissing)
-      nextPublishErrors.push('Instruction cannot be empty.')
+      nextPublishErrors.push("Instruction cannot be empty.");
     if (validationSnapshot.questionStemMissing)
-      nextPublishErrors.push('Question stem cannot be empty.')
+      nextPublishErrors.push("Question stem cannot be empty.");
     if (validationSnapshot.sourceMaterialMissing)
-      nextPublishErrors.push('Source material cannot be empty.')
+      nextPublishErrors.push("Source material cannot be empty.");
     if (validationSnapshot.listeningAudioMissing)
-      nextPublishErrors.push('Listening module requires an audio file.')
+      nextPublishErrors.push("Listening module requires an audio file.");
     if (validationSnapshot.speakingAudioMissing)
-      nextPublishErrors.push('Speaking module requires an audio prompt file.')
+      nextPublishErrors.push("Speaking module requires an audio prompt file.");
     if (validationSnapshot.visualMaterialMissing)
-      nextPublishErrors.push('Reading/Writing modules require a supporting image.')
+      nextPublishErrors.push(
+        "Reading/Writing modules require a supporting image.",
+      );
     if (validationSnapshot.speakingFollowUpMissing)
-      nextPublishErrors.push('Speaking module requires examiner follow-up notes.')
+      nextPublishErrors.push(
+        "Speaking module requires examiner follow-up notes.",
+      );
     if (validationSnapshot.writingSampleMissing)
-      nextPublishErrors.push('Writing module requires a sample high-band response.')
+      nextPublishErrors.push(
+        "Writing module requires a sample high-band response.",
+      );
     if (validationSnapshot.readingAnswersMissing)
-      nextPublishErrors.push('Reading options must have text for all answers.')
-    setPublishErrors(nextPublishErrors)
+      nextPublishErrors.push("Reading options must have text for all answers.");
+    setPublishErrors(nextPublishErrors);
 
-    // #region agent log
-    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-      method: 'POST',
+    fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': '393b5a',
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "393b5a",
       },
       body: JSON.stringify({
-        sessionId: '393b5a',
-        runId: 'pre-fix',
-        hypothesisId: 'H17-H21',
-        location: 'AddQuestionPage.tsx:handlePublishQuestion',
-        message: 'Publish payload + module validation snapshot',
+        sessionId: "393b5a",
+        runId: "pre-fix",
+        hypothesisId: "H17-H21",
+        location: "AddQuestionPage.tsx:handlePublishQuestion",
+        message: "Publish payload + module validation snapshot",
         data: {
           templateId: selectedTemplateId,
           module: selectedModule,
@@ -355,26 +373,25 @@ export function AddQuestionPage() {
         },
         timestamp: Date.now(),
       }),
-    }).catch(() => {})
+    }).catch(() => {});
     // #endregion
-  }
+  };
 
   const handleListeningAudioChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] ?? null
-    setListeningAudioFile(file)
-    // #region agent log
-    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-      method: 'POST',
+    const file = event.target.files?.[0] ?? null;
+    setListeningAudioFile(file);
+    fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': '393b5a',
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "393b5a",
       },
       body: JSON.stringify({
-        sessionId: '393b5a',
-        runId: 'pre-fix',
-        hypothesisId: 'H14',
-        location: 'AddQuestionPage.tsx:handleListeningAudioChange',
-        message: 'Listening audio selected',
+        sessionId: "393b5a",
+        runId: "pre-fix",
+        hypothesisId: "H14",
+        location: "AddQuestionPage.tsx:handleListeningAudioChange",
+        message: "Listening audio selected",
         data: {
           hasFile: Boolean(file),
           fileName: file?.name ?? null,
@@ -383,26 +400,27 @@ export function AddQuestionPage() {
         },
         timestamp: Date.now(),
       }),
-    }).catch(() => {})
+    }).catch(() => {});
     // #endregion
-  }
+  };
 
-  const handleSupportingImageChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] ?? null
-    setSupportingImageFile(file)
-    // #region agent log
-    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-      method: 'POST',
+  const handleSupportingImageChange = (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0] ?? null;
+    setSupportingImageFile(file);
+    fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': '393b5a',
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "393b5a",
       },
       body: JSON.stringify({
-        sessionId: '393b5a',
-        runId: 'pre-fix',
-        hypothesisId: 'H22',
-        location: 'AddQuestionPage.tsx:handleSupportingImageChange',
-        message: 'Supporting image selected',
+        sessionId: "393b5a",
+        runId: "pre-fix",
+        hypothesisId: "H22",
+        location: "AddQuestionPage.tsx:handleSupportingImageChange",
+        message: "Supporting image selected",
         data: {
           module: selectedModule,
           hasFile: Boolean(file),
@@ -412,26 +430,25 @@ export function AddQuestionPage() {
         },
         timestamp: Date.now(),
       }),
-    }).catch(() => {})
+    }).catch(() => {});
     // #endregion
-  }
+  };
 
   const handleSpeakingAudioChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] ?? null
-    setSpeakingAudioFile(file)
-    // #region agent log
-    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-      method: 'POST',
+    const file = event.target.files?.[0] ?? null;
+    setSpeakingAudioFile(file);
+    fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': '393b5a',
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "393b5a",
       },
       body: JSON.stringify({
-        sessionId: '393b5a',
-        runId: 'pre-fix',
-        hypothesisId: 'H23',
-        location: 'AddQuestionPage.tsx:handleSpeakingAudioChange',
-        message: 'Speaking audio selected',
+        sessionId: "393b5a",
+        runId: "pre-fix",
+        hypothesisId: "H23",
+        location: "AddQuestionPage.tsx:handleSpeakingAudioChange",
+        message: "Speaking audio selected",
         data: {
           hasFile: Boolean(file),
           fileName: file?.name ?? null,
@@ -440,9 +457,9 @@ export function AddQuestionPage() {
         },
         timestamp: Date.now(),
       }),
-    }).catch(() => {})
+    }).catch(() => {});
     // #endregion
-  }
+  };
 
   return (
     <Layout>
@@ -451,18 +468,27 @@ export function AddQuestionPage() {
           <Box className="add-question-page__crumbs">
             <Link to={ROUTES_PATH.allQuestions}>Questions</Link>
             <span>›</span>
-            <span className="add-question-page__crumb-current">New question</span>
+            <span className="add-question-page__crumb-current">
+              New question
+            </span>
           </Box>
 
           <Box className="add-question-page__hero">
             <Box className="add-question-page__panel add-question-page__rail">
               <Box className="add-question-page__rail-head">
-                <Typography component="h1" className="add-question-page__rail-title">
+                <Typography
+                  component="h1"
+                  className="add-question-page__rail-title"
+                >
                   IELTS Question Templates
                 </Typography>
-                <Typography component="p" className="add-question-page__rail-copy">
-                  Pick the exact IELTS task type first. The editor adjusts scoring,
-                  answer logic, and authoring fields to match that task.
+                <Typography
+                  component="p"
+                  className="add-question-page__rail-copy"
+                >
+                  Pick the exact IELTS task type first. The editor adjusts
+                  scoring, answer logic, and authoring fields to match that
+                  task.
                 </Typography>
               </Box>
 
@@ -472,8 +498,8 @@ export function AddQuestionPage() {
                     key={template.id}
                     className={`add-question-page__module-card${
                       template.id === selectedTemplateId
-                        ? ' add-question-page__module-card--active'
-                        : ''
+                        ? " add-question-page__module-card--active"
+                        : ""
                     }`}
                     variant="text"
                     onClick={() => handleTemplateSelect(template)}
@@ -495,12 +521,15 @@ export function AddQuestionPage() {
             <Box className="add-question-page__panel add-question-page__workspace">
               <Box className="add-question-page__workspace-header">
                 <Box>
-                  <Typography component="h2" className="add-question-page__workspace-title">
+                  <Typography
+                    component="h2"
+                    className="add-question-page__workspace-title"
+                  >
                     {selectedTemplate.module} · {selectedTemplate.title}
                   </Typography>
                   <Typography component="p" className="add-question-card__copy">
-                    Build a question aligned to IELTS task design, answer evaluation,
-                    and band-oriented review.
+                    Build a question aligned to IELTS task design, answer
+                    evaluation, and band-oriented review.
                   </Typography>
                 </Box>
 
@@ -519,42 +548,66 @@ export function AddQuestionPage() {
 
               <Box className="add-question-builder">
                 <Box className="add-question-builder__card add-question-builder__card--highlight">
-                  <Typography component="h3" className="add-question-builder__title">
+                  <Typography
+                    component="h3"
+                    className="add-question-builder__title"
+                  >
                     IELTS Fit
                   </Typography>
-                  <Typography component="p" className="add-question-builder__copy">
-                    Uses module-specific part structure and answer behaviour instead of
-                    generic LMS question logic.
+                  <Typography
+                    component="p"
+                    className="add-question-builder__copy"
+                  >
+                    Uses module-specific part structure and answer behaviour
+                    instead of generic LMS question logic.
                   </Typography>
                 </Box>
 
                 <Box className="add-question-builder__card">
-                  <Typography component="h3" className="add-question-builder__title">
+                  <Typography
+                    component="h3"
+                    className="add-question-builder__title"
+                  >
                     Scoring
                   </Typography>
-                  <Typography component="p" className="add-question-builder__copy">
-                    Support raw marks for objective items and band-based guidance for
-                    Writing and Speaking tasks.
+                  <Typography
+                    component="p"
+                    className="add-question-builder__copy"
+                  >
+                    Support raw marks for objective items and band-based
+                    guidance for Writing and Speaking tasks.
                   </Typography>
                 </Box>
 
                 <Box className="add-question-builder__card">
-                  <Typography component="h3" className="add-question-builder__title">
+                  <Typography
+                    component="h3"
+                    className="add-question-builder__title"
+                  >
                     Source Control
                   </Typography>
-                  <Typography component="p" className="add-question-builder__copy">
-                    Keep transcript, passage, cue card, or task brief tied directly to
-                    the authored item.
+                  <Typography
+                    component="p"
+                    className="add-question-builder__copy"
+                  >
+                    Keep transcript, passage, cue card, or task brief tied
+                    directly to the authored item.
                   </Typography>
                 </Box>
 
                 <Box className="add-question-builder__card">
-                  <Typography component="h3" className="add-question-builder__title">
+                  <Typography
+                    component="h3"
+                    className="add-question-builder__title"
+                  >
                     Reviewer Notes
                   </Typography>
-                  <Typography component="p" className="add-question-builder__copy">
-                    Add answer rationale, acceptable variants, and examiner guidance
-                    before publishing.
+                  <Typography
+                    component="p"
+                    className="add-question-builder__copy"
+                  >
+                    Add answer rationale, acceptable variants, and examiner
+                    guidance before publishing.
                   </Typography>
                 </Box>
               </Box>
@@ -563,11 +616,18 @@ export function AddQuestionPage() {
                 <Box className="add-question-card">
                   <Box className="add-question-card__head">
                     <Box>
-                      <Typography component="h3" className="add-question-card__title">
+                      <Typography
+                        component="h3"
+                        className="add-question-card__title"
+                      >
                         Core Setup
                       </Typography>
-                      <Typography component="p" className="add-question-card__copy">
-                        Define where this question fits inside an IELTS exam flow.
+                      <Typography
+                        component="p"
+                        className="add-question-card__copy"
+                      >
+                        Define where this question fits inside an IELTS exam
+                        flow.
                       </Typography>
                     </Box>
                     <span className="add-question-card__badge">Required</span>
@@ -575,7 +635,9 @@ export function AddQuestionPage() {
 
                   <Box className="add-question-form__grid">
                     <Box className="add-question-form__field add-question-form__field--span-2">
-                      <label className="add-question-form__label">Question title</label>
+                      <label className="add-question-form__label">
+                        Question title
+                      </label>
                       <TextField
                         fullWidth
                         placeholder="e.g. Listening Part 2 map-labeling question"
@@ -585,7 +647,9 @@ export function AddQuestionPage() {
                     </Box>
 
                     <Box className="add-question-form__field">
-                      <label className="add-question-form__label">IELTS module</label>
+                      <label className="add-question-form__label">
+                        IELTS module
+                      </label>
                       <TextField
                         select
                         fullWidth
@@ -603,7 +667,9 @@ export function AddQuestionPage() {
                     </Box>
 
                     <Box className="add-question-form__field">
-                      <label className="add-question-form__label">Part / task</label>
+                      <label className="add-question-form__label">
+                        Part / task
+                      </label>
                       <TextField
                         select
                         fullWidth
@@ -619,7 +685,9 @@ export function AddQuestionPage() {
                     </Box>
 
                     <Box className="add-question-form__field">
-                      <label className="add-question-form__label">Band target</label>
+                      <label className="add-question-form__label">
+                        Band target
+                      </label>
                       <TextField
                         select
                         fullWidth
@@ -635,7 +703,9 @@ export function AddQuestionPage() {
                     </Box>
 
                     <Box className="add-question-form__field">
-                      <label className="add-question-form__label">Difficulty</label>
+                      <label className="add-question-form__label">
+                        Difficulty
+                      </label>
                       <TextField
                         select
                         fullWidth
@@ -682,18 +752,28 @@ export function AddQuestionPage() {
                 <Box className="add-question-card">
                   <Box className="add-question-card__head">
                     <Box>
-                      <Typography component="h3" className="add-question-card__title">
+                      <Typography
+                        component="h3"
+                        className="add-question-card__title"
+                      >
                         Media Attachments
                       </Typography>
-                      <Typography component="p" className="add-question-card__copy">
-                        Upload assets required for IELTS task delivery (audio and visuals).
+                      <Typography
+                        component="p"
+                        className="add-question-card__copy"
+                      >
+                        Upload assets required for IELTS task delivery (audio
+                        and visuals).
                       </Typography>
                     </Box>
-                    <span className="add-question-card__badge">Module specific</span>
+                    <span className="add-question-card__badge">
+                      Module specific
+                    </span>
                   </Box>
 
                   <Box className="add-question-form__grid">
-                    {(selectedModule === 'Reading' || selectedModule === 'Writing') && (
+                    {(selectedModule === "Reading" ||
+                      selectedModule === "Writing") && (
                       <Box className="add-question-form__field add-question-form__field--span-2">
                         <label className="add-question-form__label">
                           Supporting image (required for {selectedModule})
@@ -703,25 +783,33 @@ export function AddQuestionPage() {
                           type="file"
                           slotProps={{
                             htmlInput: {
-                              accept: 'image/*',
+                              accept: "image/*",
                             },
                           }}
                           onChange={handleSupportingImageChange}
                         />
                         {supportingImageFile && (
-                          <Typography component="p" className="add-question-form__hint">
-                            Selected image: {supportingImageFile.name} ({Math.ceil(supportingImageFile.size / 1024)} KB)
+                          <Typography
+                            component="p"
+                            className="add-question-form__hint"
+                          >
+                            Selected image: {supportingImageFile.name} (
+                            {Math.ceil(supportingImageFile.size / 1024)} KB)
                           </Typography>
                         )}
-                        {selectedModule === 'Reading' && supportingImagePreviewUrl && (
-                          <Box className="add-question-form__image-preview">
-                            <img src={supportingImagePreviewUrl} alt="Reading passage visual" />
-                          </Box>
-                        )}
+                        {selectedModule === "Reading" &&
+                          supportingImagePreviewUrl && (
+                            <Box className="add-question-form__image-preview">
+                              <img
+                                src={supportingImagePreviewUrl}
+                                alt="Reading passage visual"
+                              />
+                            </Box>
+                          )}
                       </Box>
                     )}
 
-                    {selectedModule === 'Listening' && (
+                    {selectedModule === "Listening" && (
                       <Box className="add-question-form__field add-question-form__field--span-2">
                         <label className="add-question-form__label">
                           Listening audio (required)
@@ -731,20 +819,24 @@ export function AddQuestionPage() {
                           type="file"
                           slotProps={{
                             htmlInput: {
-                              accept: 'audio/*',
+                              accept: "audio/*",
                             },
                           }}
                           onChange={handleListeningAudioChange}
                         />
                         {listeningAudioFile && (
-                          <Typography component="p" className="add-question-form__hint">
-                            Selected audio: {listeningAudioFile.name} ({Math.ceil(listeningAudioFile.size / 1024)} KB)
+                          <Typography
+                            component="p"
+                            className="add-question-form__hint"
+                          >
+                            Selected audio: {listeningAudioFile.name} (
+                            {Math.ceil(listeningAudioFile.size / 1024)} KB)
                           </Typography>
                         )}
                       </Box>
                     )}
 
-                    {selectedModule === 'Speaking' && (
+                    {selectedModule === "Speaking" && (
                       <Box className="add-question-form__field add-question-form__field--span-2">
                         <label className="add-question-form__label">
                           Speaking prompt audio (required)
@@ -754,14 +846,18 @@ export function AddQuestionPage() {
                           type="file"
                           slotProps={{
                             htmlInput: {
-                              accept: 'audio/*',
+                              accept: "audio/*",
                             },
                           }}
                           onChange={handleSpeakingAudioChange}
                         />
                         {speakingAudioFile && (
-                          <Typography component="p" className="add-question-form__hint">
-                            Selected audio: {speakingAudioFile.name} ({Math.ceil(speakingAudioFile.size / 1024)} KB)
+                          <Typography
+                            component="p"
+                            className="add-question-form__hint"
+                          >
+                            Selected audio: {speakingAudioFile.name} (
+                            {Math.ceil(speakingAudioFile.size / 1024)} KB)
                           </Typography>
                         )}
                       </Box>
@@ -772,12 +868,18 @@ export function AddQuestionPage() {
                 <Box className="add-question-card">
                   <Box className="add-question-card__head">
                     <Box>
-                      <Typography component="h3" className="add-question-card__title">
+                      <Typography
+                        component="h3"
+                        className="add-question-card__title"
+                      >
                         Prompt Design
                       </Typography>
-                      <Typography component="p" className="add-question-card__copy">
-                        Write the candidate-facing instruction, question stem, and the
-                        exact IELTS source material the item depends on.
+                      <Typography
+                        component="p"
+                        className="add-question-card__copy"
+                      >
+                        Write the candidate-facing instruction, question stem,
+                        and the exact IELTS source material the item depends on.
                       </Typography>
                     </Box>
                     <span className="add-question-card__badge">
@@ -798,7 +900,9 @@ export function AddQuestionPage() {
                     </Box>
 
                     <Box className="add-question-form__field add-question-form__field--span-4 add-question-form__textarea">
-                      <label className="add-question-form__label">Question stem</label>
+                      <label className="add-question-form__label">
+                        Question stem
+                      </label>
                       <RichTextEditor
                         value={questionStem}
                         placeholder="Enter the exact question prompt shown to the candidate."
@@ -818,7 +922,9 @@ export function AddQuestionPage() {
                     </Box>
 
                     <Box className="add-question-form__field add-question-form__field--span-4 add-question-form__textarea add-question-form__textarea--short">
-                      <label className="add-question-form__label">Teacher / reviewer note</label>
+                      <label className="add-question-form__label">
+                        Teacher / reviewer note
+                      </label>
                       <RichTextEditor
                         value={teacherNote}
                         placeholder="Add distractor rationale, paragraph references, or examiner guidance."
@@ -828,20 +934,28 @@ export function AddQuestionPage() {
                   </Box>
                 </Box>
 
-                {(answerMode === 'single' || answerMode === 'multiple') && (
+                {(answerMode === "single" || answerMode === "multiple") && (
                   <Box className="add-question-card">
                     <Box className="add-question-card__head">
                       <Box>
-                        <Typography component="h3" className="add-question-card__title">
+                        <Typography
+                          component="h3"
+                          className="add-question-card__title"
+                        >
                           Answer Options
                         </Typography>
-                        <Typography component="p" className="add-question-card__copy">
+                        <Typography
+                          component="p"
+                          className="add-question-card__copy"
+                        >
                           Set answer choices and mark the correct option
-                          {answerMode === 'multiple' ? 's' : ''}.
+                          {answerMode === "multiple" ? "s" : ""}.
                         </Typography>
                       </Box>
                       <span className="add-question-card__badge">
-                        {answerMode === 'single' ? 'Single answer' : 'Multiple answers'}
+                        {answerMode === "single"
+                          ? "Single answer"
+                          : "Multiple answers"}
                       </span>
                     </Box>
 
@@ -859,7 +973,11 @@ export function AddQuestionPage() {
                                   <Checkbox
                                     checked={option.isCorrect}
                                     onChange={(event) =>
-                                      updateOption(option.id, 'isCorrect', event.target.checked)
+                                      updateOption(
+                                        option.id,
+                                        "isCorrect",
+                                        event.target.checked,
+                                      )
                                     }
                                   />
                                 }
@@ -880,7 +998,11 @@ export function AddQuestionPage() {
                             placeholder={`Write answer option ${option.label}`}
                             value={option.text}
                             onChange={(event) =>
-                              updateOption(option.id, 'text', event.target.value)
+                              updateOption(
+                                option.id,
+                                "text",
+                                event.target.value,
+                              )
                             }
                           />
                         </Box>
@@ -895,27 +1017,38 @@ export function AddQuestionPage() {
                       >
                         + Add answer option
                       </Button>
-                      <Typography component="p" className="add-question-form__hint">
-                        IELTS distractors should be plausible, concise, and derived from
-                        the same source material.
+                      <Typography
+                        component="p"
+                        className="add-question-form__hint"
+                      >
+                        IELTS distractors should be plausible, concise, and
+                        derived from the same source material.
                       </Typography>
                     </Box>
                   </Box>
                 )}
 
-                {answerMode === 'text' && (
+                {answerMode === "text" && (
                   <Box className="add-question-card">
                     <Box className="add-question-card__head">
                       <Box>
-                        <Typography component="h3" className="add-question-card__title">
+                        <Typography
+                          component="h3"
+                          className="add-question-card__title"
+                        >
                           Accepted Answers
                         </Typography>
-                        <Typography component="p" className="add-question-card__copy">
-                          Define valid answer forms for gap-fill, notes, tables, or form
-                          completion.
+                        <Typography
+                          component="p"
+                          className="add-question-card__copy"
+                        >
+                          Define valid answer forms for gap-fill, notes, tables,
+                          or form completion.
                         </Typography>
                       </Box>
-                      <span className="add-question-card__badge">Text answer</span>
+                      <span className="add-question-card__badge">
+                        Text answer
+                      </span>
                     </Box>
 
                     <Box className="add-question-form__field add-question-form__textarea add-question-form__textarea--short">
@@ -927,30 +1060,43 @@ export function AddQuestionPage() {
                         fullWidth
                         placeholder="e.g. library card | card number | card no."
                         value={acceptedAnswers}
-                        onChange={(event) => setAcceptedAnswers(event.target.value)}
+                        onChange={(event) =>
+                          setAcceptedAnswers(event.target.value)
+                        }
                       />
-                      <Typography component="p" className="add-question-form__hint">
-                        Separate equivalent answers with `|` so reviewers can check
-                        variants quickly.
+                      <Typography
+                        component="p"
+                        className="add-question-form__hint"
+                      >
+                        Separate equivalent answers with `|` so reviewers can
+                        check variants quickly.
                       </Typography>
                     </Box>
                   </Box>
                 )}
 
-                {(answerMode === 'essay' || answerMode === 'speaking') && (
+                {(answerMode === "essay" || answerMode === "speaking") && (
                   <Box className="add-question-card">
                     <Box className="add-question-card__head">
                       <Box>
-                        <Typography component="h3" className="add-question-card__title">
+                        <Typography
+                          component="h3"
+                          className="add-question-card__title"
+                        >
                           Assessment Guidance
                         </Typography>
-                        <Typography component="p" className="add-question-card__copy">
-                          Add examiner-focused notes for band descriptors, coverage, and
-                          expected response quality.
+                        <Typography
+                          component="p"
+                          className="add-question-card__copy"
+                        >
+                          Add examiner-focused notes for band descriptors,
+                          coverage, and expected response quality.
                         </Typography>
                       </Box>
                       <span className="add-question-card__badge">
-                        {answerMode === 'essay' ? 'Extended writing' : 'Spoken response'}
+                        {answerMode === "essay"
+                          ? "Extended writing"
+                          : "Spoken response"}
                       </span>
                     </Box>
 
@@ -964,7 +1110,9 @@ export function AddQuestionPage() {
                           fullWidth
                           placeholder="Write a model answer outline or key response characteristics."
                           value={sampleResponse}
-                          onChange={(event) => setSampleResponse(event.target.value)}
+                          onChange={(event) =>
+                            setSampleResponse(event.target.value)
+                          }
                         />
                       </Box>
 
@@ -987,35 +1135,50 @@ export function AddQuestionPage() {
                 <Box className="add-question-card">
                   <Box className="add-question-card__head">
                     <Box>
-                      <Typography component="h3" className="add-question-card__title">
+                      <Typography
+                        component="h3"
+                        className="add-question-card__title"
+                      >
                         Scoring And Review
                       </Typography>
-                      <Typography component="p" className="add-question-card__copy">
-                        Keep raw-score and band-review settings next to the explanation.
+                      <Typography
+                        component="p"
+                        className="add-question-card__copy"
+                      >
+                        Keep raw-score and band-review settings next to the
+                        explanation.
                       </Typography>
                     </Box>
-                    <span className="add-question-card__badge">Review workflow</span>
+                    <span className="add-question-card__badge">
+                      Review workflow
+                    </span>
                   </Box>
 
                   <Box className="add-question-form__grid">
                     <Box className="add-question-form__field add-question-form__field--span-2">
-                      <label className="add-question-form__label">Score mode</label>
+                      <label className="add-question-form__label">
+                        Score mode
+                      </label>
                       <Box className="add-question-form__toggle-row">
                         <Button
                           className={`add-question-form__toggle${
-                            scoreMode === 'raw' ? ' add-question-form__toggle--active' : ''
+                            scoreMode === "raw"
+                              ? " add-question-form__toggle--active"
+                              : ""
                           }`}
                           variant="text"
-                          onClick={() => setScoreMode('raw')}
+                          onClick={() => setScoreMode("raw")}
                         >
                           Raw score
                         </Button>
                         <Button
                           className={`add-question-form__toggle${
-                            scoreMode === 'band' ? ' add-question-form__toggle--active' : ''
+                            scoreMode === "band"
+                              ? " add-question-form__toggle--active"
+                              : ""
                           }`}
                           variant="text"
-                          onClick={() => setScoreMode('band')}
+                          onClick={() => setScoreMode("band")}
                         >
                           Band review
                         </Button>
@@ -1032,7 +1195,9 @@ export function AddQuestionPage() {
                     </Box>
 
                     <Box className="add-question-form__field">
-                      <label className="add-question-form__label">Question alias</label>
+                      <label className="add-question-form__label">
+                        Question alias
+                      </label>
                       <TextField
                         fullWidth
                         value={alias}
@@ -1056,19 +1221,27 @@ export function AddQuestionPage() {
                 <Box className="add-question-card">
                   <Box className="add-question-card__head">
                     <Box>
-                      <Typography component="h3" className="add-question-card__title">
+                      <Typography
+                        component="h3"
+                        className="add-question-card__title"
+                      >
                         Metadata
                       </Typography>
-                      <Typography component="p" className="add-question-card__copy">
-                        Keep IELTS collections, tags, and publishing data organized for
-                        later filtering.
+                      <Typography
+                        component="p"
+                        className="add-question-card__copy"
+                      >
+                        Keep IELTS collections, tags, and publishing data
+                        organized for later filtering.
                       </Typography>
                     </Box>
                   </Box>
 
                   <Box className="add-question-form__grid">
                     <Box className="add-question-form__field add-question-form__field--span-2">
-                      <label className="add-question-form__label">Question category</label>
+                      <label className="add-question-form__label">
+                        Question category
+                      </label>
                       <TextField
                         fullWidth
                         value={category}
@@ -1077,13 +1250,18 @@ export function AddQuestionPage() {
                     </Box>
 
                     <Box className="add-question-form__field add-question-form__field--span-2">
-                      <label className="add-question-form__label">Question tags</label>
+                      <label className="add-question-form__label">
+                        Question tags
+                      </label>
                       <TextField
                         fullWidth
                         value={tags}
                         onChange={(event) => setTags(event.target.value)}
                       />
-                      <Typography component="p" className="add-question-form__hint">
+                      <Typography
+                        component="p"
+                        className="add-question-form__hint"
+                      >
                         Example: `reading, tfng, passage-2, band-7`
                       </Typography>
                     </Box>
@@ -1091,13 +1269,20 @@ export function AddQuestionPage() {
                 </Box>
 
                 <Box className="add-question-form__footer">
-                  <Typography component="p" className="add-question-form__footer-copy">
-                    Save as draft to continue refining IELTS wording, distractors,
-                    transcript references, and scoring notes before publishing.
+                  <Typography
+                    component="p"
+                    className="add-question-form__footer-copy"
+                  >
+                    Save as draft to continue refining IELTS wording,
+                    distractors, transcript references, and scoring notes before
+                    publishing.
                   </Typography>
 
                   <Box className="add-question-form__footer-actions">
-                    <Button className="add-question-form__secondary" variant="outlined">
+                    <Button
+                      className="add-question-form__secondary"
+                      variant="outlined"
+                    >
                       Save Draft
                     </Button>
                     <Button
@@ -1111,10 +1296,16 @@ export function AddQuestionPage() {
                 </Box>
                 {publishErrors.length > 0 && (
                   <Box className="add-question-form__publish-errors">
-                    <Typography component="p" className="add-question-form__publish-errors-title">
+                    <Typography
+                      component="p"
+                      className="add-question-form__publish-errors-title"
+                    >
                       Resolve these before publishing:
                     </Typography>
-                    <Box component="ul" className="add-question-form__publish-errors-list">
+                    <Box
+                      component="ul"
+                      className="add-question-form__publish-errors-list"
+                    >
                       {publishErrors.map((errorMessage) => (
                         <li key={errorMessage}>{errorMessage}</li>
                       ))}
@@ -1127,5 +1318,5 @@ export function AddQuestionPage() {
         </Box>
       </AddQuestionPageRoot>
     </Layout>
-  )
+  );
 }

@@ -1,6 +1,8 @@
 import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { Controller, type SubmitHandler, useForm } from "react-hook-form";
 import {
+  Alert,
   Box,
   Button,
   Checkbox,
@@ -11,10 +13,33 @@ import {
 } from "@mui/material";
 
 import { ROUTES_PATH } from "../../routes";
+import { useAppDispatch } from "../../store/hooks";
+import { setAuthSession, USER_ROLES, type UserRole } from "../../store/slices/authSlice";
 import { SignInPageRoot } from "./SignInPage.style";
 
 const chartBars = [22, 30, 15, 14, 27, 33, 36, 25, 18, 15, 22, 40];
 const paginationDots = Array.from({ length: 7 }, (_, index) => index);
+
+const DEMO_USERS: Record<
+  string,
+  { password: string; role: UserRole; token: string }
+> = {
+  "superadmin@ieltsstudy.uz": {
+    password: "123456",
+    role: USER_ROLES.superAdmin,
+    token: "demo-super-admin-token",
+  },
+  "admin@ieltsstudy.uz": {
+    password: "123456",
+    role: USER_ROLES.admin,
+    token: "demo-admin-token",
+  },
+  "centeradmin@ieltsstudy.uz": {
+    password: "123456",
+    role: USER_ROLES.centerAdmin,
+    token: "demo-center-admin-token",
+  },
+};
 
 function SparkIcon() {
   return (
@@ -119,6 +144,8 @@ type SignInFormValues = {
 
 export function SignInPage() {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const [loginError, setLoginError] = useState("");
   const { control, handleSubmit, register } = useForm<SignInFormValues>({
     defaultValues: {
       email: "",
@@ -128,6 +155,9 @@ export function SignInPage() {
   });
 
   const onSubmit: SubmitHandler<SignInFormValues> = (values) => {
+    const normalizedEmail = values.email.trim().toLowerCase();
+    const matchedUser = DEMO_USERS[normalizedEmail];
+
     // #region agent log
     fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
       method: "POST",
@@ -142,7 +172,7 @@ export function SignInPage() {
         location: "SignInPage.tsx:handleSubmit",
         message: "Sign in submit snapshot",
         data: {
-          emailTrimmedLength: values.email.trim().length,
+          emailTrimmedLength: normalizedEmail.length,
           passwordLength: values.password.length,
           rememberAccount: values.rememberAccount,
           source: "react-hook-form",
@@ -151,7 +181,20 @@ export function SignInPage() {
       }),
     }).catch(() => {});
     // #endregion
-    navigate(ROUTES_PATH.home);
+
+    if (!matchedUser || matchedUser.password !== values.password) {
+      setLoginError("Email yoki parol noto'g'ri. Demo accountlardan birini ishlating.")
+      return;
+    }
+
+    setLoginError("");
+    dispatch(
+      setAuthSession({
+        token: matchedUser.token,
+        role: matchedUser.role,
+      }),
+    );
+    navigate(ROUTES_PATH.dashboard);
   };
 
   return (
@@ -160,7 +203,7 @@ export function SignInPage() {
         <Box component="section" className="sign-in-page__hero">
           <Box
             component={Link}
-            to={ROUTES_PATH.home}
+            to={ROUTES_PATH.dashboard}
             className="sign-in-page__brand"
           >
             <Box component="span" className="sign-in-page__brand-mark">
@@ -351,6 +394,16 @@ export function SignInPage() {
             <Typography component="p" className="sign-in-page__form-subtitle">
               Welcome back! Please enter your details.
             </Typography>
+
+            <Alert severity="info">
+              superadmin@ieltsstudy.uz / 123456
+              <br />
+              admin@ieltsstudy.uz / 123456
+              <br />
+              centeradmin@ieltsstudy.uz / 123456
+            </Alert>
+
+            {loginError ? <Alert severity="error">{loginError}</Alert> : null}
 
             <Box className="sign-in-page__social-actions">
               <Button

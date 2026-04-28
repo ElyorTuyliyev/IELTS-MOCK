@@ -9,6 +9,9 @@ import {
   Typography,
 } from "@mui/material";
 
+import { useAppSelector } from "../../../store/hooks";
+import { selectUserRole } from "../../../store";
+import { hasRequiredRole } from "../../../store/slices/authSlice";
 import { ROUTES_PATH, SIDEBAR_ROUTE_GROUPS } from "../../../routes";
 import { SidebarRoot } from "./Sidebar.style";
 
@@ -17,6 +20,7 @@ const SIDEBAR_ACCORDION_STORAGE_KEY = "sidebar-expanded-items";
 export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const role = useAppSelector(selectUserRole);
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedItems, setExpandedItems] = useState<
     Record<string, boolean | undefined>
@@ -43,11 +47,25 @@ export function Sidebar() {
   const visibleGroups = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
+    const roleFilteredGroups = SIDEBAR_ROUTE_GROUPS.map((group) => ({
+      ...group,
+      items: group.items
+        .filter((item) =>
+          item.allowedRoles ? hasRequiredRole(role, item.allowedRoles) : true,
+        )
+        .map((item) => ({
+          ...item,
+          children: item.children?.filter((child) =>
+            child.allowedRoles ? hasRequiredRole(role, child.allowedRoles) : true,
+          ),
+        })),
+    })).filter((group) => group.items.length > 0);
+
     if (!normalizedSearch) {
-      return SIDEBAR_ROUTE_GROUPS;
+      return roleFilteredGroups;
     }
 
-    return SIDEBAR_ROUTE_GROUPS.map((group) => ({
+    return roleFilteredGroups.map((group) => ({
       ...group,
       items: group.items.filter((item) => {
         const matchesItem = item.label.toLowerCase().includes(normalizedSearch);
@@ -58,7 +76,7 @@ export function Sidebar() {
         return matchesItem || matchesChildren;
       }),
     })).filter((group) => group.items.length > 0);
-  }, [searchTerm]);
+  }, [role, searchTerm]);
 
   const normalizedSearch = searchTerm.trim().toLowerCase();
 
