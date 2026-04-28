@@ -1,5 +1,8 @@
+export { AdminPage } from './AdminPage'
+export { AddCenterPage } from './AddCenterPage'
 export { AddQuestionPage } from './AddQuestionPage'
 export { AllStudentsPage } from './AllStudentsPage'
+export { CentersPage } from './CentersPage'
 export { CoursesPage } from './CoursesPage'
 export { DashboardPage } from './DashboardPage'
 export { FeaturePage } from './FeaturePage/FeaturePage'

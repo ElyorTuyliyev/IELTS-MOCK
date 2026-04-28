@@ -21,6 +21,9 @@ export const LayoutRoot = styled(Box)`
   }
 
   .content__main {
+    max-width: 1400px;
+    width: 100%;
+    margin: 0 auto;
     padding: 28px;
   }
 

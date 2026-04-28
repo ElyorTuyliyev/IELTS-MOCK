@@ -10,10 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@apollo/client": "^4.1.9",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/material": "^9.0.0",
     "@mui/x-data-grid": "^9.0.2",
+    "@reduxjs/toolkit": "^2.11.2",
     "@tiptap/extension-blockquote": "^3.22.4",
     "@tiptap/extension-bold": "^3.22.4",
     "@tiptap/extension-bullet-list": "^3.22.4",
@@ -41,10 +43,14 @@
     "@tiptap/pm": "^3.22.4",
     "@tiptap/react": "^3.22.4",
     "@tiptap/starter-kit": "^3.22.4",
+    "graphql": "^16.13.2",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-hook-form": "^7.73.1",
-    "react-router-dom": "^7.14.2"
+    "react-redux": "^9.2.0",
+    "react-router-dom": "^7.14.2",
+    "redux-persist": "^6.0.0",
+    "rxjs": "^7.8.2"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

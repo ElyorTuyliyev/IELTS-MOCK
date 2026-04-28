@@ -1,7 +1,12 @@
+import { ApolloProvider } from '@apollo/client/react'
 import { Global, css } from '@emotion/react'
+import { Provider } from 'react-redux'
+import { PersistGate } from 'redux-persist/integration/react'
 import { BrowserRouter } from 'react-router-dom'
 
+import { apolloClient } from './graphql/client'
 import { AppRoutes } from './routes'
+import { persistor, store } from './store'
 
 const globalStyles = css`
   :root {
@@ -42,10 +47,16 @@ const globalStyles = css`
 
 function App() {
   return (
-    <BrowserRouter>
-      <Global styles={globalStyles} />
-      <AppRoutes />
-    </BrowserRouter>
+    <Provider store={store}>
+      <PersistGate loading={null} persistor={persistor}>
+        <ApolloProvider client={apolloClient}>
+          <BrowserRouter>
+            <Global styles={globalStyles} />
+            <AppRoutes />
+          </BrowserRouter>
+        </ApolloProvider>
+      </PersistGate>
+    </Provider>
   )
 }
 

@@ -1,0 +1,1 @@
+export { AddCenterPage } from './AddCenterPage'
