@@ -25,7 +25,7 @@ export const SIDEBAR_ROUTE_GROUPS: SidebarRouteGroup[] = [
         label: 'Centers',
         icon: 'C',
         path: ROUTES_PATH.center,
-        allowedRoles: [USER_ROLES.center, USER_ROLES.superAdmin],
+        allowedRoles: [ USER_ROLES.superAdmin],
       },
       {
         label: 'Exams',
@@ -90,7 +90,7 @@ export const SIDEBAR_ROUTE_GROUPS: SidebarRouteGroup[] = [
         label: 'Students',
         icon: 'S',
         path: ROUTES_PATH.students,
-        allowedRoles: [USER_ROLES.center, USER_ROLES.superAdmin],
+        allowedRoles: [USER_ROLES.center, USER_ROLES.center],
         children: [
           {
             label: 'All students',
@@ -118,7 +118,7 @@ export const SIDEBAR_ROUTE_GROUPS: SidebarRouteGroup[] = [
         label: 'Results Database',
         icon: 'R',
         path: ROUTES_PATH.resultsDatabase,
-        allowedRoles: [USER_ROLES.student, USER_ROLES.superAdmin],
+        allowedRoles: [USER_ROLES.center, USER_ROLES.superAdmin],
       },
       {
         label: 'Statistics',
@@ -130,7 +130,13 @@ export const SIDEBAR_ROUTE_GROUPS: SidebarRouteGroup[] = [
         label: 'Certificates',
         icon: 'C',
         path: ROUTES_PATH.certificates,
-        allowedRoles: [USER_ROLES.student, USER_ROLES.superAdmin],
+        allowedRoles: [USER_ROLES.center, USER_ROLES.superAdmin],
+      },
+      {
+        label: 'Payments',
+        icon: 'P',
+        path: ROUTES_PATH.payments,
+        allowedRoles: [USER_ROLES.superAdmin],
       },
     ],
   },

@@ -54,6 +54,18 @@ function getLevelBarMetrics(points: string) {
 }
 
 export function createStudentColumns(): GridColDef<StudentGridRow>[] {
+  return createStudentColumnsWithActions({});
+}
+
+type StudentColumnActionHandlers = {
+  onDelete?: (row: StudentGridRow) => void;
+  onEdit?: (row: StudentGridRow) => void;
+  onView?: (row: StudentGridRow) => void;
+};
+
+export function createStudentColumnsWithActions(
+  handlers: StudentColumnActionHandlers,
+): GridColDef<StudentGridRow>[] {
   return [
     {
       field: "serial",
@@ -191,23 +203,26 @@ export function createStudentColumns(): GridColDef<StudentGridRow>[] {
       filterable: false,
       disableColumnMenu: true,
       headerAlign: "left",
-      renderCell: () => (
+      renderCell: (params) => (
         <Box className="students-table__action-buttons">
           <IconButton
             className="students-table__icon-button"
             aria-label="Delete student"
+            onClick={() => handlers.onDelete?.(params.row)}
           >
             🗑
           </IconButton>
           <IconButton
             className="students-table__icon-button"
             aria-label="Edit student"
+            onClick={() => handlers.onEdit?.(params.row)}
           >
             ✎
           </IconButton>
           <IconButton
             className="students-table__icon-button"
             aria-label="View student"
+            onClick={() => handlers.onView?.(params.row)}
           >
             👁
           </IconButton>

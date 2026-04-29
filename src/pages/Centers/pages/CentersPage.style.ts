@@ -112,7 +112,8 @@ export const CentersPageRoot = styled.div`
   }
 
   .centers-table {
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: visible;
     border: 1px solid #dbe2f1;
     border-radius: 22px;
     background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);

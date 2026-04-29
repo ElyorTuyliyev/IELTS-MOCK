@@ -5,23 +5,26 @@ export const CREATE_STUDENT_MUTATION = gql`
     $firstName: String!
     $lastName: String!
     $email: String!
+    $birthday: DateTime
+    $gender: String
     $password: String!
     $phone: String
-    $centerId: String
   ) {
     createUser(
       firstName: $firstName
       lastName: $lastName
       email: $email
+      birthday: $birthday
+      gender: $gender
       password: $password
       phone: $phone
-      centerId: $centerId
-      role: "student"
     ) {
       _id
       firstName
       lastName
       email
+      birthday
+      gender
       phone
       role
       centerId

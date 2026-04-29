@@ -5,6 +5,7 @@ export const GET_ALL_CENTERS_QUERY = gql`
     findAllCenters {
       _id
       name
+      manager
       address
       phone
       email

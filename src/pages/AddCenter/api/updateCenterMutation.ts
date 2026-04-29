@@ -4,6 +4,7 @@ export const UPDATE_CENTER_MUTATION = gql`
   mutation UpdateCenter(
     $_id: ID!
     $name: String
+    $manager: String
     $address: String
     $phone: String
     $email: String
@@ -14,6 +15,7 @@ export const UPDATE_CENTER_MUTATION = gql`
     updateCenter(
       _id: $_id
       name: $name
+      manager: $manager
       address: $address
       phone: $phone
       email: $email
@@ -23,6 +25,7 @@ export const UPDATE_CENTER_MUTATION = gql`
     ) {
       _id
       name
+      manager
       address
       phone
       email

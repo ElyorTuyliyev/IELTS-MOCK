@@ -29,12 +29,20 @@ export const SidebarRoot = styled(Box)`
   .sidebar__brand-logo {
     display: grid;
     place-items: center;
+    overflow: hidden;
     width: 54px;
     height: 54px;
     border-radius: 16px;
     background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
     color: #ffffff;
     font-size: 1.5rem;
+  }
+
+  .sidebar__brand-logo-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
   }
 
   .sidebar__brand-title {

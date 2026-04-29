@@ -1,37 +1,38 @@
 import { gql } from "@apollo/client";
 
-export const CREATE_ADMIN_MUTATION = gql`
-  mutation CreateAdmin(
-    $firstName: String!
-    $lastName: String!
+export const CREATE_CENTER_MUTATION = gql`
+  mutation CreateCenter(
+    $name: String!
+    $manager: String!
+    $address: String!
+    $phone: String!
     $email: String!
     $password: String!
-    $phone: String
-    $centerName: String!
-    $centerAddress: String!
-    $centerPhone: String!
-    $centerLogo: String
-    $centerEstablishedAt: DateTime
+    $logo: String!
+    $establishedAt: DateTime!
   ) {
-    createAdmin(
-      firstName: $firstName
-      lastName: $lastName
+    createCenter(
+      name: $name
+      manager: $manager
+      address: $address
+      phone: $phone
       email: $email
       password: $password
-      phone: $phone
-      centerName: $centerName
-      centerAddress: $centerAddress
-      centerPhone: $centerPhone
-      centerLogo: $centerLogo
-      centerEstablishedAt: $centerEstablishedAt
+      logo: $logo
+      establishedAt: $establishedAt
     ) {
       _id
-      firstName
-      lastName
-      email
+      name
+      manager
+      address
       phone
-      role
-      centerId
+      email
+      logo
+      establishedAt
+      createdAt
+      updatedAt
     }
   }
 `;
+
+export const CREATE_ADMIN_MUTATION = CREATE_CENTER_MUTATION

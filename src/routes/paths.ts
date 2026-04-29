@@ -8,6 +8,7 @@ export const ROUTES_PATH = {
   center: '/centers',
   surveys: '/surveys',
   students: '/students',
+  payments: '/payments',
   settings: '/settings',
   courses: '/lms/courses',
   questions: '/questions',

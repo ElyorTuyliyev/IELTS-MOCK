@@ -3,6 +3,7 @@ export type StudentStatus = 'Completed' | 'Active' | 'Pending' | 'Draft'
 export type StudentLevelTone = 'orange' | 'teal' | 'pink' | 'yellow' | 'blue'
 
 export type StudentRow = {
+  userId: string
   serial: string
   name: string
   email: string

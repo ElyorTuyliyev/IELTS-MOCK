@@ -1,11 +1,10 @@
 import { useEffect, useState, type ChangeEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useMutation } from '@apollo/client/react'
-import { Box, Button, MenuItem, TextField, Typography } from '@mui/material'
+import { Box, Button, TextField, Typography } from '@mui/material'
 
 import { Layout } from '../../../components/layout'
 import { ROUTES_PATH } from '../../../routes'
-import { centerTypeOptions, statusOptions } from '../api/addCenterOptions'
 import { CREATE_CENTER_MUTATION } from '../api/createCenterMutation'
 import { UPDATE_CENTER_MUTATION } from '../api/updateCenterMutation'
 import { AddCenterPageRoot } from './AddCenterPage.style'
@@ -19,6 +18,7 @@ type CreateCenterMutationResponse = {
 
 type CreateCenterMutationVariables = {
   name: string
+  manager: string
   address: string
   phone: string
   email: string
@@ -37,6 +37,7 @@ type UpdateCenterMutationResponse = {
 type UpdateCenterMutationVariables = {
   _id: string
   name?: string
+  manager?: string
   address?: string
   phone?: string
   email?: string
@@ -46,10 +47,11 @@ type UpdateCenterMutationVariables = {
 }
 
 type AddCenterLocationState = {
-  mode?: 'create' | 'edit'
+  mode?: 'create' | 'edit' | 'view'
   center?: {
     id: string
     name: string
+    manager?: string
     email: string
     phone: string
     address: string
@@ -62,20 +64,18 @@ export function AddCenterPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const routeState = (location.state as AddCenterLocationState | null) ?? null
+  const isViewMode = routeState?.mode === 'view' && Boolean(routeState?.center?.id)
   const isEditMode = routeState?.mode === 'edit' && Boolean(routeState?.center?.id)
   const [centerName, setCenterName] = useState('')
-  const [city, setCity] = useState('Tashkent')
-  const [district, setDistrict] = useState('')
   const [address, setAddress] = useState('')
   const [logoDataUrl, setLogoDataUrl] = useState('')
   const [logoFileName, setLogoFileName] = useState('')
+  const [hasNewLogoUpload, setHasNewLogoUpload] = useState(false)
   const [managerName, setManagerName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [centerType, setCenterType] = useState('Branch')
-  const [status, setStatus] = useState('Draft')
   const [submitError, setSubmitError] = useState('')
   const [createCenter, { loading: isCreatingCenter }] = useMutation<
     CreateCenterMutationResponse,
@@ -85,6 +85,10 @@ export function AddCenterPage() {
     UpdateCenterMutationResponse,
     UpdateCenterMutationVariables
   >(UPDATE_CENTER_MUTATION)
+  const rawGraphqlEndpoint = import.meta.env.VITE_GRAPHQL_URL ?? 'http://127.0.0.1:8000/graphql'
+  const graphqlEndpoint = rawGraphqlEndpoint.includes('://localhost')
+    ? rawGraphqlEndpoint.replace('://localhost', '://127.0.0.1')
+    : rawGraphqlEndpoint
 
   useEffect(() => {
     const sendDebugLog = (payload: {
@@ -183,23 +187,80 @@ export function AddCenterPage() {
   }, [])
 
   useEffect(() => {
-    if (!isEditMode || !routeState?.center) {
+    const saveButton = document.querySelector('.add-center-form__submit') as HTMLButtonElement | null
+    // #region agent log
+    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': '24497a',
+      },
+      body: JSON.stringify({
+        sessionId: '24497a',
+        runId: 'pre-fix',
+        hypothesisId: 'H-btn-state',
+        location: 'AddCenterPage.tsx:saveButton/useEffect',
+        message: 'Save button state snapshot',
+        data: {
+          isViewMode,
+          isEditMode,
+          isCreatingCenter,
+          isUpdatingCenter,
+          submitError: submitError || null,
+          buttonExists: Boolean(saveButton),
+          buttonDisabled: saveButton?.disabled ?? null,
+          buttonText: saveButton?.textContent?.trim() ?? null,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
+  }, [isViewMode, isEditMode, isCreatingCenter, isUpdatingCenter, submitError])
+
+  useEffect(() => {
+    if ((!isEditMode && !isViewMode) || !routeState?.center) {
       return
     }
 
+    // #region agent log
+    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': '24497a',
+      },
+      body: JSON.stringify({
+        sessionId: '24497a',
+        runId: 'pre-fix',
+        hypothesisId: 'H-update-prefill',
+        location: 'AddCenterPage.tsx:prefill/useEffect',
+        message: 'Edit/View prefill state snapshot',
+        data: {
+          mode: isEditMode ? 'edit' : 'view',
+          centerId: routeState.center.id,
+          hasManager: Boolean(routeState.center.manager?.trim()),
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
+
     setCenterName(routeState.center.name ?? '')
+    setManagerName(routeState.center.manager ?? '')
     setAddress(routeState.center.address ?? '')
     setPhone(routeState.center.phone ?? '')
     setEmail(routeState.center.email ?? '')
     setLogoDataUrl(routeState.center.logo ?? '')
     setLogoFileName(routeState.center.logo ? 'existing-logo' : '')
-  }, [isEditMode, routeState])
+    setHasNewLogoUpload(false)
+  }, [isEditMode, isViewMode, routeState])
 
   const handleLogoFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0] ?? null
     if (!selectedFile) {
       setLogoDataUrl('')
       setLogoFileName('')
+      setHasNewLogoUpload(false)
       return
     }
 
@@ -207,6 +268,7 @@ export function AddCenterPage() {
       setSubmitError('Logo uchun rasm fayl tanlang (png, jpg, webp...).')
       setLogoDataUrl('')
       setLogoFileName('')
+      setHasNewLogoUpload(false)
       return
     }
 
@@ -215,6 +277,7 @@ export function AddCenterPage() {
       const result = typeof reader.result === 'string' ? reader.result : ''
       setLogoDataUrl(result)
       setLogoFileName(selectedFile.name)
+      setHasNewLogoUpload(true)
       setSubmitError('')
 
       // #region agent log
@@ -245,16 +308,20 @@ export function AddCenterPage() {
   }
 
   const handleCreateCenter = async () => {
+    if (isViewMode) {
+      return
+    }
+
     const normalizedName = centerName.trim()
-    const normalizedDistrict = district.trim()
     const normalizedAddress = address.trim()
+    const normalizedManager = managerName.trim()
     const normalizedPhone = phone.trim()
     const normalizedEmail = email.trim().toLowerCase()
     const trimmedPassword = password.trim()
     const trimmedConfirmPassword = confirmPassword.trim()
 
-    if (!normalizedName || !normalizedAddress || !normalizedPhone || !normalizedEmail) {
-      setSubmitError("Center saqlash uchun name, address, phone va email majburiy.")
+    if (!normalizedName || !normalizedManager || !normalizedAddress || !normalizedPhone || !normalizedEmail) {
+      setSubmitError("Center saqlash uchun center name, manager name, address, phone number va gmail majburiy.")
       // #region agent log
       fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
         method: 'POST',
@@ -272,6 +339,7 @@ export function AddCenterPage() {
             mode: isEditMode ? 'edit' : 'create',
             hasName: Boolean(normalizedName),
             hasAddress: Boolean(normalizedAddress),
+            hasManager: Boolean(normalizedManager),
             hasPhone: Boolean(normalizedPhone),
             hasEmail: Boolean(normalizedEmail),
           },
@@ -318,18 +386,19 @@ export function AddCenterPage() {
         location: 'AddCenterPage.tsx:handleCreateCenter',
         message: 'Create center submit payload snapshot',
         data: {
+          graphqlEndpoint,
           hasName: Boolean(normalizedName),
           hasAddress: Boolean(normalizedAddress),
           hasLogo: Boolean(logoDataUrl),
+          hasNewLogoUpload,
+          logoBase64Length: logoDataUrl.length,
+          logoApproxBytes: logoDataUrl ? Math.ceil((logoDataUrl.length * 3) / 4) : 0,
           logoFileName: logoFileName || null,
           hasPhone: Boolean(normalizedPhone),
           hasEmail: Boolean(normalizedEmail),
           hasPassword: Boolean(trimmedPassword),
           passwordLength: trimmedPassword.length,
-          city,
-          district: normalizedDistrict || null,
-          centerType,
-          status,
+          managerLength: normalizedManager.length,
           mode: isEditMode ? 'edit' : 'create',
         },
         timestamp: Date.now(),
@@ -341,27 +410,38 @@ export function AddCenterPage() {
       let mutationCenter: { _id: string; name: string } | null = null
       let apolloErrorMessage: string | null = null
       let hasApolloError = false
+      let apolloErrorDetails:
+        | {
+            name?: string
+            message?: string
+            graphQLErrors?: Array<{ message?: string }>
+            networkError?: { message?: string; name?: string; statusCode?: number }
+          }
+        | undefined
 
       if (isEditMode) {
         const result = await updateCenter({
           variables: {
             _id: routeState?.center?.id ?? '',
             name: normalizedName,
+            manager: normalizedManager,
             address: normalizedAddress,
             phone: normalizedPhone,
             email: normalizedEmail,
             ...(trimmedPassword ? { password: trimmedPassword } : {}),
-            ...(logoDataUrl ? { logo: logoDataUrl } : {}),
+            ...(hasNewLogoUpload && logoDataUrl ? { logo: logoDataUrl } : {}),
             establishedAt: new Date().toISOString(),
           },
         })
         mutationCenter = result.data?.updateCenter ?? null
         apolloErrorMessage = result.error?.message ?? null
         hasApolloError = Boolean(result.error)
+        apolloErrorDetails = result.error as typeof apolloErrorDetails
       } else {
         const result = await createCenter({
           variables: {
             name: normalizedName,
+            manager: normalizedManager,
             address: normalizedAddress,
             phone: normalizedPhone,
             email: normalizedEmail,
@@ -373,6 +453,7 @@ export function AddCenterPage() {
         mutationCenter = result.data?.createCenter ?? null
         apolloErrorMessage = result.error?.message ?? null
         hasApolloError = Boolean(result.error)
+        apolloErrorDetails = result.error as typeof apolloErrorDetails
       }
 
       // #region agent log
@@ -396,6 +477,13 @@ export function AddCenterPage() {
             mode: isEditMode ? 'edit' : 'create',
             hasApolloError,
             apolloErrorMessage,
+            hasNewLogoUpload,
+            apolloErrorName: apolloErrorDetails?.name ?? null,
+            graphQLErrorMessages: apolloErrorDetails?.graphQLErrors?.map((item) => item.message ?? '') ?? [],
+            networkErrorMessage: apolloErrorDetails?.networkError?.message ?? null,
+            networkErrorName: apolloErrorDetails?.networkError?.name ?? null,
+            networkErrorStatusCode: apolloErrorDetails?.networkError?.statusCode ?? null,
+            browserOnline: typeof navigator !== 'undefined' ? navigator.onLine : null,
           },
           timestamp: Date.now(),
         }),
@@ -443,7 +531,7 @@ export function AddCenterPage() {
                 Center setup
               </Typography>
               <Typography component="h1" className="add-center-page__title">
-                {isEditMode ? 'Update Center' : 'Add New Center'}
+                {isViewMode ? 'View Center' : isEditMode ? 'Update Center' : 'Add New Center'}
               </Typography>
               <Typography component="p" className="add-center-page__description">
                 Create a new branch profile with its core contact details,
@@ -478,39 +566,20 @@ export function AddCenterPage() {
                   label="Center name"
                   value={centerName}
                   onChange={(event) => setCenterName(event.target.value)}
-                />
-                <TextField
-                  select
-                  label="Center type"
-                  value={centerType}
-                  onChange={(event) => setCenterType(event.target.value)}
-                >
-                  {centerTypeOptions.map((option) => (
-                    <MenuItem key={option} value={option}>
-                      {option}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  label="City"
-                  value={city}
-                  onChange={(event) => setCity(event.target.value)}
-                />
-                <TextField
-                  label="District"
-                  value={district}
-                  onChange={(event) => setDistrict(event.target.value)}
+                  disabled={isViewMode}
                 />
                 <TextField
                   className="add-center-form__field--full"
-                  label="Full address"
+                  label="Address"
                   value={address}
                   onChange={(event) => setAddress(event.target.value)}
+                  disabled={isViewMode}
                 />
                 <TextField
                   className="add-center-form__field--full"
                   type="file"
                   label="Logo file"
+                  disabled={isViewMode}
                   slotProps={{
                     inputLabel: {
                       shrink: true,
@@ -561,45 +630,38 @@ export function AddCenterPage() {
 
               <Box className="add-center-form__grid">
                 <TextField
-                  label="Branch manager"
+                  label="Manager name"
                   value={managerName}
                   onChange={(event) => setManagerName(event.target.value)}
+                  disabled={isViewMode}
                 />
                 <TextField
                   label="Phone number"
                   value={phone}
                   onChange={(event) => setPhone(event.target.value)}
+                  disabled={isViewMode}
                 />
                 <TextField
-                  label="Email address"
+                  label="Gmail"
                   type="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
+                  disabled={isViewMode}
                 />
                 <TextField
                   label="Password"
                   type="password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
+                  disabled={isViewMode}
                 />
                 <TextField
                   label="Confirm password"
                   type="password"
                   value={confirmPassword}
                   onChange={(event) => setConfirmPassword(event.target.value)}
+                  disabled={isViewMode}
                 />
-                <TextField
-                  select
-                  label="Launch status"
-                  value={status}
-                  onChange={(event) => setStatus(event.target.value)}
-                >
-                  {statusOptions.map((option) => (
-                    <MenuItem key={option} value={option}>
-                      {option}
-                    </MenuItem>
-                  ))}
-                </TextField>
               </Box>
             </Box>
 
@@ -610,8 +672,8 @@ export function AddCenterPage() {
                 </Typography>
               ) : null}
               <Typography component="p" className="add-center-form__actions-copy">
-                Current state is UI-ready. Hook this form to create-center mutation
-                when backend schema is available.
+                Form create/update center mutationlariga ulangan. Ma'lumotlarni
+                saqlash uchun Save tugmasidan foydalaning.
               </Typography>
 
               <Box className="add-center-form__buttons">
@@ -621,20 +683,47 @@ export function AddCenterPage() {
                   className="add-center-form__cancel"
                   variant="outlined"
                 >
-                  Cancel
+                  {isViewMode ? 'Back' : 'Cancel'}
                 </Button>
-                <Button
-                  className="add-center-form__submit"
-                  variant="contained"
-                  onClick={handleCreateCenter}
-                  disabled={isCreatingCenter || isUpdatingCenter}
-                >
-                  {isCreatingCenter || isUpdatingCenter
-                    ? 'Saving...'
-                    : isEditMode
-                      ? 'Update Center'
-                      : 'Save Center'}
-                </Button>
+                {isViewMode ? null : (
+                  <Button
+                    className="add-center-form__submit"
+                    variant="contained"
+                    onClick={() => {
+                      // #region agent log
+                      fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'X-Debug-Session-Id': '24497a',
+                        },
+                        body: JSON.stringify({
+                          sessionId: '24497a',
+                          runId: 'pre-fix',
+                          hypothesisId: 'H-btn-click',
+                          location: 'AddCenterPage.tsx:saveButton/onClick',
+                          message: 'Save button clicked',
+                          data: {
+                            isViewMode,
+                            isEditMode,
+                            isCreatingCenter,
+                            isUpdatingCenter,
+                          },
+                          timestamp: Date.now(),
+                        }),
+                      }).catch(() => {})
+                      // #endregion
+                      handleCreateCenter()
+                    }}
+                    disabled={isCreatingCenter || isUpdatingCenter}
+                  >
+                    {isCreatingCenter || isUpdatingCenter
+                      ? 'Saving...'
+                      : isEditMode
+                        ? 'Update Center'
+                        : 'Save Center'}
+                  </Button>
+                )}
               </Box>
             </Box>
           </Box>

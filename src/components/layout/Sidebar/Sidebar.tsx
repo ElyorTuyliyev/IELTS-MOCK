@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { gql } from "@apollo/client";
+import { useQuery } from "@apollo/client/react";
 import {
   Box,
   Button,
@@ -10,17 +12,27 @@ import {
 } from "@mui/material";
 
 import { useAppSelector } from "../../../store/hooks";
-import { selectUserRole } from "../../../store";
+import { selectAuthToken, selectUserRole } from "../../../store";
 import { hasRequiredRole } from "../../../store/slices/authSlice";
 import { ROUTES_PATH, SIDEBAR_ROUTE_GROUPS } from "../../../routes";
 import { SidebarRoot } from "./Sidebar.style";
 
 const SIDEBAR_ACCORDION_STORAGE_KEY = "sidebar-expanded-items";
+const ME_CENTER_QUERY = gql`
+  query MeCenter {
+    meCenter {
+      _id
+      name
+      logo
+    }
+  }
+`;
 
 export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const role = useAppSelector(selectUserRole);
+  const authToken = useAppSelector(selectAuthToken);
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedItems, setExpandedItems] = useState<
     Record<string, boolean | undefined>
@@ -42,6 +54,11 @@ export function Sidebar() {
     } catch {
       return {};
     }
+  });
+  const { data: meCenterData } = useQuery<{
+    meCenter?: { _id: string; name?: string | null; logo?: string | null } | null;
+  }>(ME_CENTER_QUERY, {
+    skip: !authToken,
   });
 
   const visibleGroups = useMemo(() => {
@@ -85,6 +102,37 @@ export function Sidebar() {
   }, [role, searchTerm]);
 
   const normalizedSearch = searchTerm.trim().toLowerCase();
+  const centerMetaFromToken = (() => {
+    if (!authToken) {
+      return { name: null, logo: null };
+    }
+
+    const parts = authToken.split(".");
+    if (parts.length < 2) {
+      return { name: null, logo: null };
+    }
+
+    try {
+      const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+      const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+      const payload = JSON.parse(atob(padded)) as {
+        centerName?: string | null;
+        centerLogo?: string | null;
+      };
+      const normalizedCenterName = payload.centerName?.trim();
+      const normalizedCenterLogo = payload.centerLogo?.trim();
+      return {
+        name: normalizedCenterName || null,
+        logo: normalizedCenterLogo || null,
+      };
+    } catch {
+      return { name: null, logo: null };
+    }
+  })();
+  const centerMeta = {
+    name: meCenterData?.meCenter?.name?.trim() || centerMetaFromToken.name,
+    logo: meCenterData?.meCenter?.logo?.trim() || centerMetaFromToken.logo,
+  };
 
   useEffect(() => {
     // #region agent log
@@ -108,6 +156,9 @@ export function Sidebar() {
           ),
           hasCentersItem: visibleGroups.some((group) =>
             group.items.some((item) => item.label === "Centers"),
+          ),
+          hasPaymentsItem: visibleGroups.some((group) =>
+            group.items.some((item) => item.label === "Payments"),
           ),
         },
         timestamp: Date.now(),
@@ -176,14 +227,18 @@ export function Sidebar() {
       <Box component="header" className="sidebar__header">
         <Box className="sidebar__brand">
           <Box className="sidebar__brand-logo" aria-hidden="true">
-            ✦
+            {centerMeta.logo ? (
+              <img src={centerMeta.logo} alt="Center logo" className="sidebar__brand-logo-image" />
+            ) : (
+              "✦"
+            )}
           </Box>
           <Box className="sidebar__brand-copy">
             <Typography component="strong" className="sidebar__brand-title">
-              IELTS Study
+              IELTS Exam
             </Typography>
             <Typography component="span" className="sidebar__brand-text">
-              Assessment workspace
+              {centerMeta.name || "Mock Exam Platform"}
             </Typography>
           </Box>
         </Box>

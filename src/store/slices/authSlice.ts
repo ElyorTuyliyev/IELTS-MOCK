@@ -1,10 +1,15 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
 
+export const ROLES = {
+  SUPER_ADMIN: 'super_admin',
+  CENTER: 'center',
+  STUDENT: 'student',
+} as const
+
 export const USER_ROLES = {
-  center: 'center',
-  student: 'student',
-  centerAdmin: 'center_admin',
-  superAdmin: 'super_admin',
+  center: ROLES.CENTER,
+  student: ROLES.STUDENT,
+  superAdmin: ROLES.SUPER_ADMIN,
 } as const
 
 export type UserRole = (typeof USER_ROLES)[keyof typeof USER_ROLES]
@@ -12,16 +17,19 @@ export type UserRole = (typeof USER_ROLES)[keyof typeof USER_ROLES]
 type AuthState = {
   token: string | null
   role: UserRole | null
+  name: string | null
 }
 
 const initialState: AuthState = {
   token: null,
   role: null,
+  name: null,
 }
 
 type AuthPayload = {
   token: string | null
   role: UserRole | null
+  name?: string | null
 }
 
 const authSlice = createSlice({
@@ -37,10 +45,12 @@ const authSlice = createSlice({
     setAuthSession: (state, action: PayloadAction<AuthPayload>) => {
       state.token = action.payload.token
       state.role = action.payload.role
+      state.name = action.payload.name ?? null
     },
     clearAuth: (state) => {
       state.token = null
       state.role = null
+      state.name = null
     },
   },
 })

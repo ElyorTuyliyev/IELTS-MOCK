@@ -3,15 +3,45 @@ import { setContext } from '@apollo/client/link/context'
 
 import { store } from '../store'
 
-const graphqlUrl = import.meta.env.VITE_GRAPHQL_URL ?? 'http://localhost:8000/graphql'
+const rawGraphqlUrl = import.meta.env.VITE_GRAPHQL_URL ?? 'http://127.0.0.1:8000/graphql'
+
+function normalizeGraphqlUrl(url: string) {
+  try {
+    const parsedUrl = new URL(url)
+    if (parsedUrl.hostname === 'localhost') {
+      parsedUrl.hostname = '127.0.0.1'
+      return parsedUrl.toString()
+    }
+  } catch {
+    return url
+  }
+
+  return url
+}
+
+const graphqlUrl = normalizeGraphqlUrl(rawGraphqlUrl)
 const graphqlToken = import.meta.env.VITE_GRAPHQL_TOKEN
 
 const httpLink = createHttpLink({
   uri: graphqlUrl,
-  credentials: 'include',
+  credentials: 'omit',
 })
 
-const authLink = setContext((_, { headers }) => {
+const authLink = setContext((operation, { headers }) => {
+  const operationName = operation.operationName?.toLowerCase()
+  const isPublicAuthOperation =
+    operationName === 'login' ||
+    operationName === 'signup' ||
+    operationName === 'logout'
+
+  if (isPublicAuthOperation) {
+    return {
+      headers: {
+        ...headers,
+      },
+    }
+  }
+
   const token = store.getState().auth.token ?? graphqlToken
 
   return {

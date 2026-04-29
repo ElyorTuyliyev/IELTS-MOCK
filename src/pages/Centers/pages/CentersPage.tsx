@@ -1,7 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery } from '@apollo/client/react'
-import { Link, useNavigate } from 'react-router-dom'
-import { Box, Button, InputAdornment, MenuItem, TextField, Typography } from '@mui/material'
+import { useNavigate } from 'react-router-dom'
+import {
+  Alert,
+  Box,
+  Button,
+  Dialog,
+  DialogContent,
+  IconButton,
+  InputAdornment,
+  MenuItem,
+  TextField,
+  Tooltip,
+  Typography,
+} from '@mui/material'
 import { DataGrid, type GridColDef, type GridPaginationModel } from '@mui/x-data-grid'
 
 import { Layout } from '../../../components/layout'
@@ -10,6 +22,7 @@ import { selectUserRole } from '../../../store'
 import { useAppSelector } from '../../../store/hooks'
 import { USER_ROLES } from '../../../store/slices/authSlice'
 import { CENTER_PAGE_SIZE, CENTERS, CENTER_STATS } from '../api/centersData'
+import { CREATE_CENTER_MUTATION } from '../../AddCenter/api/createCenterMutation'
 import { REMOVE_CENTER_MUTATION } from '../api/deleteCenterMutation'
 import { GET_ALL_CENTERS_QUERY } from '../api/getAllCentersQuery'
 import { getVisiblePages } from '../components/pagination'
@@ -19,6 +32,7 @@ type FindAllCentersQueryResponse = {
   findAllCenters: Array<{
     _id: string
     name: string
+    manager?: string | null
     address: string
     phone: string
     email: string
@@ -37,15 +51,61 @@ type DeleteCenterMutationVariables = {
   _id: string
 }
 
+type CreateCenterMutationResponse = {
+  createCenter: {
+    _id: string
+    name: string
+  } | null
+}
+
+type CreateCenterMutationVariables = {
+  name: string
+  manager: string
+  address: string
+  phone: string
+  email: string
+  password: string
+  logo: string
+  establishedAt: string
+}
+
 type EditableCenter = {
   id: string
   name: string
+  manager: string
   email: string
   phone: string
   address: string
   logo: string
   establishedAt?: string
 }
+
+const centersActionIconSx = {
+  width: 40,
+  height: 40,
+  padding: 0,
+  borderRadius: '10px',
+  border: '1px solid #d8def0',
+  backgroundColor: '#ffffff',
+  color: '#64748b',
+  '&:hover': {
+    backgroundColor: '#f8fafc',
+    borderColor: '#cbd5e1',
+  },
+  '&.Mui-disabled': {
+    borderColor: '#e8ecf5',
+    color: '#c4c9d4',
+  },
+} as const
+
+const centersActionDeleteIconSx = {
+  ...centersActionIconSx,
+  '&:hover': {
+    backgroundColor: '#fef2f2',
+    borderColor: '#fecaca',
+    color: '#dc2626',
+  },
+} as const
 
 export function CentersPage() {
   const navigate = useNavigate()
@@ -55,6 +115,10 @@ export function CentersPage() {
   const canEditCenter = role === USER_ROLES.superAdmin
   const { data: centersData, refetch: refetchCenters } =
     useQuery<FindAllCentersQueryResponse>(GET_ALL_CENTERS_QUERY)
+  const [createCenter, { loading: isCreatingCenter }] = useMutation<
+    CreateCenterMutationResponse,
+    CreateCenterMutationVariables
+  >(CREATE_CENTER_MUTATION)
   const [deleteCenter, { loading: isDeletingCenter }] = useMutation<
     DeleteCenterMutationResponse,
     DeleteCenterMutationVariables
@@ -65,6 +129,122 @@ export function CentersPage() {
     page: 0,
     pageSize: CENTER_PAGE_SIZE,
   })
+  const [isCreateCenterModalOpen, setIsCreateCenterModalOpen] = useState(false)
+  const [centerName, setCenterName] = useState('')
+  const [email, setEmail] = useState('')
+  const [logoDataUrl, setLogoDataUrl] = useState('')
+  const [logoFileName, setLogoFileName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [address, setAddress] = useState('')
+  const [managerName, setManagerName] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [createCenterError, setCreateCenterError] = useState('')
+
+  const resetCreateCenterModal = () => {
+    setCenterName('')
+    setEmail('')
+    setLogoDataUrl('')
+    setLogoFileName('')
+    setPhone('')
+    setAddress('')
+    setManagerName('')
+    setPassword('')
+    setConfirmPassword('')
+    setCreateCenterError('')
+  }
+
+  const handleCloseCreateCenterModal = () => {
+    setIsCreateCenterModalOpen(false)
+    resetCreateCenterModal()
+  }
+
+  const handleLogoFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0] ?? null
+    if (!selectedFile) {
+      setLogoDataUrl('')
+      setLogoFileName('')
+      return
+    }
+
+    if (!selectedFile.type.startsWith('image/')) {
+      setCreateCenterError('Logo uchun rasm fayl tanlang (png, jpg, webp...).')
+      setLogoDataUrl('')
+      setLogoFileName('')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : ''
+      setLogoDataUrl(result)
+      setLogoFileName(selectedFile.name)
+      setCreateCenterError('')
+    }
+    reader.readAsDataURL(selectedFile)
+  }
+
+  const handleCreateCenter = async () => {
+    const normalizedName = centerName.trim()
+    const normalizedManager = managerName.trim()
+    const normalizedAddress = address.trim()
+    const normalizedPhone = phone.trim()
+    const normalizedEmail = email.trim().toLowerCase()
+    const trimmedPassword = password.trim()
+    const trimmedConfirmPassword = confirmPassword.trim()
+
+    if (!normalizedName || !normalizedManager || !normalizedAddress || !normalizedPhone || !normalizedEmail) {
+      setCreateCenterError('Center Name, Manager Name, Address, Phone Number va Gmail majburiy.')
+      return
+    }
+
+    if (!logoDataUrl) {
+      setCreateCenterError('Logo majburiy.')
+      return
+    }
+
+    if (!trimmedPassword) {
+      setCreateCenterError('Password majburiy.')
+      return
+    }
+
+    if (trimmedPassword.length < 6) {
+      setCreateCenterError("Password kamida 6 ta belgidan iborat bo'lishi kerak.")
+      return
+    }
+
+    if (trimmedPassword !== trimmedConfirmPassword) {
+      setCreateCenterError('Password va Confirm Password bir xil emas.')
+      return
+    }
+
+    setCreateCenterError('')
+
+    try {
+      const result = await createCenter({
+        variables: {
+          name: normalizedName,
+          manager: normalizedManager,
+          address: normalizedAddress,
+          phone: normalizedPhone,
+          email: normalizedEmail,
+          password: trimmedPassword,
+          logo: logoDataUrl,
+          establishedAt: new Date().toISOString(),
+        },
+      })
+
+      if (!result.data?.createCenter?._id) {
+        setCreateCenterError(result.error?.message ?? "Center yaratishda xatolik bo'ldi.")
+        return
+      }
+
+      await refetchCenters()
+      handleCloseCreateCenterModal()
+    } catch (error) {
+      setCreateCenterError(error instanceof Error ? error.message : "Center yaratishda xatolik bo'ldi.")
+    }
+  }
 
   const filteredCenters = useMemo(() => {
     const serverCenters = centersData?.findAllCenters ?? []
@@ -76,7 +256,7 @@ export function CentersPage() {
             email: center.email,
             phone: center.phone,
             address: center.address,
-            manager: 'N/A',
+            manager: center.manager?.trim() ? center.manager : 'N/A',
             logo: center.logo ?? '',
             establishedAt: center.establishedAt ?? '',
           }))
@@ -202,9 +382,43 @@ export function CentersPage() {
     if (!canEditCenter || !row.id) {
       return
     }
+    // #region agent log
+    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': '24497a',
+      },
+      body: JSON.stringify({
+        sessionId: '24497a',
+        runId: 'pre-fix',
+        hypothesisId: 'H-update-nav',
+        location: 'CentersPage.tsx:handleOpenEditCenter',
+        message: 'Edit center navigation payload snapshot',
+        data: {
+          centerId: row.id,
+          hasManager: Boolean(row.manager?.trim()),
+          canEditCenter,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
     navigate(ROUTES_PATH.addCenter, {
       state: {
         mode: 'edit',
+        center: row,
+      },
+    })
+  }
+
+  const handleOpenViewCenter = (row: EditableCenter) => {
+    if (!row.id) {
+      return
+    }
+    navigate(ROUTES_PATH.addCenter, {
+      state: {
+        mode: 'view',
         center: row,
       },
     })
@@ -271,39 +485,98 @@ export function CentersPage() {
       {
         field: 'actions',
         headerName: 'Action',
-        minWidth: 130,
+        minWidth: 148,
+        maxWidth: 160,
         sortable: false,
-        renderCell: (params) => (
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              disabled={!canEditCenter}
-              onClick={() =>
-                handleOpenEditCenter({
-                  id: String(params.row.id),
-                  name: String(params.row.name ?? ''),
-                  email: String(params.row.email ?? ''),
-                  phone: String(params.row.phone ?? ''),
-                  address: String(params.row.address ?? ''),
-                  logo: String(params.row.logo ?? ''),
-                  establishedAt: String(params.row.establishedAt ?? ''),
-                })
-              }
+        align: 'right',
+        headerAlign: 'right',
+        renderCell: (params) => {
+          const row: EditableCenter = {
+            id: String(params.row.id),
+            name: String(params.row.name ?? ''),
+            manager: String(params.row.manager ?? ''),
+            email: String(params.row.email ?? ''),
+            phone: String(params.row.phone ?? ''),
+            address: String(params.row.address ?? ''),
+            logo: String(params.row.logo ?? ''),
+            establishedAt: String(params.row.establishedAt ?? ''),
+          }
+          return (
+            <Box
+              sx={{
+                display: 'flex',
+                gap: '6px',
+                flexWrap: 'nowrap',
+                justifyContent: 'flex-end',
+                alignItems: 'center',
+                width: '100%',
+              }}
             >
-              Edit
-            </Button>
-            <Button
-              variant="outlined"
-              color="error"
-              size="small"
-              disabled={!canDeleteCenter || isDeletingCenter}
-              onClick={() => handleDeleteCenter(String(params.row.id))}
-            >
-              Delete
-            </Button>
-          </Box>
-        ),
+              <Tooltip title="Delete">
+                <span>
+                  <IconButton
+                    size="small"
+                    disabled={!canDeleteCenter || isDeletingCenter}
+                    onClick={() => handleDeleteCenter(row.id)}
+                    aria-label="Delete center"
+                    sx={centersActionDeleteIconSx}
+                  >
+                    <Box
+                      component="svg"
+                      viewBox="0 0 24 24"
+                      sx={{ width: 20, height: 20 }}
+                      fill="currentColor"
+                      aria-hidden
+                    >
+                      <path d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z" />
+                    </Box>
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Tooltip title="Edit">
+                <span>
+                  <IconButton
+                    size="small"
+                    disabled={!canEditCenter}
+                    onClick={() => handleOpenEditCenter(row)}
+                    aria-label="Edit center"
+                    sx={centersActionIconSx}
+                  >
+                    <Box
+                      component="svg"
+                      viewBox="0 0 24 24"
+                      sx={{ width: 20, height: 20 }}
+                      fill="currentColor"
+                      aria-hidden
+                    >
+                      <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
+                    </Box>
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Tooltip title="View">
+                <span>
+                  <IconButton
+                    size="small"
+                    onClick={() => handleOpenViewCenter(row)}
+                    aria-label="View center"
+                    sx={centersActionIconSx}
+                  >
+                    <Box
+                      component="svg"
+                      viewBox="0 0 24 24"
+                      sx={{ width: 20, height: 20 }}
+                      fill="currentColor"
+                      aria-hidden
+                    >
+                      <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" />
+                    </Box>
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </Box>
+          )
+        },
       },
     ],
     [
@@ -311,6 +584,7 @@ export function CentersPage() {
       canEditCenter,
       handleDeleteCenter,
       handleOpenEditCenter,
+      handleOpenViewCenter,
       isDeletingCenter,
     ],
   )
@@ -339,7 +613,9 @@ export function CentersPage() {
       location: string
       message: string
       data: Record<string, unknown>
+      runId?: string
     }) => {
+      const { runId = 'pre-fix', ...rest } = payload
       fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
         method: 'POST',
         headers: {
@@ -348,9 +624,9 @@ export function CentersPage() {
         },
         body: JSON.stringify({
           sessionId: '24497a',
-          runId: 'pre-fix',
+          runId,
           timestamp: Date.now(),
-          ...payload,
+          ...rest,
         }),
       }).catch(() => {})
     }
@@ -432,6 +708,31 @@ export function CentersPage() {
       })
       // #endregion
 
+      const firstActionCell = document.querySelector(
+        '.centers-table .MuiDataGrid-row [data-field="actions"]',
+      ) as HTMLElement | null
+      // #region agent log
+      sendDebugLog({
+        hypothesisId: 'H-action',
+        runId: 'layout-verify',
+        location: 'CentersPage.tsx:layout/useEffect',
+        message: 'Action column vs grid horizontal overflow',
+        data: {
+          actionUi: 'icon-buttons',
+          gridMainClientWidth: dataGridMain?.clientWidth ?? null,
+          gridMainScrollWidth: dataGridMain?.scrollWidth ?? null,
+          gridNeedsHorizontalScroll:
+            dataGridMain != null ? dataGridMain.scrollWidth > dataGridMain.clientWidth + 1 : null,
+          actionCellClientWidth: firstActionCell?.clientWidth ?? null,
+          actionCellScrollWidth: firstActionCell?.scrollWidth ?? null,
+          actionCellContentOverflow:
+            firstActionCell != null
+              ? firstActionCell.scrollWidth > firstActionCell.clientWidth + 1
+              : null,
+        },
+      })
+      // #endregion
+
       // #region agent log
       sendDebugLog({
         hypothesisId: 'H10',
@@ -471,15 +772,138 @@ export function CentersPage() {
             </Box>
 
             <Button
-              component={Link}
-              to={ROUTES_PATH.addCenter}
               className="centers-page__cta"
               variant="contained"
               disabled={!canCreateCenter}
+              onClick={() => setIsCreateCenterModalOpen(true)}
             >
               + Add New Center
             </Button>
           </Box>
+
+          <Dialog
+            open={isCreateCenterModalOpen}
+            onClose={handleCloseCreateCenterModal}
+            maxWidth="sm"
+            fullWidth
+            slotProps={{
+              paper: {
+                sx: {
+                  borderRadius: '20px',
+                  overflow: 'hidden',
+                },
+              },
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: '22px 24px' }}>
+              <Typography sx={{ fontSize: '36px', fontWeight: 700 }}>Add Center</Typography>
+              <IconButton onClick={handleCloseCreateCenterModal} aria-label="Close center modal">
+                <span style={{ fontSize: 28, lineHeight: 1 }}>×</span>
+              </IconButton>
+            </Box>
+            <DialogContent sx={{ borderTop: '1px solid #eceff6', p: '20px 24px 24px' }}>
+              {createCenterError ? <Alert severity="error" sx={{ mb: 2 }}>{createCenterError}</Alert> : null}
+              <Box sx={{ display: 'grid', gap: 1.5 }}>
+                <TextField label="Center Name" value={centerName} onChange={(e) => setCenterName(e.target.value)} />
+                <TextField label="Gmail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <TextField label="Phone Number" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                <TextField label="Address" value={address} onChange={(e) => setAddress(e.target.value)} />
+                <TextField label="Manager Name" value={managerName} onChange={(e) => setManagerName(e.target.value)} />
+                <TextField label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <TextField label="Confirm Password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                <Box sx={{ mt: 0.5 }}>
+                  <Typography sx={{ mb: 1, fontWeight: 600, color: '#0f172a' }}>Logo</Typography>
+                  <Box
+                    component="label"
+                    htmlFor="center-logo-upload"
+                    sx={{
+                      display: 'grid',
+                      placeItems: 'center',
+                      textAlign: 'center',
+                      gap: 1.5,
+                      minHeight: 190,
+                      px: 2,
+                      border: '1px dashed #d9dcef',
+                      borderRadius: '18px',
+                      backgroundColor: '#f7f8fc',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <input
+                      id="center-logo-upload"
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={handleLogoFileChange}
+                    />
+                    <Box
+                      sx={{
+                        width: 60,
+                        height: 60,
+                        borderRadius: '14px',
+                        background: '#e9ebff',
+                        display: 'grid',
+                        placeItems: 'center',
+                        color: '#5b6bff',
+                        fontSize: 28,
+                      }}
+                    >
+                      🖼
+                    </Box>
+                    <Typography sx={{ fontSize: 18, fontWeight: 700, color: '#111827' }}>
+                      Click or Drop your logo here, or{' '}
+                      <Box component="span" sx={{ color: '#7c3aed' }}>
+                        Browse
+                      </Box>
+                    </Typography>
+                    <Typography sx={{ fontSize: 14, color: '#5b6477' }}>
+                      Recommended image size: 1080 × 780 pixels
+                    </Typography>
+                    <Typography sx={{ fontSize: 14, color: '#5b6477', mt: -1 }}>
+                      Accepted image formats: JPG, PNG.
+                    </Typography>
+                  </Box>
+                  {logoFileName ? (
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                      Selected: {logoFileName}
+                    </Typography>
+                  ) : null}
+                  {logoDataUrl ? (
+                    <Box sx={{ mt: 1.5 }}>
+                      <Typography variant="body2" sx={{ mb: 1 }}>
+                        Logo preview
+                      </Typography>
+                      <Box
+                        component="img"
+                        src={logoDataUrl}
+                        alt="Selected center logo preview"
+                        sx={{
+                          width: 110,
+                          height: 110,
+                          objectFit: 'cover',
+                          borderRadius: '12px',
+                          border: '1px solid #dbe2f1',
+                        }}
+                      />
+                    </Box>
+                  ) : null}
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5, mt: 1 }}>
+                  <Button variant="outlined" onClick={handleCloseCreateCenterModal} sx={{ minWidth: 120, borderRadius: '12px' }}>
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="contained"
+                    onClick={handleCreateCenter}
+                    disabled={isCreatingCenter}
+                    sx={{ minWidth: 140, borderRadius: '12px', background: 'linear-gradient(135deg,#7c3aed,#8b5cf6)' }}
+                  >
+                    {isCreatingCenter ? 'Saving...' : 'Save'}
+                  </Button>
+                </Box>
+              </Box>
+            </DialogContent>
+          </Dialog>
 
           <Box className="centers-page__stats">
             {CENTER_STATS.map((item) => (

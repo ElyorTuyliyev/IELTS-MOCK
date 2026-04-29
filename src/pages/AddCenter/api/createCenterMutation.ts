@@ -3,6 +3,7 @@ import { gql } from "@apollo/client";
 export const CREATE_CENTER_MUTATION = gql`
   mutation CreateCenter(
     $name: String!
+    $manager: String!
     $address: String!
     $phone: String!
     $email: String!
@@ -12,6 +13,7 @@ export const CREATE_CENTER_MUTATION = gql`
   ) {
     createCenter(
       name: $name
+      manager: $manager
       address: $address
       phone: $phone
       email: $email
@@ -21,6 +23,7 @@ export const CREATE_CENTER_MUTATION = gql`
     ) {
       _id
       name
+      manager
       address
       phone
       email

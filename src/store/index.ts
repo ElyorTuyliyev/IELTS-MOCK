@@ -43,3 +43,4 @@ export type AppDispatch = typeof store.dispatch
 export const selectAuth = (state: RootState) => state.auth
 export const selectAuthToken = (state: RootState) => state.auth.token
 export const selectUserRole = (state: RootState) => state.auth.role
+export const selectUserName = (state: RootState) => state.auth.name

@@ -16,9 +16,14 @@ import {
 import { DataGrid, type GridPaginationModel } from '@mui/x-data-grid'
 
 import { Layout } from '../../components/layout'
+import { selectAuthToken, selectUserRole } from '../../store'
+import { useAppSelector } from '../../store/hooks'
+import { USER_ROLES } from '../../store/slices/authSlice'
 import { CREATE_STUDENT_MUTATION } from './api/createStudentMutation'
+import { DELETE_STUDENT_MUTATION } from './api/deleteStudentMutation'
 import { FIND_ALL_USERS_QUERY } from './api/findAllUsersQuery'
-import { createStudentColumns } from './AllStudentsPage.columns'
+import { UPDATE_STUDENT_MUTATION } from './api/updateStudentMutation'
+import { createStudentColumnsWithActions } from './AllStudentsPage.columns'
 import {
   STUDENTS,
   STUDENTS_PAGE_SIZE,
@@ -42,12 +47,33 @@ const avatarGradients = [
 const levelTones: StudentLevelTone[] = ['orange', 'teal', 'pink', 'yellow', 'blue']
 const OBJECT_ID_PATTERN = /^[a-f\d]{24}$/i
 
+function decodeJwtPayload(token: string | null): Record<string, unknown> | null {
+  if (!token) {
+    return null
+  }
+
+  const tokenParts = token.split('.')
+  if (tokenParts.length < 2) {
+    return null
+  }
+
+  try {
+    const base64 = tokenParts[1].replace(/-/g, '+').replace(/_/g, '/')
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')
+    return JSON.parse(atob(padded)) as Record<string, unknown>
+  } catch {
+    return null
+  }
+}
+
 type CreateStudentMutationResponse = {
   createUser: {
     _id: string
     firstName: string
     lastName: string
     email: string
+    birthday?: string | null
+    gender?: string | null
     phone?: string | null
     role: string | null
     centerId?: string | null
@@ -59,9 +85,41 @@ type CreateStudentMutationVariables = {
   firstName: string
   lastName: string
   email: string
+  birthday?: string
+  gender?: string
   password: string
   phone?: string
   centerId?: string
+}
+
+type UpdateStudentMutationResponse = {
+  updateUser: {
+    _id: string
+    birthday?: string | null
+    gender?: string | null
+    role?: string | null
+  } | null
+}
+
+type UpdateStudentMutationVariables = {
+  _id: string
+  firstName?: string
+  lastName?: string
+  email?: string
+  birthday?: string
+  gender?: string
+  password?: string
+  phone?: string
+  role?: string
+  centerId?: string
+}
+
+type DeleteStudentMutationResponse = {
+  removeUser: boolean | null
+}
+
+type DeleteStudentMutationVariables = {
+  _id: string
 }
 
 type FindAllUsersQueryResponse = {
@@ -70,6 +128,8 @@ type FindAllUsersQueryResponse = {
     firstName: string
     lastName: string
     email?: string | null
+    birthday?: string | null
+    gender?: string | null
     phone?: string | null
     role?: string | null
     centerId?: string | null
@@ -83,39 +143,6 @@ function HeadActionIcon({
   children: ReactNode
 }) {
   return <Box component="span" className="students-page__button-icon">{children}</Box>
-}
-
-function UploadArtwork() {
-  return (
-    <Box className="students-modal__upload-artwork" aria-hidden="true">
-      <svg viewBox="0 0 86 74" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="10" y="12" width="52" height="42" rx="8" fill="#DDE4FF" />
-        <circle cx="31" cy="23" r="5" fill="#FFB21D" />
-        <path
-          d="M11 47.5L24.4 33.4C26.5 31.2 30 31.2 32.1 33.4L38.1 39.7L51.8 24.8C54 22.4 57.9 22.4 60.1 24.8L76 42.1V50C76 54.4 72.4 58 68 58H19C14.6 58 11 54.4 11 50V47.5Z"
-          fill="url(#upload-art-gradient)"
-        />
-        <circle cx="61" cy="51" r="11" fill="#4FA6F8" />
-        <path
-          d="M61 56.3C60.2 56.3 59.6 55.7 59.6 54.9V49.4L57.4 51.7C56.9 52.2 56 52.2 55.5 51.7C54.9 51.1 54.9 50.2 55.5 49.6L60.1 45C60.6 44.5 61.4 44.5 61.9 45L66.5 49.6C67.1 50.2 67.1 51.1 66.5 51.7C66 52.2 65.1 52.2 64.6 51.7L62.4 49.4V54.9C62.4 55.7 61.8 56.3 61 56.3Z"
-          fill="white"
-        />
-        <defs>
-          <linearGradient
-            id="upload-art-gradient"
-            x1="19.6"
-            y1="29.5"
-            x2="70.1"
-            y2="59.3"
-            gradientUnits="userSpaceOnUse"
-          >
-            <stop stopColor="#4E8EF7" />
-            <stop offset="1" stopColor="#7647F7" />
-          </linearGradient>
-        </defs>
-      </svg>
-    </Box>
-  )
 }
 
 function CloseIcon() {
@@ -148,18 +175,20 @@ function getVisiblePages(currentPage: number, totalPages: number) {
 }
 
 export function AllStudentsPage() {
+  const authToken = useAppSelector(selectAuthToken)
+  const currentRole = useAppSelector(selectUserRole)
   const [studentRows, setStudentRows] = useState<StudentRow[]>(STUDENTS)
   const [searchTerm, setSearchTerm] = useState('')
   const [sortOption, setSortOption] = useState<'Name' | 'Creation date'>('Name')
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false)
-  const [studentGroup, setStudentGroup] = useState('Add New')
-  const [studentName, setStudentName] = useState('')
+  const [studentFirstName, setStudentFirstName] = useState('')
+  const [studentLastName, setStudentLastName] = useState('')
   const [studentEmail, setStudentEmail] = useState('')
+  const [studentBirthday, setStudentBirthday] = useState('')
+  const [studentGender, setStudentGender] = useState('')
   const [studentPhone, setStudentPhone] = useState('')
   const [studentPassword, setStudentPassword] = useState('')
-  const [studentDepartment, setStudentDepartment] = useState('')
-  const [studentPhotoName, setStudentPhotoName] = useState('')
-  const [extraFields, setExtraFields] = useState<Array<{ id: string; label: string }>>([])
+  const [editingStudentId, setEditingStudentId] = useState<string | null>(null)
   const [formError, setFormError] = useState('')
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
     page: 0,
@@ -169,19 +198,27 @@ export function AllStudentsPage() {
     CreateStudentMutationResponse,
     CreateStudentMutationVariables
   >(CREATE_STUDENT_MUTATION)
+  const [updateStudent, { loading: isUpdatingStudent }] = useMutation<
+    UpdateStudentMutationResponse,
+    UpdateStudentMutationVariables
+  >(UPDATE_STUDENT_MUTATION)
+  const [deleteStudent, { loading: isDeletingStudent }] = useMutation<
+    DeleteStudentMutationResponse,
+    DeleteStudentMutationVariables
+  >(DELETE_STUDENT_MUTATION)
   const { data: usersData, refetch: refetchUsers } = useQuery<FindAllUsersQueryResponse>(
     FIND_ALL_USERS_QUERY,
   )
 
   const resetStudentModal = () => {
-    setStudentGroup('Add New')
-    setStudentName('')
+    setStudentFirstName('')
+    setStudentLastName('')
     setStudentEmail('')
+    setStudentBirthday('')
+    setStudentGender('')
     setStudentPhone('')
     setStudentPassword('')
-    setStudentDepartment('')
-    setStudentPhotoName('')
-    setExtraFields([])
+    setEditingStudentId(null)
     setFormError('')
   }
 
@@ -190,38 +227,83 @@ export function AllStudentsPage() {
     resetStudentModal()
   }
 
-  const addExtraField = () => {
-    setExtraFields((currentFields) => [
-      ...currentFields,
-      {
-        id: `field-${currentFields.length + 1}`,
-        label: `Custom field ${currentFields.length + 1}`,
-      },
-    ])
+  const handleEditStudent = (row: StudentRow) => {
+    const sourceUser = (usersData?.findAllUsers ?? []).find((user) => user._id === row.userId)
+    const [firstNameRaw, ...lastNameParts] = row.name.split(/\s+/).filter(Boolean)
+    setStudentFirstName(firstNameRaw ?? '')
+    setStudentLastName(lastNameParts.join(' '))
+    setStudentEmail(row.email === '-' ? '' : row.email)
+    setStudentBirthday(sourceUser?.birthday ? sourceUser.birthday.slice(0, 10) : '')
+    setStudentGender(sourceUser?.gender ?? '')
+    setStudentPhone(sourceUser?.phone ?? '')
+    setStudentPassword('')
+    setEditingStudentId(row.userId)
+    setFormError('')
+    setIsAddStudentOpen(true)
+  }
+
+  const handleDeleteStudent = async (row: StudentRow) => {
+    if (!row.userId || isDeletingStudent) {
+      return
+    }
+    try {
+      const result = await deleteStudent({
+        variables: { _id: row.userId },
+      })
+      if (!result.data?.removeUser) {
+        setFormError(result.error?.message ?? "Student o'chirishda xatolik bo'ldi.")
+        return
+      }
+      await refetchUsers()
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Student o'chirishda xatolik bo'ldi.")
+    }
   }
 
   const handleSaveStudent = async () => {
-    const trimmedName = studentName.trim()
+    const trimmedFirstName = studentFirstName.trim()
+    const trimmedLastName = studentLastName.trim()
     const normalizedEmail = studentEmail.trim().toLowerCase()
+    const normalizedBirthday = studentBirthday.trim()
+    const normalizedGender = studentGender.trim().toLowerCase()
     const normalizedPhone = studentPhone.trim()
     const trimmedPassword = studentPassword.trim()
-    const trimmedDepartment = studentDepartment.trim()
-    const normalizedCenterId = OBJECT_ID_PATTERN.test(trimmedDepartment) ? trimmedDepartment : ''
+    const normalizedBirthdayIso = normalizedBirthday
+      ? new Date(`${normalizedBirthday}T00:00:00.000Z`).toISOString()
+      : ''
+    const tokenPayload = decodeJwtPayload(authToken)
+    const centerIdFromToken = [
+      tokenPayload?.centerId,
+      tokenPayload?.center_id,
+      tokenPayload?.['center'] && typeof tokenPayload.center === 'object'
+        ? (tokenPayload.center as Record<string, unknown>)?._id
+        : null,
+    ]
+      .filter((value): value is string => typeof value === 'string')
+      .map((value) => value.trim())
+      .find((value) => OBJECT_ID_PATTERN.test(value))
+    const normalizedCenterId = currentRole === USER_ROLES.center ? centerIdFromToken ?? '' : ''
 
-    if (!trimmedName || !normalizedEmail || !trimmedPassword) {
-      setFormError('Student yaratish uchun name, email va password majburiy.')
+    if (!trimmedFirstName || !trimmedLastName || !normalizedEmail || (!editingStudentId && !trimmedPassword)) {
+      setFormError(
+        editingStudentId
+          ? 'Student yangilash uchun first name, last name va gmail majburiy.'
+          : 'Student yaratish uchun first name, last name, gmail va password majburiy.',
+      )
       return
     }
 
-    if (trimmedPassword.length < 6) {
+    if (trimmedPassword && trimmedPassword.length < 6) {
       setFormError("Password kamida 6 ta belgidan iborat bo'lishi kerak.")
       return
     }
 
+    if (currentRole === USER_ROLES.center && !normalizedCenterId) {
+      setFormError('Center profiling topilmadi. Qayta login qilib urinib ko‘ring.')
+      return
+    }
+
     setFormError('')
-    const [firstNameRaw, ...lastNameParts] = trimmedName.split(/\s+/)
-    const firstName = firstNameRaw?.trim() || trimmedName
-    const lastName = lastNameParts.join(' ').trim() || '-'
 
     // #region agent log
     fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
@@ -235,14 +317,20 @@ export function AllStudentsPage() {
         runId: 'pre-fix',
         hypothesisId: 'H1',
         location: 'AllStudentsPage.tsx:handleSaveStudent',
-        message: 'Create student submit payload snapshot',
+        message: editingStudentId
+          ? 'Update student submit payload snapshot'
+          : 'Create student submit payload snapshot',
         data: {
-          fullNameLength: trimmedName.length,
+          firstNameLength: trimmedFirstName.length,
+          lastNameLength: trimmedLastName.length,
           emailLength: normalizedEmail.length,
+          birthdayLength: normalizedBirthday.length,
+          hasGender: Boolean(normalizedGender),
           phoneLength: normalizedPhone.length,
           passwordLength: trimmedPassword.length,
-          hasCenterIdCandidate: Boolean(trimmedDepartment),
+          centerIdFromToken: centerIdFromToken ?? null,
           hasValidCenterId: Boolean(normalizedCenterId),
+          currentRole,
         },
         timestamp: Date.now(),
       }),
@@ -250,18 +338,37 @@ export function AllStudentsPage() {
     // #endregion
 
     try {
-      const result = await createStudent({
-        variables: {
-          firstName,
-          lastName,
-          email: normalizedEmail,
-          password: trimmedPassword,
-          ...(normalizedPhone ? { phone: normalizedPhone } : {}),
-          ...(normalizedCenterId ? { centerId: normalizedCenterId } : {}),
-        },
-      })
+      const result = editingStudentId
+        ? await updateStudent({
+            variables: {
+              _id: editingStudentId,
+              firstName: trimmedFirstName,
+              lastName: trimmedLastName,
+              email: normalizedEmail,
+              ...(normalizedBirthdayIso ? { birthday: normalizedBirthdayIso } : {}),
+              ...(normalizedGender ? { gender: normalizedGender } : {}),
+              ...(trimmedPassword ? { password: trimmedPassword } : {}),
+              ...(normalizedPhone ? { phone: normalizedPhone } : {}),
+              ...(normalizedCenterId ? { centerId: normalizedCenterId } : {}),
+              role: 'student',
+            },
+          })
+        : await createStudent({
+            variables: {
+              firstName: trimmedFirstName,
+              lastName: trimmedLastName,
+              email: normalizedEmail,
+              ...(normalizedBirthdayIso ? { birthday: normalizedBirthdayIso } : {}),
+              ...(normalizedGender ? { gender: normalizedGender } : {}),
+              password: trimmedPassword,
+              ...(normalizedPhone ? { phone: normalizedPhone } : {}),
+              ...(normalizedCenterId ? { centerId: normalizedCenterId } : {}),
+            },
+          })
 
-      const createdStudent = result.data?.createUser ?? null
+      const createdStudent = editingStudentId
+        ? (result.data as UpdateStudentMutationResponse | null)?.updateUser ?? null
+        : (result.data as CreateStudentMutationResponse | null)?.createUser ?? null
       const apolloErrorMessage = result.error?.message ?? null
 
       // #region agent log
@@ -276,13 +383,16 @@ export function AllStudentsPage() {
           runId: 'pre-fix',
           hypothesisId: 'H2',
           location: 'AllStudentsPage.tsx:handleSaveStudent',
-          message: 'Create student mutation result snapshot',
+          message: editingStudentId
+            ? 'Update student mutation result snapshot'
+            : 'Create student mutation result snapshot',
           data: {
             hasCreateUserData: Boolean(createdStudent),
             createdStudentId: createdStudent?._id ?? null,
-            returnedRole: createdStudent?.role ?? null,
+            returnedRole: createdStudent?.role ?? 'student',
             hasApolloError: Boolean(result.error),
             apolloErrorMessage,
+            mode: editingStudentId ? 'update' : 'create',
           },
           timestamp: Date.now(),
         }),
@@ -290,14 +400,25 @@ export function AllStudentsPage() {
       // #endregion
 
       if (!createdStudent?._id) {
-        setFormError(apolloErrorMessage ?? "Student yaratishda xatolik bo'ldi.")
+        setFormError(
+          apolloErrorMessage ??
+            (editingStudentId
+              ? "Student yangilashda xatolik bo'ldi."
+              : "Student yaratishda xatolik bo'ldi."),
+        )
         return
       }
 
       await refetchUsers()
       closeStudentModal()
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : 'Student yaratishda kutilmagan xatolik.')
+      setFormError(
+        error instanceof Error
+          ? error.message
+          : editingStudentId
+            ? 'Student yangilashda kutilmagan xatolik.'
+            : 'Student yaratishda kutilmagan xatolik.',
+      )
       // #region agent log
       fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
         method: 'POST',
@@ -310,7 +431,9 @@ export function AllStudentsPage() {
           runId: 'pre-fix',
           hypothesisId: 'H4',
           location: 'AllStudentsPage.tsx:handleSaveStudent',
-          message: 'Create student mutation threw exception',
+          message: editingStudentId
+            ? 'Update student mutation threw exception'
+            : 'Create student mutation threw exception',
           data: {
             errorMessage: error instanceof Error ? error.message : 'unknown-error',
           },
@@ -334,6 +457,7 @@ export function AllStudentsPage() {
         .join('')
 
       return {
+        userId: user._id,
         serial: String(index + 1).padStart(2, '0'),
         name: fullName || 'Student',
         email: user.email ?? '-',
@@ -403,13 +527,20 @@ export function AllStudentsPage() {
   const rows = useMemo(
     () =>
       filteredStudents.map((student, index) => ({
-        id: `${student.serial}-${student.name}-${index}`,
+        id: student.userId || `${student.serial}-${student.name}-${index}`,
         ...student,
       })),
     [filteredStudents],
   )
 
-  const columns = useMemo(() => createStudentColumns(), [])
+  const columns = useMemo(
+    () =>
+      createStudentColumnsWithActions({
+        onDelete: (row) => handleDeleteStudent(row),
+        onEdit: (row) => handleEditStudent(row),
+      }),
+    [isDeletingStudent],
+  )
   const currentPage = paginationModel.page + 1
   const totalPages = Math.max(1, Math.ceil(rows.length / paginationModel.pageSize))
   const visiblePages = getVisiblePages(currentPage, totalPages)
@@ -479,7 +610,10 @@ export function AllStudentsPage() {
               <Button
                 className="students-page__primary-button"
                 variant="contained"
-                onClick={() => setIsAddStudentOpen(true)}
+                onClick={() => {
+                  resetStudentModal()
+                  setIsAddStudentOpen(true)
+                }}
               >
                 <HeadActionIcon>
                   <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -491,7 +625,7 @@ export function AllStudentsPage() {
                     />
                   </svg>
                 </HeadActionIcon>
-                Add New Students
+                Add New Student
               </Button>
             </Box>
           </Box>
@@ -662,7 +796,7 @@ export function AllStudentsPage() {
           >
             <Box className="students-modal__header">
               <Typography component="h2" className="students-modal__title">
-                Add Students
+                {editingStudentId ? 'Update Student' : 'Add Students'}
               </Typography>
 
               <IconButton
@@ -677,76 +811,62 @@ export function AllStudentsPage() {
             <DialogContent className="students-modal__body">
               {formError ? <Alert severity="error">{formError}</Alert> : null}
               <Box className="students-modal__field">
-                <label className="students-modal__label">Group</label>
-                <Box className="students-modal__group-row">
-                  <TextField
-                    select
-                    fullWidth
-                    className="students-modal__control students-modal__control--select"
-                    value={studentGroup}
-                    onChange={(event) => setStudentGroup(event.target.value)}
-                  >
-                    <MenuItem value="Add New">Add New</MenuItem>
-                    <MenuItem value="IELTS Group A">IELTS Group A</MenuItem>
-                    <MenuItem value="IELTS Group B">IELTS Group B</MenuItem>
-                  </TextField>
-                  <Button className="students-modal__select-button" variant="contained">
-                    Select
-                  </Button>
-                </Box>
-              </Box>
-
-              <Box className="students-modal__field">
-                <label className="students-modal__label">Photo</label>
-                <Box component="label" className="students-modal__upload">
-                  <input
-                    className="students-modal__upload-input"
-                    type="file"
-                    accept=".jpg,.jpeg,.png"
-                    onChange={(event) =>
-                      setStudentPhotoName(event.target.files?.[0]?.name ?? '')
-                    }
-                  />
-                  <UploadArtwork />
-                  <Box className="students-modal__upload-content">
-                    <Typography component="p" className="students-modal__upload-title">
-                      Click or Drop your picture here, or <span>Browse</span>
-                    </Typography>
-                    <Typography component="p" className="students-modal__upload-copy">
-                      Recommended image size: 1080 × 780 pixels
-                    </Typography>
-                    <Typography component="p" className="students-modal__upload-copy">
-                      Accepted image formats: JPG, PNG.
-                    </Typography>
-                    {studentPhotoName ? (
-                      <Typography component="p" className="students-modal__upload-file">
-                        Selected: {studentPhotoName}
-                      </Typography>
-                    ) : null}
-                  </Box>
-                </Box>
-              </Box>
-
-              <Box className="students-modal__field">
-                <label className="students-modal__label">Name</label>
+                <label className="students-modal__label">First Name</label>
                 <TextField
                   fullWidth
                   className="students-modal__control"
-                  placeholder="Enter name"
-                  value={studentName}
-                  onChange={(event) => setStudentName(event.target.value)}
+                  placeholder="Enter first name"
+                  value={studentFirstName}
+                  onChange={(event) => setStudentFirstName(event.target.value)}
                 />
               </Box>
 
               <Box className="students-modal__field">
-                <label className="students-modal__label">Email</label>
+                <label className="students-modal__label">Last Name</label>
                 <TextField
                   fullWidth
                   className="students-modal__control"
-                  placeholder="Enter email"
+                  placeholder="Enter last name"
+                  value={studentLastName}
+                  onChange={(event) => setStudentLastName(event.target.value)}
+                />
+              </Box>
+
+              <Box className="students-modal__field">
+                <label className="students-modal__label">Gmail</label>
+                <TextField
+                  fullWidth
+                  className="students-modal__control"
+                  placeholder="Enter gmail"
                   value={studentEmail}
                   onChange={(event) => setStudentEmail(event.target.value)}
                 />
+              </Box>
+
+              <Box className="students-modal__field">
+                <label className="students-modal__label">Birthday</label>
+                <TextField
+                  fullWidth
+                  className="students-modal__control"
+                  type="date"
+                  value={studentBirthday}
+                  onChange={(event) => setStudentBirthday(event.target.value)}
+                />
+              </Box>
+
+              <Box className="students-modal__field">
+                <label className="students-modal__label">Gender</label>
+                <TextField
+                  select
+                  fullWidth
+                  className="students-modal__control"
+                  value={studentGender}
+                  onChange={(event) => setStudentGender(event.target.value)}
+                >
+                  <MenuItem value="">Select gender</MenuItem>
+                  <MenuItem value="male">Male</MenuItem>
+                  <MenuItem value="female">Female</MenuItem>
+                </TextField>
               </Box>
 
               <Box className="students-modal__field">
@@ -772,45 +892,6 @@ export function AllStudentsPage() {
                 />
               </Box>
 
-              <Box className="students-modal__field">
-                <label className="students-modal__label">Department</label>
-                <TextField
-                  fullWidth
-                  className="students-modal__control"
-                  placeholder="Enter department"
-                  value={studentDepartment}
-                  onChange={(event) => setStudentDepartment(event.target.value)}
-                />
-              </Box>
-
-              {extraFields.map((field) => (
-                <Box key={field.id} className="students-modal__field">
-                  <label className="students-modal__label">{field.label}</label>
-                  <TextField
-                    fullWidth
-                    className="students-modal__control"
-                    placeholder={`Enter ${field.label.toLowerCase()}`}
-                  />
-                </Box>
-              ))}
-
-              <Button
-                className="students-modal__add-field"
-                variant="contained"
-                onClick={addExtraField}
-              >
-                <HeadActionIcon>
-                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path
-                      d="M12 5V19M5 12H19"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </HeadActionIcon>
-                Add New Field
-              </Button>
             </DialogContent>
 
             <Box className="students-modal__footer">
@@ -825,9 +906,13 @@ export function AllStudentsPage() {
                 className="students-modal__save"
                 variant="contained"
                 onClick={handleSaveStudent}
-                disabled={isCreatingStudent}
+                disabled={isCreatingStudent || isUpdatingStudent}
               >
-                {isCreatingStudent ? 'Saving...' : 'Save'}
+                {isCreatingStudent || isUpdatingStudent
+                  ? 'Saving...'
+                  : editingStudentId
+                    ? 'Update'
+                    : 'Save'}
               </Button>
             </Box>
           </Dialog>

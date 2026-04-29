@@ -10,12 +10,12 @@ import {
   DashboardPage,
   FeaturePage,
   HomePage,
+  PaymentsPage,
   PrizeQuizzesPage,
   QuestionsPage,
-  SignInPage,
-  SignUpPage,
   StatisticsPage,
 } from '../pages'
+import { SignInPage, SignUpPage } from '../pages/Auth'
 import { useAppSelector } from '../store/hooks'
 import { selectAuthToken, selectUserRole } from '../store'
 import { hasRequiredRole, USER_ROLES, type UserRole } from '../store/slices/authSlice'
@@ -31,7 +31,7 @@ const allRoles = Object.values(USER_ROLES)
 const superAdminOnly = [USER_ROLES.superAdmin]
 const centerRoles = [USER_ROLES.center, USER_ROLES.superAdmin]
 const examRoles = [USER_ROLES.student, USER_ROLES.center, USER_ROLES.superAdmin]
-const studentRoles = [USER_ROLES.student, USER_ROLES.superAdmin]
+const studentFeatureRoles = [USER_ROLES.center, USER_ROLES.superAdmin]
 
 function ProtectedRoute({
   element,
@@ -200,7 +200,7 @@ const appRoutes: AppRouteConfig[] = [
         description="This screen can hold result tables, score history, and searchable assessment records."
       />
     ),
-    allowedRoles: studentRoles,
+    allowedRoles: studentFeatureRoles,
   },
   {
     path: ROUTES_PATH.statistics,
@@ -216,7 +216,12 @@ const appRoutes: AppRouteConfig[] = [
         description="Manage certificate templates, issue history, and verification workflows on this page."
       />
     ),
-    allowedRoles: studentRoles,
+    allowedRoles: studentFeatureRoles,
+  },
+  {
+    path: ROUTES_PATH.payments,
+    element: <PaymentsPage />,
+    allowedRoles: superAdminOnly,
   },
   {
     path: ROUTES_PATH.surveys,
