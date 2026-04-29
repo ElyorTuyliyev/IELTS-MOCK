@@ -1,3 +1,4 @@
+import { css } from '@emotion/react'
 import styled from '@emotion/styled'
 
 export const AdminPageRoot = styled.div`
@@ -377,14 +378,132 @@ export const AdminPageRoot = styled.div`
   .admin-modal__body {
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 22px;
     padding: 28px 30px 18px;
+  }
+
+  .admin-modal__intro {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(220px, 0.9fr);
+    gap: 16px;
+  }
+
+  .admin-modal__intro-card,
+  .admin-modal__preview {
+    border-radius: 24px;
+    border: 1px solid #e6eaf5;
+  }
+
+  .admin-modal__intro-card {
+    padding: 22px;
+    background:
+      radial-gradient(circle at top right, rgba(124, 58, 237, 0.14), transparent 28%),
+      linear-gradient(180deg, #faf8ff 0%, #ffffff 100%);
+  }
+
+  .admin-modal__eyebrow {
+    margin: 0 0 8px;
+    color: #7a3ff2;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .admin-modal__intro-title {
+    margin: 0;
+    color: #111827;
+    font-size: 1.18rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+  }
+
+  .admin-modal__intro-text {
+    margin: 10px 0 0;
+    color: #5f6980;
+    font-size: 0.94rem;
+    line-height: 1.65;
+  }
+
+  .admin-modal__rules {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .admin-modal__rule-chip {
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(124, 58, 237, 0.08);
+    color: #6d28d9;
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
+  .admin-modal__preview {
+    display: grid;
+    justify-items: center;
+    align-content: center;
+    gap: 10px;
+    padding: 22px 18px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%);
+  }
+
+  .admin-modal__preview-avatar {
+    display: grid;
+    place-items: center;
+    width: 66px;
+    height: 66px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #7c3aed 0%, #06b6d4 100%);
+    color: #ffffff;
+    font-size: 1.35rem;
+    font-weight: 800;
+    box-shadow: 0 12px 30px rgba(124, 58, 237, 0.24);
+  }
+
+  .admin-modal__preview-name {
+    margin: 0;
+    color: #111827;
+    font-size: 1rem;
+    font-weight: 800;
+  }
+
+  .admin-modal__preview-email {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.88rem;
+  }
+
+  .admin-modal__preview-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 32px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: #eef2ff;
+    color: #4338ca;
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .admin-modal__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 16px;
   }
 
   .admin-modal__field {
     display: flex;
     flex-direction: column;
     gap: 10px;
+  }
+
+  .admin-modal__field--full {
+    grid-column: 1 / -1;
   }
 
   .admin-modal__label {
@@ -475,6 +594,279 @@ export const AdminPageRoot = styled.div`
     .admin-modal__footer {
       padding-left: 20px;
       padding-right: 20px;
+    }
+
+    .admin-modal__intro,
+    .admin-modal__grid {
+      grid-template-columns: 1fr;
+    }
+
+    .admin-modal__footer {
+      flex-direction: column-reverse;
+    }
+
+    .admin-modal__cancel,
+    .admin-modal__save {
+      width: 100%;
+    }
+  }
+`
+
+export const adminModalGlobalStyles = css`
+  .admin-modal__backdrop {
+    background: rgba(19, 27, 51, 0.58);
+    backdrop-filter: blur(3px);
+  }
+
+  .admin-modal__paper {
+    overflow: hidden;
+    border: 1px solid #e5e9f3;
+    border-radius: 28px;
+    width: min(100%, 760px);
+    max-width: 760px;
+    background: linear-gradient(180deg, #ffffff 0%, #fdfdff 100%);
+    box-shadow: 0 28px 64px rgba(23, 26, 57, 0.18);
+  }
+
+  .admin-modal__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding: 28px 30px 24px;
+    border-bottom: 1px solid #e8edf8;
+  }
+
+  .admin-modal__title {
+    margin: 0;
+    color: #111111;
+    font-size: 1.3rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+  }
+
+  .admin-modal__close {
+    width: 34px;
+    height: 34px;
+    border-radius: 16px;
+    color: #475069;
+  }
+
+  .admin-modal__close svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .admin-modal__body {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    padding: 28px 30px 18px;
+  }
+
+  .admin-modal__intro {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(220px, 0.9fr);
+    gap: 16px;
+  }
+
+  .admin-modal__intro-card,
+  .admin-modal__preview {
+    border-radius: 24px;
+    border: 1px solid #e6eaf5;
+  }
+
+  .admin-modal__intro-card {
+    padding: 22px;
+    background:
+      radial-gradient(circle at top right, rgba(124, 58, 237, 0.14), transparent 28%),
+      linear-gradient(180deg, #faf8ff 0%, #ffffff 100%);
+  }
+
+  .admin-modal__eyebrow {
+    margin: 0 0 8px;
+    color: #7a3ff2;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .admin-modal__intro-title {
+    margin: 0;
+    color: #111827;
+    font-size: 1.18rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+  }
+
+  .admin-modal__intro-text {
+    margin: 10px 0 0;
+    color: #5f6980;
+    font-size: 0.94rem;
+    line-height: 1.65;
+  }
+
+  .admin-modal__rules {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .admin-modal__rule-chip {
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(124, 58, 237, 0.08);
+    color: #6d28d9;
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
+  .admin-modal__preview {
+    display: grid;
+    justify-items: center;
+    align-content: center;
+    gap: 10px;
+    padding: 22px 18px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%);
+  }
+
+  .admin-modal__preview-avatar {
+    display: grid;
+    place-items: center;
+    width: 66px;
+    height: 66px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #7c3aed 0%, #06b6d4 100%);
+    color: #ffffff;
+    font-size: 1.35rem;
+    font-weight: 800;
+    box-shadow: 0 12px 30px rgba(124, 58, 237, 0.24);
+  }
+
+  .admin-modal__preview-name {
+    margin: 0;
+    color: #111827;
+    font-size: 1rem;
+    font-weight: 800;
+  }
+
+  .admin-modal__preview-email {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.88rem;
+  }
+
+  .admin-modal__preview-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 32px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: #eef2ff;
+    color: #4338ca;
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .admin-modal__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 16px;
+  }
+
+  .admin-modal__field {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .admin-modal__field--full {
+    grid-column: 1 / -1;
+  }
+
+  .admin-modal__label {
+    color: #141414;
+    font-size: 0.98rem;
+    font-weight: 700;
+  }
+
+  .admin-modal__body .MuiOutlinedInput-root {
+    min-height: 46px;
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  }
+
+  .admin-modal__body .MuiOutlinedInput-notchedOutline {
+    border-color: #d7deeb;
+  }
+
+  .admin-modal__body .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+    border-color: #c4cce0;
+  }
+
+  .admin-modal__body .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+    border-width: 1px;
+    border-color: #8450ff;
+    box-shadow: 0 0 0 3px rgba(132, 80, 255, 0.12);
+  }
+
+  .admin-modal__body .MuiInputBase-input {
+    padding: 13px 15px;
+    color: #121826;
+    font-size: 0.99rem;
+  }
+
+  .admin-modal__body .MuiInputBase-input::placeholder {
+    color: #8a93a7;
+    opacity: 1;
+  }
+
+  .admin-modal__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 0 30px 28px;
+  }
+
+  .admin-modal__cancel,
+  .admin-modal__save {
+    min-width: 130px;
+    min-height: 46px;
+    border-radius: 16px;
+    text-transform: none;
+    font-weight: 700;
+  }
+
+  .admin-modal__cancel {
+    border: 1px solid #d8def0;
+    color: #111827;
+    background: #ffffff;
+  }
+
+  .admin-modal__save {
+    background: linear-gradient(135deg, #7a3ff2 0%, #9363ff 100%);
+    color: #ffffff;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.28),
+      0 8px 18px rgba(122, 63, 242, 0.22);
+  }
+
+  @media (max-width: 768px) {
+    .admin-modal__header,
+    .admin-modal__body,
+    .admin-modal__footer {
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+
+    .admin-modal__intro,
+    .admin-modal__grid {
+      grid-template-columns: 1fr;
     }
 
     .admin-modal__footer {

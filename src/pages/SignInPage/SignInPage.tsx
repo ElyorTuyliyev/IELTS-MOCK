@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { Controller, type SubmitHandler, useForm } from "react-hook-form";
+import { useMutation } from "@apollo/client/react";
 import {
   Alert,
   Box,
@@ -15,31 +16,11 @@ import {
 import { ROUTES_PATH } from "../../routes";
 import { useAppDispatch } from "../../store/hooks";
 import { setAuthSession, USER_ROLES, type UserRole } from "../../store/slices/authSlice";
+import { LOGIN_MUTATION } from "./api/loginMutation";
 import { SignInPageRoot } from "./SignInPage.style";
 
 const chartBars = [22, 30, 15, 14, 27, 33, 36, 25, 18, 15, 22, 40];
 const paginationDots = Array.from({ length: 7 }, (_, index) => index);
-
-const DEMO_USERS: Record<
-  string,
-  { password: string; role: UserRole; token: string }
-> = {
-  "superadmin@ieltsstudy.uz": {
-    password: "123456",
-    role: USER_ROLES.superAdmin,
-    token: "demo-super-admin-token",
-  },
-  "admin@ieltsstudy.uz": {
-    password: "123456",
-    role: USER_ROLES.admin,
-    token: "demo-admin-token",
-  },
-  "centeradmin@ieltsstudy.uz": {
-    password: "123456",
-    role: USER_ROLES.centerAdmin,
-    token: "demo-center-admin-token",
-  },
-};
 
 function SparkIcon() {
   return (
@@ -142,6 +123,25 @@ type SignInFormValues = {
   rememberAccount: boolean;
 };
 
+type LoginMutationResponse = {
+  login: {
+    role: string | null;
+    token: string | null;
+  } | null;
+};
+
+type LoginMutationVariables = {
+  email: string;
+  password: string;
+  rememberMe: boolean;
+};
+
+function toUserRole(role: string | null): UserRole | null {
+  if (!role) return null;
+  const allowedRoles = Object.values(USER_ROLES);
+  return allowedRoles.includes(role as UserRole) ? (role as UserRole) : null;
+}
+
 export function SignInPage() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
@@ -153,22 +153,24 @@ export function SignInPage() {
       rememberAccount: false,
     },
   });
+  const [loginMutation, { loading }] = useMutation<LoginMutationResponse, LoginMutationVariables>(
+    LOGIN_MUTATION,
+  );
 
-  const onSubmit: SubmitHandler<SignInFormValues> = (values) => {
+  const onSubmit: SubmitHandler<SignInFormValues> = async (values) => {
     const normalizedEmail = values.email.trim().toLowerCase();
-    const matchedUser = DEMO_USERS[normalizedEmail];
 
     // #region agent log
     fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Debug-Session-Id": "393b5a",
+        "X-Debug-Session-Id": "24497a",
       },
       body: JSON.stringify({
-        sessionId: "393b5a",
-        runId: "post-fix",
-        hypothesisId: "H6",
+        sessionId: "24497a",
+        runId: "pre-fix",
+        hypothesisId: "H1",
         location: "SignInPage.tsx:handleSubmit",
         message: "Sign in submit snapshot",
         data: {
@@ -182,19 +184,103 @@ export function SignInPage() {
     }).catch(() => {});
     // #endregion
 
-    if (!matchedUser || matchedUser.password !== values.password) {
-      setLoginError("Email yoki parol noto'g'ri. Demo accountlardan birini ishlating.")
-      return;
-    }
+    try {
+      const result = await loginMutation({
+        variables: {
+          email: normalizedEmail,
+          password: values.password,
+          rememberMe: values.rememberAccount,
+        },
+      });
 
-    setLoginError("");
-    dispatch(
-      setAuthSession({
-        token: matchedUser.token,
-        role: matchedUser.role,
-      }),
-    );
-    navigate(ROUTES_PATH.dashboard);
+      const loginData = result.data?.login ?? null;
+      const apolloErrorMessage = result.error?.message ?? null;
+
+      // #region agent log
+      fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Debug-Session-Id": "24497a",
+        },
+        body: JSON.stringify({
+          sessionId: "24497a",
+          runId: "pre-fix",
+          hypothesisId: "H2",
+          location: "SignInPage.tsx:handleSubmit",
+          message: "Login mutation result snapshot",
+          data: {
+            hasLoginData: Boolean(loginData),
+            hasToken: Boolean(loginData?.token),
+            role: loginData?.role ?? null,
+            hasApolloError: Boolean(result.error),
+            apolloErrorMessage,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
+
+      if (!loginData?.token) {
+        setLoginError(apolloErrorMessage ?? "Email yoki parol noto'g'ri.");
+        return;
+      }
+
+      const normalizedRole = toUserRole(loginData.role);
+      setLoginError("");
+      dispatch(
+        setAuthSession({
+          token: loginData.token,
+          role: normalizedRole,
+        }),
+      );
+
+      // #region agent log
+      fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Debug-Session-Id": "24497a",
+        },
+        body: JSON.stringify({
+          sessionId: "24497a",
+          runId: "pre-fix",
+          hypothesisId: "H3",
+          location: "SignInPage.tsx:handleSubmit",
+          message: "Auth session persisted from login",
+          data: {
+            tokenLength: loginData.token.length,
+            roleAfterNormalization: normalizedRole,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
+
+      navigate(ROUTES_PATH.dashboard);
+    } catch (error) {
+      setLoginError(error instanceof Error ? error.message : "Login request failed.");
+      // #region agent log
+      fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Debug-Session-Id": "24497a",
+        },
+        body: JSON.stringify({
+          sessionId: "24497a",
+          runId: "pre-fix",
+          hypothesisId: "H4",
+          location: "SignInPage.tsx:handleSubmit",
+          message: "Login mutation threw exception",
+          data: {
+            errorMessage: error instanceof Error ? error.message : "unknown-error",
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
+    }
   };
 
   return (
@@ -395,14 +481,6 @@ export function SignInPage() {
               Welcome back! Please enter your details.
             </Typography>
 
-            <Alert severity="info">
-              superadmin@ieltsstudy.uz / 123456
-              <br />
-              admin@ieltsstudy.uz / 123456
-              <br />
-              centeradmin@ieltsstudy.uz / 123456
-            </Alert>
-
             {loginError ? <Alert severity="error">{loginError}</Alert> : null}
 
             <Box className="sign-in-page__social-actions">
@@ -454,12 +532,12 @@ export function SignInPage() {
                       method: "POST",
                       headers: {
                         "Content-Type": "application/json",
-                        "X-Debug-Session-Id": "393b5a",
+                        "X-Debug-Session-Id": "24497a",
                       },
                       body: JSON.stringify({
-                        sessionId: "393b5a",
-                        runId: "post-fix",
-                        hypothesisId: "H7",
+                        sessionId: "24497a",
+                        runId: "pre-fix",
+                        hypothesisId: "H1",
                         location: "SignInPage.tsx:emailOnChange",
                         message: "Email field changed",
                         data: {
@@ -531,12 +609,12 @@ export function SignInPage() {
                             method: "POST",
                             headers: {
                               "Content-Type": "application/json",
-                              "X-Debug-Session-Id": "393b5a",
+                              "X-Debug-Session-Id": "24497a",
                             },
                             body: JSON.stringify({
-                              sessionId: "393b5a",
-                              runId: "post-fix",
-                              hypothesisId: "H8",
+                              sessionId: "24497a",
+                              runId: "pre-fix",
+                              hypothesisId: "H1",
                               location: "SignInPage.tsx:rememberCheckbox",
                               message: "Remember account toggled",
                               data: {
@@ -569,8 +647,9 @@ export function SignInPage() {
               type="submit"
               className="sign-in-page__submit-button"
               variant="contained"
+              disabled={loading}
             >
-              Sign In
+              {loading ? "Signing in..." : "Sign In"}
             </Button>
 
             <Typography component="p" className="sign-in-page__footer-text">

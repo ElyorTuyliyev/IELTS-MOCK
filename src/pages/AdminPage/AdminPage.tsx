@@ -1,4 +1,6 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { Global } from '@emotion/react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useMutation, useQuery } from '@apollo/client/react'
 import {
   Alert,
   Box,
@@ -14,7 +16,9 @@ import {
 import { DataGrid, type GridColDef } from '@mui/x-data-grid'
 
 import { Layout } from '../../components/layout'
-import { AdminPageRoot } from './AdminPage.style'
+import { CREATE_ADMIN_MUTATION } from './api/createAdminMutation'
+import { FIND_ALL_USERS_QUERY } from './api/findAllUsersQuery'
+import { AdminPageRoot, adminModalGlobalStyles } from './AdminPage.style'
 
 const adminStats = [
   { label: 'Organizations', value: '18', meta: 'Platform bo‘yicha faol tenantlar' },
@@ -67,24 +71,47 @@ type ManagedAdmin = {
   createdAt: string
 }
 
-const initialAdmins: ManagedAdmin[] = [
-  {
-    id: 'admin-1',
-    fullName: 'Aziza Karimova',
-    email: 'admin@ieltsstudy.uz',
-    scope: 'Global operations',
-    password: '123456',
-    createdAt: 'Apr 28, 2026',
-  },
-  {
-    id: 'admin-2',
-    fullName: 'Sardor Rakhimov',
-    email: 'ops-admin@ieltsstudy.uz',
-    scope: 'Exam and content control',
-    password: '654321',
-    createdAt: 'Apr 28, 2026',
-  },
-]
+type CreateAdminMutationResponse = {
+  createAdmin: {
+    _id: string
+    firstName: string
+    lastName: string
+    email: string
+    phone?: string | null
+    role: string | null
+    centerId?: string | null
+  } | null
+}
+
+type CreateAdminMutationVariables = {
+  firstName: string
+  lastName: string
+  email: string
+  phone?: string
+  password: string
+  centerName: string
+  centerAddress: string
+  centerPhone: string
+  centerLogo?: string
+  centerEstablishedAt?: string
+}
+
+type FindAllUsersQueryResponse = {
+  findAllUsers: Array<{
+    _id: string
+    firstName: string
+    lastName: string
+    email?: string | null
+    phone: string
+    role?: string | null
+    centerId?: string | null
+    createdAt: string
+  }>
+}
+
+const ADMIN_ROLES = new Set(['center', 'admin', 'super_admin', 'center_admin'])
+
+const initialAdmins: ManagedAdmin[] = []
 
 function HeadActionIcon({
   children,
@@ -114,17 +141,100 @@ export function AdminPage() {
   const [isAddAdminOpen, setIsAddAdminOpen] = useState(false)
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
-  const [scope, setScope] = useState('')
+  const [phone, setPhone] = useState('')
+  const [centerName, setCenterName] = useState('')
+  const [centerAddress, setCenterAddress] = useState('')
+  const [centerPhone, setCenterPhone] = useState('')
+  const [centerLogo, setCenterLogo] = useState('')
+  const [centerEstablishedAt, setCenterEstablishedAt] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [formError, setFormError] = useState('')
+  const [createAdmin, { loading: isCreatingAdmin }] = useMutation<
+    CreateAdminMutationResponse,
+    CreateAdminMutationVariables
+  >(CREATE_ADMIN_MUTATION)
+  const { data: usersData, refetch: refetchUsers } = useQuery<FindAllUsersQueryResponse>(
+    FIND_ALL_USERS_QUERY,
+  )
+
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': '24497a',
+      },
+      body: JSON.stringify({
+        sessionId: '24497a',
+        runId: 'pre-fix',
+        hypothesisId: 'H5',
+        location: 'AdminPage.tsx:useEffect',
+        message: 'Admin page initial dataset snapshot',
+        data: {
+          initialAdminsCount: admins.length,
+          initialAdminEmails: admins.slice(0, 3).map((admin) => admin.email),
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
+  }, [])
+
+  useEffect(() => {
+    const serverUsers = usersData?.findAllUsers ?? []
+    const adminUsers = serverUsers.filter((user) => ADMIN_ROLES.has(user.role ?? ''))
+    const mappedAdmins: ManagedAdmin[] = adminUsers.map((user) => ({
+      id: user._id,
+      fullName: `${user.firstName} ${user.lastName}`.trim(),
+      email: user.email ?? `${user.phone}@no-email.local`,
+      scope: user.centerId ?? 'General administration',
+      password: '******',
+      createdAt: new Date(user.createdAt).toLocaleDateString('en-US', {
+        month: 'short',
+        day: '2-digit',
+        year: 'numeric',
+      }),
+    }))
+    setAdmins(mappedAdmins)
+
+    // #region agent log
+    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': '24497a',
+      },
+      body: JSON.stringify({
+        sessionId: '24497a',
+        runId: 'pre-fix',
+        hypothesisId: 'H6',
+        location: 'AdminPage.tsx:usersDataEffect',
+        message: 'Hydrated admins from backend query',
+        data: {
+          serverUsersCount: serverUsers.length,
+          adminUsersCount: adminUsers.length,
+          mappedAdminsCount: mappedAdmins.length,
+          firstRoles: serverUsers.slice(0, 5).map((user) => user.role ?? null),
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
+  }, [usersData])
 
   const adminCountLabel = useMemo(() => String(admins.length).padStart(2, '0'), [admins.length])
 
   const resetAdminForm = () => {
     setFullName('')
     setEmail('')
-    setScope('')
+    setPhone('')
+    setCenterName('')
+    setCenterAddress('')
+    setCenterPhone('')
+    setCenterLogo('')
+    setCenterEstablishedAt('')
     setPassword('')
     setConfirmPassword('')
     setFormError('')
@@ -135,15 +245,29 @@ export function AdminPage() {
     resetAdminForm()
   }
 
-  const handleAddAdmin = () => {
+  const handleAddAdmin = async () => {
     const trimmedName = fullName.trim()
     const normalizedEmail = email.trim().toLowerCase()
-    const trimmedScope = scope.trim()
+    const normalizedPhone = phone.trim()
+    const normalizedCenterName = centerName.trim()
+    const normalizedCenterAddress = centerAddress.trim()
+    const normalizedCenterPhone = centerPhone.trim()
+    const normalizedCenterLogo = centerLogo.trim()
+    const normalizedCenterEstablishedAt = centerEstablishedAt.trim()
     const trimmedPassword = password.trim()
     const trimmedConfirmPassword = confirmPassword.trim()
 
-    if (!trimmedName || !normalizedEmail || !trimmedPassword || !trimmedConfirmPassword) {
-      setFormError("Admin qo'shish uchun ism, email va password majburiy.")
+    if (
+      !trimmedName ||
+      !normalizedEmail ||
+      !normalizedPhone ||
+      !trimmedPassword ||
+      !trimmedConfirmPassword ||
+      !normalizedCenterName ||
+      !normalizedCenterAddress ||
+      !normalizedCenterPhone
+    ) {
+      setFormError("Admin qo'shish uchun user va center ma'lumotlari to'liq kiritilishi kerak.")
       return
     }
 
@@ -161,23 +285,137 @@ export function AdminPage() {
       setFormError('Password va confirm password bir xil emas.')
       return
     }
+    setFormError('')
 
-    setAdmins((currentAdmins) => [
-      {
-        id: `admin-${Date.now()}`,
-        fullName: trimmedName,
-        email: normalizedEmail,
-        scope: trimmedScope || 'General administration',
-        password: trimmedPassword,
-        createdAt: new Date().toLocaleDateString('en-US', {
-          month: 'short',
-          day: '2-digit',
-          year: 'numeric',
-        }),
+    const [firstNameRaw, ...lastNameParts] = trimmedName.split(' ')
+    const firstName = firstNameRaw?.trim() || trimmedName
+    const lastName = lastNameParts.join(' ').trim() || '-'
+
+    // #region agent log
+    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': '24497a',
       },
-      ...currentAdmins,
-    ])
-    closeAddAdminModal()
+      body: JSON.stringify({
+        sessionId: '24497a',
+        runId: 'pre-fix',
+        hypothesisId: 'H1',
+        location: 'AdminPage.tsx:handleAddAdmin',
+        message: 'Create admin submit payload snapshot',
+        data: {
+          fullNameLength: trimmedName.length,
+          emailLength: normalizedEmail.length,
+          phoneLength: normalizedPhone.length,
+          centerNameLength: normalizedCenterName.length,
+          centerAddressLength: normalizedCenterAddress.length,
+          centerPhoneLength: normalizedCenterPhone.length,
+          passwordLength: trimmedPassword.length,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
+
+    try {
+      const result = await createAdmin({
+        variables: {
+          firstName,
+          lastName,
+          email: normalizedEmail,
+          ...(normalizedPhone ? { phone: normalizedPhone } : {}),
+          password: trimmedPassword,
+          centerName: normalizedCenterName,
+          centerAddress: normalizedCenterAddress,
+          centerPhone: normalizedCenterPhone,
+          ...(normalizedCenterLogo ? { centerLogo: normalizedCenterLogo } : {}),
+          ...(normalizedCenterEstablishedAt
+            ? { centerEstablishedAt: normalizedCenterEstablishedAt }
+            : {}),
+        },
+      })
+
+      const createdAdmin = result.data?.createAdmin ?? null
+      const apolloErrorMessage = result.error?.message ?? null
+
+      // #region agent log
+      fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Debug-Session-Id': '24497a',
+        },
+        body: JSON.stringify({
+          sessionId: '24497a',
+          runId: 'pre-fix',
+          hypothesisId: 'H2',
+          location: 'AdminPage.tsx:handleAddAdmin',
+          message: 'Create admin mutation result snapshot',
+          data: {
+            hasCreateUserData: Boolean(createdAdmin),
+            createdAdminId: createdAdmin?._id ?? null,
+            linkedCenterId: createdAdmin?.centerId ?? null,
+            hasApolloError: Boolean(result.error),
+            apolloErrorMessage,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {})
+      // #endregion
+
+      if (!createdAdmin?._id) {
+        setFormError(apolloErrorMessage ?? "Admin yaratishda xatolik bo'ldi.")
+        return
+      }
+
+      await refetchUsers()
+
+      // #region agent log
+      fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Debug-Session-Id': '24497a',
+        },
+        body: JSON.stringify({
+          sessionId: '24497a',
+          runId: 'pre-fix',
+          hypothesisId: 'H3',
+          location: 'AdminPage.tsx:handleAddAdmin',
+          message: 'Admin created and inserted into local grid',
+          data: {
+            localAdminsCountAfterInsert: admins.length,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {})
+      // #endregion
+
+      closeAddAdminModal()
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Admin yaratishda kutilmagan xatolik.")
+      // #region agent log
+      fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Debug-Session-Id': '24497a',
+        },
+        body: JSON.stringify({
+          sessionId: '24497a',
+          runId: 'pre-fix',
+          hypothesisId: 'H4',
+          location: 'AdminPage.tsx:handleAddAdmin',
+          message: 'Create admin mutation threw exception',
+          data: {
+            errorMessage: error instanceof Error ? error.message : 'unknown-error',
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {})
+      // #endregion
+    }
   }
 
   const handleDeleteAdmin = (id: string) => {
@@ -275,6 +513,7 @@ export function AdminPage() {
 
   return (
     <Layout>
+      <Global styles={adminModalGlobalStyles} />
       <AdminPageRoot>
         <Box className="admin-page">
           <Box className="admin-page__hero">
@@ -487,62 +726,155 @@ export function AdminPage() {
             <DialogContent className="admin-modal__body">
               {formError ? <Alert severity="error">{formError}</Alert> : null}
 
-              <Box className="admin-modal__field">
-                <label className="admin-modal__label">Full name</label>
-                <TextField
-                  fullWidth
-                  className="admin-modal__control"
-                  placeholder="Enter full name"
-                  value={fullName}
-                  onChange={(event) => setFullName(event.target.value)}
-                />
+              <Box className="admin-modal__intro">
+                <Box className="admin-modal__intro-card">
+                  <Typography component="p" className="admin-modal__eyebrow">
+                    Access creation
+                  </Typography>
+                  <Typography component="h3" className="admin-modal__intro-title">
+                    Create a new platform admin
+                  </Typography>
+                  <Typography component="p" className="admin-modal__intro-text">
+                    Fill in identity, responsibility scope, and secure password.
+                    This admin will appear in the control table immediately.
+                  </Typography>
+
+                  <Box className="admin-modal__rules">
+                    <Box className="admin-modal__rule-chip">Unique email</Box>
+                    <Box className="admin-modal__rule-chip">Min 6 chars</Box>
+                    <Box className="admin-modal__rule-chip">Super-admin managed</Box>
+                  </Box>
+                </Box>
+
+                <Box className="admin-modal__preview">
+                  <Box className="admin-modal__preview-avatar">
+                    {(fullName.trim()[0] ?? 'A').toUpperCase()}
+                  </Box>
+                  <Typography component="p" className="admin-modal__preview-name">
+                    {fullName.trim() || 'New Admin'}
+                  </Typography>
+                  <Typography component="p" className="admin-modal__preview-email">
+                    {email.trim() || 'admin@company.com'}
+                  </Typography>
+                  <Box className="admin-modal__preview-badge">
+                    {centerName.trim() || 'Center will be created'}
+                  </Box>
+                </Box>
               </Box>
 
-              <Box className="admin-modal__field">
-                <label className="admin-modal__label">Email</label>
-                <TextField
-                  fullWidth
-                  className="admin-modal__control"
-                  type="email"
-                  placeholder="Enter email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                />
-              </Box>
+              <Box className="admin-modal__grid">
+                <Box className="admin-modal__field">
+                  <label className="admin-modal__label">Full name</label>
+                  <TextField
+                    fullWidth
+                    className="admin-modal__control"
+                    placeholder="Enter full name"
+                    value={fullName}
+                    onChange={(event) => setFullName(event.target.value)}
+                  />
+                </Box>
 
-              <Box className="admin-modal__field">
-                <label className="admin-modal__label">Scope</label>
-                <TextField
-                  fullWidth
-                  className="admin-modal__control"
-                  placeholder="Global operations"
-                  value={scope}
-                  onChange={(event) => setScope(event.target.value)}
-                />
-              </Box>
+                <Box className="admin-modal__field">
+                  <label className="admin-modal__label">Email</label>
+                  <TextField
+                    fullWidth
+                    className="admin-modal__control"
+                    type="email"
+                    placeholder="Enter email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                  />
+                </Box>
 
-              <Box className="admin-modal__field">
-                <label className="admin-modal__label">Password</label>
-                <TextField
-                  fullWidth
-                  className="admin-modal__control"
-                  type="password"
-                  placeholder="Enter password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                />
-              </Box>
+                <Box className="admin-modal__field">
+                  <label className="admin-modal__label">Phone</label>
+                  <TextField
+                    fullWidth
+                    className="admin-modal__control"
+                    placeholder="998901234567"
+                    value={phone}
+                    onChange={(event) => setPhone(event.target.value)}
+                  />
+                </Box>
 
-              <Box className="admin-modal__field">
-                <label className="admin-modal__label">Confirm password</label>
-                <TextField
-                  fullWidth
-                  className="admin-modal__control"
-                  type="password"
-                  placeholder="Confirm password"
-                  value={confirmPassword}
-                  onChange={(event) => setConfirmPassword(event.target.value)}
-                />
+                <Box className="admin-modal__field admin-modal__field--full">
+                  <label className="admin-modal__label">Center name</label>
+                  <TextField
+                    fullWidth
+                    className="admin-modal__control"
+                    placeholder="Center name"
+                    value={centerName}
+                    onChange={(event) => setCenterName(event.target.value)}
+                  />
+                </Box>
+
+                <Box className="admin-modal__field admin-modal__field--full">
+                  <label className="admin-modal__label">Center address</label>
+                  <TextField
+                    fullWidth
+                    className="admin-modal__control"
+                    placeholder="Center address"
+                    value={centerAddress}
+                    onChange={(event) => setCenterAddress(event.target.value)}
+                  />
+                </Box>
+
+                <Box className="admin-modal__field">
+                  <label className="admin-modal__label">Center phone</label>
+                  <TextField
+                    fullWidth
+                    className="admin-modal__control"
+                    placeholder="998901234567"
+                    value={centerPhone}
+                    onChange={(event) => setCenterPhone(event.target.value)}
+                  />
+                </Box>
+
+                <Box className="admin-modal__field">
+                  <label className="admin-modal__label">Center establishedAt</label>
+                  <TextField
+                    fullWidth
+                    className="admin-modal__control"
+                    placeholder="2026-01-01T00:00:00.000Z"
+                    value={centerEstablishedAt}
+                    onChange={(event) => setCenterEstablishedAt(event.target.value)}
+                  />
+                </Box>
+
+                <Box className="admin-modal__field admin-modal__field--full">
+                  <label className="admin-modal__label">Center logo (optional)</label>
+                  <TextField
+                    fullWidth
+                    className="admin-modal__control"
+                    placeholder="https://example.com/logo.png"
+                    value={centerLogo}
+                    onChange={(event) => setCenterLogo(event.target.value)}
+                  />
+                </Box>
+
+                <Box className="admin-modal__field">
+                  <label className="admin-modal__label">Password</label>
+                  <TextField
+                    fullWidth
+                    className="admin-modal__control"
+                    type="password"
+                    placeholder="Enter password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                  />
+                </Box>
+
+                <Box className="admin-modal__field">
+                  <label className="admin-modal__label">Confirm password</label>
+                  <TextField
+                    fullWidth
+                    className="admin-modal__control"
+                    type="password"
+                    placeholder="Confirm password"
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                  />
+                </Box>
               </Box>
             </DialogContent>
 
@@ -558,8 +890,9 @@ export function AdminPage() {
                 className="admin-modal__save"
                 variant="contained"
                 onClick={handleAddAdmin}
+                disabled={isCreatingAdmin}
               >
-                Add Admin
+                {isCreatingAdmin ? 'Creating...' : 'Add Admin'}
               </Button>
             </Box>
           </Dialog>

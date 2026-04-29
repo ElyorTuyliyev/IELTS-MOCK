@@ -1,0 +1,28 @@
+---
+description: MyList Admin UI architecture and coding conventions
+alwaysApply: true
+---
+
+# MyList Admin UI Coding Rules
+
+## Core Structure
+- Keep route paths centralized in `src/routes/paths.ts` and route mapping in `src/routes/routes.tsx`.
+- Add each new page under `src/pages/<ModuleName>/` and expose from barrel files where used.
+- Reusable UI belongs in `src/components/`; business-specific UI stays inside its module.
+- Put shared constants in `src/constants/`, shared types in `src/types/`, and shared helpers in `src/helpers/`.
+
+## Coding Style
+- Prefer TypeScript-first patterns with explicit domain types and avoid `any`.
+- Reuse existing app providers and patterns from `src/main.tsx` (`Apollo`, router, theme, i18n).
+- Keep component logic and style colocated (`<Page>.tsx` + `<Page>.style.ts`) for page-level screens.
+- Use store hooks from `src/store/` for global state and local `useState` for local UI state.
+
+## Routing and Access
+- When adding features, update both `paths` and `routes` files together.
+- Use role-aware route configuration (`allowedRoles`) for private pages.
+- Preserve auth flow in `App.tsx` (unauthenticated users must go to sign-in).
+
+## Delivery Checklist
+- Add/update types, constants, and helpers before duplicating logic in pages.
+- Keep imports clean with existing aliases and project conventions.
+- Ensure `pnpm lint` and `pnpm build` stay clean after changes.

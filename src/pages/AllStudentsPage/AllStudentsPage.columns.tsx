@@ -91,6 +91,19 @@ export function createStudentColumns(): GridColDef<StudentGridRow>[] {
       ),
     },
     {
+      field: "email",
+      headerName: "Gmail",
+      minWidth: 220,
+      flex: 1,
+      sortable: false,
+      headerAlign: "left",
+      renderCell: (params) => (
+        <span className="students-table__meta students-table__meta--strong">
+          {params.row.email}
+        </span>
+      ),
+    },
+    {
       field: "points",
       headerName: "Points",
       minWidth: 150,

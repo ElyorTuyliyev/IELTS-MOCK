@@ -56,7 +56,9 @@ export function Sidebar() {
         .map((item) => ({
           ...item,
           children: item.children?.filter((child) =>
-            child.allowedRoles ? hasRequiredRole(role, child.allowedRoles) : true,
+            child.allowedRoles
+              ? hasRequiredRole(role, child.allowedRoles)
+              : true,
           ),
         })),
     })).filter((group) => group.items.length > 0);
@@ -65,20 +67,54 @@ export function Sidebar() {
       return roleFilteredGroups;
     }
 
-    return roleFilteredGroups.map((group) => ({
-      ...group,
-      items: group.items.filter((item) => {
-        const matchesItem = item.label.toLowerCase().includes(normalizedSearch);
-        const matchesChildren = item.children?.some((child) =>
-          child.label.toLowerCase().includes(normalizedSearch),
-        );
+    return roleFilteredGroups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => {
+          const matchesItem = item.label
+            .toLowerCase()
+            .includes(normalizedSearch);
+          const matchesChildren = item.children?.some((child) =>
+            child.label.toLowerCase().includes(normalizedSearch),
+          );
 
-        return matchesItem || matchesChildren;
-      }),
-    })).filter((group) => group.items.length > 0);
+          return matchesItem || matchesChildren;
+        }),
+      }))
+      .filter((group) => group.items.length > 0);
   }, [role, searchTerm]);
 
   const normalizedSearch = searchTerm.trim().toLowerCase();
+
+  useEffect(() => {
+    // #region agent log
+    fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "24497a",
+      },
+      body: JSON.stringify({
+        sessionId: "24497a",
+        runId: "pre-fix",
+        hypothesisId: "H8",
+        location: "Sidebar.tsx:visibleGroups/useEffect",
+        message: "Sidebar visible items snapshot by role",
+        data: {
+          role,
+          groupTitles: visibleGroups.map((group) => group.title),
+          visibleItemLabels: visibleGroups.flatMap((group) =>
+            group.items.map((item) => item.label),
+          ),
+          hasCentersItem: visibleGroups.some((group) =>
+            group.items.some((item) => item.label === "Centers"),
+          ),
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+  }, [role, visibleGroups]);
 
   const isItemActive = (path?: string, children?: Array<{ path?: string }>) => {
     if (path && location.pathname === path) {
@@ -294,27 +330,11 @@ export function Sidebar() {
         ))}
       </Box>
 
-      <Button className="sidebar__profile" variant="text">
-        <Box
-          component="span"
-          className="sidebar__profile-avatar"
-          aria-hidden="true"
-        >
-          TA
-        </Box>
-        <Box className="sidebar__profile-copy">
-          <Typography component="strong" className="sidebar__profile-name">
-            Tahsan
-          </Typography>
-          <Typography component="span" className="sidebar__profile-email">
-            tahsan@gmail.com
-          </Typography>
-        </Box>
-        <span className="sidebar__profile-arrow" aria-hidden="true">
-          ˅
-        </span>
-      </Button>
-      <Button className="sidebar__logout" variant="outlined" onClick={handleLogout}>
+      <Button
+        className="sidebar__logout"
+        variant="outlined"
+        onClick={handleLogout}
+      >
         <span className="sidebar__logout-icon" aria-hidden="true">
           ⇦
         </span>

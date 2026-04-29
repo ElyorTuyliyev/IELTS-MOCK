@@ -1,6 +1,8 @@
 import { Global } from '@emotion/react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useMutation, useQuery } from '@apollo/client/react'
 import {
+  Alert,
   Box,
   Button,
   Dialog,
@@ -14,6 +16,8 @@ import {
 import { DataGrid, type GridPaginationModel } from '@mui/x-data-grid'
 
 import { Layout } from '../../components/layout'
+import { CREATE_STUDENT_MUTATION } from './api/createStudentMutation'
+import { FIND_ALL_USERS_QUERY } from './api/findAllUsersQuery'
 import { createStudentColumns } from './AllStudentsPage.columns'
 import {
   STUDENTS,
@@ -36,6 +40,42 @@ const avatarGradients = [
 ] as const
 
 const levelTones: StudentLevelTone[] = ['orange', 'teal', 'pink', 'yellow', 'blue']
+const OBJECT_ID_PATTERN = /^[a-f\d]{24}$/i
+
+type CreateStudentMutationResponse = {
+  createUser: {
+    _id: string
+    firstName: string
+    lastName: string
+    email: string
+    phone?: string | null
+    role: string | null
+    centerId?: string | null
+    createdAt?: string
+  } | null
+}
+
+type CreateStudentMutationVariables = {
+  firstName: string
+  lastName: string
+  email: string
+  password: string
+  phone?: string
+  centerId?: string
+}
+
+type FindAllUsersQueryResponse = {
+  findAllUsers: Array<{
+    _id: string
+    firstName: string
+    lastName: string
+    email?: string | null
+    phone?: string | null
+    role?: string | null
+    centerId?: string | null
+    createdAt: string
+  }>
+}
 
 function HeadActionIcon({
   children,
@@ -114,20 +154,35 @@ export function AllStudentsPage() {
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false)
   const [studentGroup, setStudentGroup] = useState('Add New')
   const [studentName, setStudentName] = useState('')
+  const [studentEmail, setStudentEmail] = useState('')
+  const [studentPhone, setStudentPhone] = useState('')
+  const [studentPassword, setStudentPassword] = useState('')
   const [studentDepartment, setStudentDepartment] = useState('')
   const [studentPhotoName, setStudentPhotoName] = useState('')
   const [extraFields, setExtraFields] = useState<Array<{ id: string; label: string }>>([])
+  const [formError, setFormError] = useState('')
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
     page: 0,
     pageSize: STUDENTS_PAGE_SIZE,
   })
+  const [createStudent, { loading: isCreatingStudent }] = useMutation<
+    CreateStudentMutationResponse,
+    CreateStudentMutationVariables
+  >(CREATE_STUDENT_MUTATION)
+  const { data: usersData, refetch: refetchUsers } = useQuery<FindAllUsersQueryResponse>(
+    FIND_ALL_USERS_QUERY,
+  )
 
   const resetStudentModal = () => {
     setStudentGroup('Add New')
     setStudentName('')
+    setStudentEmail('')
+    setStudentPhone('')
+    setStudentPassword('')
     setStudentDepartment('')
     setStudentPhotoName('')
     setExtraFields([])
+    setFormError('')
   }
 
   const closeStudentModal = () => {
@@ -145,47 +200,183 @@ export function AllStudentsPage() {
     ])
   }
 
-  const handleSaveStudent = () => {
+  const handleSaveStudent = async () => {
     const trimmedName = studentName.trim()
+    const normalizedEmail = studentEmail.trim().toLowerCase()
+    const normalizedPhone = studentPhone.trim()
+    const trimmedPassword = studentPassword.trim()
     const trimmedDepartment = studentDepartment.trim()
+    const normalizedCenterId = OBJECT_ID_PATTERN.test(trimmedDepartment) ? trimmedDepartment : ''
 
-    if (!trimmedName || !trimmedDepartment) {
+    if (!trimmedName || !normalizedEmail || !trimmedPassword) {
+      setFormError('Student yaratish uchun name, email va password majburiy.')
       return
     }
 
-    const now = new Date()
-    const serial = String(studentRows.length + 1).padStart(2, '0')
-    const initials = trimmedName
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((item) => item[0]?.toUpperCase() ?? '')
-      .join('')
-
-    const nextStudent: StudentRow = {
-      serial,
-      name: trimmedName,
-      points: '00/100',
-      loginTime: now.toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-      }),
-      creationDate: now.toLocaleDateString('en-US', {
-        month: 'short',
-        day: '2-digit',
-        year: 'numeric',
-      }),
-      department: trimmedDepartment,
-      status: 'Draft',
-      initials: initials || 'ST',
-      avatarGradient: avatarGradients[studentRows.length % avatarGradients.length],
-      levelTone: levelTones[studentRows.length % levelTones.length],
+    if (trimmedPassword.length < 6) {
+      setFormError("Password kamida 6 ta belgidan iborat bo'lishi kerak.")
+      return
     }
 
-    setStudentRows((currentRows) => [...currentRows, nextStudent])
-    closeStudentModal()
+    setFormError('')
+    const [firstNameRaw, ...lastNameParts] = trimmedName.split(/\s+/)
+    const firstName = firstNameRaw?.trim() || trimmedName
+    const lastName = lastNameParts.join(' ').trim() || '-'
+
+    // #region agent log
+    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': '24497a',
+      },
+      body: JSON.stringify({
+        sessionId: '24497a',
+        runId: 'pre-fix',
+        hypothesisId: 'H1',
+        location: 'AllStudentsPage.tsx:handleSaveStudent',
+        message: 'Create student submit payload snapshot',
+        data: {
+          fullNameLength: trimmedName.length,
+          emailLength: normalizedEmail.length,
+          phoneLength: normalizedPhone.length,
+          passwordLength: trimmedPassword.length,
+          hasCenterIdCandidate: Boolean(trimmedDepartment),
+          hasValidCenterId: Boolean(normalizedCenterId),
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
+
+    try {
+      const result = await createStudent({
+        variables: {
+          firstName,
+          lastName,
+          email: normalizedEmail,
+          password: trimmedPassword,
+          ...(normalizedPhone ? { phone: normalizedPhone } : {}),
+          ...(normalizedCenterId ? { centerId: normalizedCenterId } : {}),
+        },
+      })
+
+      const createdStudent = result.data?.createUser ?? null
+      const apolloErrorMessage = result.error?.message ?? null
+
+      // #region agent log
+      fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Debug-Session-Id': '24497a',
+        },
+        body: JSON.stringify({
+          sessionId: '24497a',
+          runId: 'pre-fix',
+          hypothesisId: 'H2',
+          location: 'AllStudentsPage.tsx:handleSaveStudent',
+          message: 'Create student mutation result snapshot',
+          data: {
+            hasCreateUserData: Boolean(createdStudent),
+            createdStudentId: createdStudent?._id ?? null,
+            returnedRole: createdStudent?.role ?? null,
+            hasApolloError: Boolean(result.error),
+            apolloErrorMessage,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {})
+      // #endregion
+
+      if (!createdStudent?._id) {
+        setFormError(apolloErrorMessage ?? "Student yaratishda xatolik bo'ldi.")
+        return
+      }
+
+      await refetchUsers()
+      closeStudentModal()
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Student yaratishda kutilmagan xatolik.')
+      // #region agent log
+      fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Debug-Session-Id': '24497a',
+        },
+        body: JSON.stringify({
+          sessionId: '24497a',
+          runId: 'pre-fix',
+          hypothesisId: 'H4',
+          location: 'AllStudentsPage.tsx:handleSaveStudent',
+          message: 'Create student mutation threw exception',
+          data: {
+            errorMessage: error instanceof Error ? error.message : 'unknown-error',
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {})
+      // #endregion
+    }
   }
+
+  useEffect(() => {
+    const serverUsers = usersData?.findAllUsers ?? []
+    const studentUsers = serverUsers.filter((user) => user.role === 'student')
+    const mappedStudents: StudentRow[] = studentUsers.map((user, index) => {
+      const fullName = `${user.firstName} ${user.lastName}`.trim()
+      const initials = fullName
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((item) => item[0]?.toUpperCase() ?? '')
+        .join('')
+
+      return {
+        serial: String(index + 1).padStart(2, '0'),
+        name: fullName || 'Student',
+        email: user.email ?? '-',
+        points: '00/100',
+        loginTime: '--:--',
+        creationDate: new Date(user.createdAt).toLocaleDateString('en-US', {
+          month: 'short',
+          day: '2-digit',
+          year: 'numeric',
+        }),
+        department: user.centerId ?? 'No center',
+        status: 'Active',
+        initials: initials || 'ST',
+        avatarGradient: avatarGradients[index % avatarGradients.length],
+        levelTone: levelTones[index % levelTones.length],
+      }
+    })
+    setStudentRows(mappedStudents)
+
+    // #region agent log
+    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': '24497a',
+      },
+      body: JSON.stringify({
+        sessionId: '24497a',
+        runId: 'pre-fix',
+        hypothesisId: 'H3',
+        location: 'AllStudentsPage.tsx:usersDataEffect',
+        message: 'Hydrated students from backend query',
+        data: {
+          serverUsersCount: serverUsers.length,
+          studentUsersCount: studentUsers.length,
+          mappedStudentsCount: mappedStudents.length,
+          mappedStudentsWithEmailCount: mappedStudents.filter((student) => student.email !== '-').length,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
+  }, [usersData])
 
   const filteredStudents = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase()
@@ -194,6 +385,7 @@ export function AllStudentsPage() {
       return (
         normalizedSearch.length === 0 ||
         student.name.toLowerCase().includes(normalizedSearch) ||
+        student.email.toLowerCase().includes(normalizedSearch) ||
         student.department.toLowerCase().includes(normalizedSearch) ||
         student.status.toLowerCase().includes(normalizedSearch)
       )
@@ -483,6 +675,7 @@ export function AllStudentsPage() {
             </Box>
 
             <DialogContent className="students-modal__body">
+              {formError ? <Alert severity="error">{formError}</Alert> : null}
               <Box className="students-modal__field">
                 <label className="students-modal__label">Group</label>
                 <Box className="students-modal__group-row">
@@ -546,6 +739,40 @@ export function AllStudentsPage() {
               </Box>
 
               <Box className="students-modal__field">
+                <label className="students-modal__label">Email</label>
+                <TextField
+                  fullWidth
+                  className="students-modal__control"
+                  placeholder="Enter email"
+                  value={studentEmail}
+                  onChange={(event) => setStudentEmail(event.target.value)}
+                />
+              </Box>
+
+              <Box className="students-modal__field">
+                <label className="students-modal__label">Phone</label>
+                <TextField
+                  fullWidth
+                  className="students-modal__control"
+                  placeholder="998901234567"
+                  value={studentPhone}
+                  onChange={(event) => setStudentPhone(event.target.value)}
+                />
+              </Box>
+
+              <Box className="students-modal__field">
+                <label className="students-modal__label">Password</label>
+                <TextField
+                  fullWidth
+                  className="students-modal__control"
+                  type="password"
+                  placeholder="Enter password"
+                  value={studentPassword}
+                  onChange={(event) => setStudentPassword(event.target.value)}
+                />
+              </Box>
+
+              <Box className="students-modal__field">
                 <label className="students-modal__label">Department</label>
                 <TextField
                   fullWidth
@@ -598,8 +825,9 @@ export function AllStudentsPage() {
                 className="students-modal__save"
                 variant="contained"
                 onClick={handleSaveStudent}
+                disabled={isCreatingStudent}
               >
-                Save
+                {isCreatingStudent ? 'Saving...' : 'Save'}
               </Button>
             </Box>
           </Dialog>
