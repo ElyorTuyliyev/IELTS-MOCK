@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
 import {
-  AdminPage,
   AddCenterPage,
   AddQuestionPage,
   AllStudentsPage,
@@ -30,8 +29,9 @@ type AppRouteConfig = {
 
 const allRoles = Object.values(USER_ROLES)
 const superAdminOnly = [USER_ROLES.superAdmin]
-const managementRoles = [USER_ROLES.admin, USER_ROLES.superAdmin]
-const teachingRoles = [USER_ROLES.centerAdmin, USER_ROLES.admin, USER_ROLES.superAdmin]
+const centerRoles = [USER_ROLES.center, USER_ROLES.superAdmin]
+const examRoles = [USER_ROLES.student, USER_ROLES.center, USER_ROLES.superAdmin]
+const studentRoles = [USER_ROLES.student, USER_ROLES.superAdmin]
 
 function ProtectedRoute({
   element,
@@ -48,6 +48,27 @@ function ProtectedRoute({
   }
 
   if (!hasRequiredRole(role, allowedRoles)) {
+    // #region agent log
+    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': '24497a',
+      },
+      body: JSON.stringify({
+        sessionId: '24497a',
+        runId: 'pre-fix',
+        hypothesisId: 'H-role-guard',
+        location: 'AppRoutes.tsx:ProtectedRoute',
+        message: 'Role rejected by guard',
+        data: {
+          currentRole: role,
+          allowedRoles,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
     return <Navigate to={ROUTES_PATH.dashboard} replace />
   }
 
@@ -61,39 +82,34 @@ const appRoutes: AppRouteConfig[] = [
     allowedRoles: allRoles,
   },
   {
-    path: ROUTES_PATH.admin,
-    element: <AdminPage />,
-    allowedRoles: superAdminOnly,
-  },
-  {
     path: ROUTES_PATH.allExams,
     element: <HomePage />,
-    allowedRoles: teachingRoles,
+    allowedRoles: examRoles,
   },
   {
     path: ROUTES_PATH.prizeQuizzes,
     element: <PrizeQuizzesPage />,
-    allowedRoles: teachingRoles,
+    allowedRoles: examRoles,
   },
   {
     path: ROUTES_PATH.center,
     element: <CentersPage />,
-    allowedRoles: managementRoles,
+    allowedRoles: centerRoles,
   },
   {
     path: ROUTES_PATH.addCenter,
     element: <AddCenterPage />,
-    allowedRoles: managementRoles,
+    allowedRoles: superAdminOnly,
   },
   {
     path: ROUTES_PATH.lms,
     element: <Navigate to={ROUTES_PATH.courses} replace />,
-    allowedRoles: teachingRoles,
+    allowedRoles: superAdminOnly,
   },
   {
     path: ROUTES_PATH.courses,
     element: <CoursesPage />,
-    allowedRoles: teachingRoles,
+    allowedRoles: superAdminOnly,
   },
   {
     path: ROUTES_PATH.courseware,
@@ -104,22 +120,22 @@ const appRoutes: AppRouteConfig[] = [
         description="This page is ready for lessons, modules, and course content management linked to your LMS workflow."
       />
     ),
-    allowedRoles: teachingRoles,
+    allowedRoles: superAdminOnly,
   },
   {
     path: ROUTES_PATH.questions,
     element: <Navigate to={ROUTES_PATH.allQuestions} replace />,
-    allowedRoles: teachingRoles,
+    allowedRoles: centerRoles,
   },
   {
     path: ROUTES_PATH.allQuestions,
     element: <QuestionsPage />,
-    allowedRoles: teachingRoles,
+    allowedRoles: centerRoles,
   },
   {
     path: ROUTES_PATH.addQuestion,
     element: <AddQuestionPage />,
-    allowedRoles: managementRoles,
+    allowedRoles: centerRoles,
   },
   {
     path: ROUTES_PATH.batchImport,
@@ -130,7 +146,7 @@ const appRoutes: AppRouteConfig[] = [
         description="Upload, map, and validate bulk question imports from external sources on this screen."
       />
     ),
-    allowedRoles: managementRoles,
+    allowedRoles: centerRoles,
   },
   {
     path: ROUTES_PATH.importRecords,
@@ -141,17 +157,17 @@ const appRoutes: AppRouteConfig[] = [
         description="Track import history, validation results, and retry actions for previously uploaded question files."
       />
     ),
-    allowedRoles: managementRoles,
+    allowedRoles: centerRoles,
   },
   {
     path: ROUTES_PATH.students,
     element: <Navigate to={ROUTES_PATH.allStudents} replace />,
-    allowedRoles: teachingRoles,
+    allowedRoles: centerRoles,
   },
   {
     path: ROUTES_PATH.allStudents,
     element: <AllStudentsPage />,
-    allowedRoles: teachingRoles,
+    allowedRoles: centerRoles,
   },
   {
     path: ROUTES_PATH.signupForms,
@@ -162,7 +178,7 @@ const appRoutes: AppRouteConfig[] = [
         description="Use this page for student registration forms, onboarding flows, and field customization."
       />
     ),
-    allowedRoles: teachingRoles,
+    allowedRoles: centerRoles,
   },
   {
     path: ROUTES_PATH.studentSettings,
@@ -173,7 +189,7 @@ const appRoutes: AppRouteConfig[] = [
         description="Manage student-facing settings, login fields, access rules, and profile preferences here."
       />
     ),
-    allowedRoles: managementRoles,
+    allowedRoles: centerRoles,
   },
   {
     path: ROUTES_PATH.resultsDatabase,
@@ -184,12 +200,12 @@ const appRoutes: AppRouteConfig[] = [
         description="This screen can hold result tables, score history, and searchable assessment records."
       />
     ),
-    allowedRoles: managementRoles,
+    allowedRoles: studentRoles,
   },
   {
     path: ROUTES_PATH.statistics,
     element: <StatisticsPage />,
-    allowedRoles: managementRoles,
+    allowedRoles: superAdminOnly,
   },
   {
     path: ROUTES_PATH.certificates,
@@ -200,7 +216,7 @@ const appRoutes: AppRouteConfig[] = [
         description="Manage certificate templates, issue history, and verification workflows on this page."
       />
     ),
-    allowedRoles: managementRoles,
+    allowedRoles: studentRoles,
   },
   {
     path: ROUTES_PATH.surveys,
@@ -211,7 +227,7 @@ const appRoutes: AppRouteConfig[] = [
         description="This route is ready for survey campaigns, response summaries, and follow-up actions."
       />
     ),
-    allowedRoles: managementRoles,
+    allowedRoles: superAdminOnly,
   },
   {
     path: ROUTES_PATH.settings,
@@ -222,7 +238,7 @@ const appRoutes: AppRouteConfig[] = [
         description="Application preferences, organization settings, and user controls can be added here."
       />
     ),
-    allowedRoles: managementRoles,
+    allowedRoles: superAdminOnly,
   },
   {
     path: ROUTES_PATH.help,
@@ -233,7 +249,7 @@ const appRoutes: AppRouteConfig[] = [
         description="Use this page for help center links, onboarding tips, FAQs, or support contact actions."
       />
     ),
-    allowedRoles: allRoles,
+    allowedRoles: superAdminOnly,
   },
   {
     path: ROUTES_PATH.signIn,

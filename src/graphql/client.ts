@@ -3,7 +3,7 @@ import { setContext } from '@apollo/client/link/context'
 
 import { store } from '../store'
 
-const graphqlUrl = import.meta.env.VITE_GRAPHQL_URL ?? '/graphql'
+const graphqlUrl = import.meta.env.VITE_GRAPHQL_URL ?? 'http://localhost:8000/graphql'
 const graphqlToken = import.meta.env.VITE_GRAPHQL_TOKEN
 
 const httpLink = createHttpLink({

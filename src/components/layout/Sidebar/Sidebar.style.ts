@@ -215,6 +215,8 @@ export const SidebarRoot = styled(Box)`
   }
 
   .sidebar__profile-copy {
+    display: flex;
+    align-items: center;
     min-width: 0;
     text-align: left;
   }
@@ -223,13 +225,6 @@ export const SidebarRoot = styled(Box)`
     display: block;
     font-weight: 700;
     color: #0f172a;
-  }
-
-  .sidebar__profile-email {
-    display: block;
-    margin-top: 4px;
-    color: #64748b;
-    font-size: 0.875rem;
   }
 
   .sidebar__logout {

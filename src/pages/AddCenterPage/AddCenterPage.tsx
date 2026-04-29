@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Box, Button, MenuItem, TextField, Typography } from '@mui/material'
 
@@ -31,6 +31,102 @@ export function AddCenterPage() {
     ],
     [centerType, roomCount, studentCapacity],
   )
+
+  useEffect(() => {
+    const sendDebugLog = (payload: {
+      hypothesisId: string
+      location: string
+      message: string
+      data: Record<string, unknown>
+    }) => {
+      fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Debug-Session-Id': '24497a',
+        },
+        body: JSON.stringify({
+          sessionId: '24497a',
+          runId: 'pre-fix',
+          timestamp: Date.now(),
+          ...payload,
+        }),
+      }).catch(() => {})
+    }
+
+    const form = document.querySelector('.add-center-form') as HTMLElement | null
+    const firstInput = document.querySelector(
+      '.add-center-form__grid .MuiFormControl-root',
+    ) as HTMLElement | null
+    const actions = document.querySelector('.add-center-form__actions') as HTMLElement | null
+    const summary = document.querySelector('.add-center-form__summary') as HTMLElement | null
+
+    // #region agent log
+    sendDebugLog({
+      hypothesisId: 'H1',
+      location: 'AddCenterPage.tsx:summary/useEffect',
+      message: 'Form container sizing snapshot',
+      data: {
+        viewportWidth: window.innerWidth,
+        formWidth: form?.getBoundingClientRect().width ?? null,
+        formDisplay: form ? window.getComputedStyle(form).display : null,
+      },
+    })
+    // #endregion
+
+    // #region agent log
+    sendDebugLog({
+      hypothesisId: 'H2',
+      location: 'AddCenterPage.tsx:summary/useEffect',
+      message: 'First field sizing snapshot',
+      data: {
+        fieldWidth: firstInput?.getBoundingClientRect().width ?? null,
+        fieldClasses: firstInput?.className ?? null,
+      },
+    })
+    // #endregion
+
+    // #region agent log
+    sendDebugLog({
+      hypothesisId: 'H3',
+      location: 'AddCenterPage.tsx:summary/useEffect',
+      message: 'Actions layout snapshot',
+      data: {
+        actionsWidth: actions?.getBoundingClientRect().width ?? null,
+        actionsDirection: actions ? window.getComputedStyle(actions).flexDirection : null,
+        actionsJustify: actions ? window.getComputedStyle(actions).justifyContent : null,
+      },
+    })
+    // #endregion
+
+    // #region agent log
+    sendDebugLog({
+      hypothesisId: 'H4',
+      location: 'AddCenterPage.tsx:summary/useEffect',
+      message: 'Actions structural context',
+      data: {
+        actionsParentClass: actions?.parentElement?.className ?? null,
+        previousSiblingClass: actions?.previousElementSibling?.className ?? null,
+      },
+    })
+    // #endregion
+
+    // #region agent log
+    sendDebugLog({
+      hypothesisId: 'H5',
+      location: 'AddCenterPage.tsx:summary/useEffect',
+      message: 'Summary and actions spacing snapshot',
+      data: {
+        summaryBottom: summary?.getBoundingClientRect().bottom ?? null,
+        actionsTop: actions?.getBoundingClientRect().top ?? null,
+        actionsGapFromSummary:
+          summary && actions
+            ? Number((actions.getBoundingClientRect().top - summary.getBoundingClientRect().bottom).toFixed(2))
+            : null,
+      },
+    })
+    // #endregion
+  }, [])
 
   return (
     <Layout>

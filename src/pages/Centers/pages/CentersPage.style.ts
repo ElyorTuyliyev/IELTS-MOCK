@@ -87,9 +87,6 @@ export const CentersPageRoot = styled.div`
     border: 1px solid rgba(148, 163, 184, 0.16);
     border-radius: 28px;
     box-shadow: 0 20px 44px rgba(15, 23, 42, 0.06);
-  }
-
-  .centers-panel {
     padding: 22px;
   }
 

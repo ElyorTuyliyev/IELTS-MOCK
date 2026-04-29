@@ -5,6 +5,7 @@ export type StudentLevelTone = 'orange' | 'teal' | 'pink' | 'yellow' | 'blue'
 export type StudentRow = {
   serial: string
   name: string
+  email: string
   points: string
   loginTime: string
   creationDate: string

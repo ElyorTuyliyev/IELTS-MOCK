@@ -1,7 +1,8 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
 
 export const USER_ROLES = {
-  admin: 'admin',
+  center: 'center',
+  student: 'student',
   centerAdmin: 'center_admin',
   superAdmin: 'super_admin',
 } as const

@@ -2,7 +2,6 @@ export const ROUTES_PATH = {
   lms: '/lms',
   help: '/help',
   dashboard: '/',
-  admin: '/admin',
   signIn: '/sign-in',
   signUp: '/sign-up',
   allExams: '/exams',
