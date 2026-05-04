@@ -254,67 +254,13 @@ export const QuestionsPageRoot = styled.div`
     line-height: 1;
   }
 
-  .question-table__footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-    padding: 16px 20px;
-    border-top: 1px solid #edf2fb;
-    flex-wrap: wrap;
+  .question-table__grid {
+    width: 100%;
+    min-height: 0;
   }
 
-  .question-table__pagination {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .question-table__page-button,
-  .question-table__show-button {
-    min-width: 44px;
-    height: 44px;
-    border: 1px solid #dbe2f1;
-    border-radius: 14px;
-    background: #ffffff;
-    color: #111827;
-    text-transform: none;
-    font-size: 1.1rem;
-  }
-
-  .question-table__page-number {
-    min-width: 34px;
-    height: 34px;
-    color: #111827;
-    font-size: 1rem;
-    font-weight: 600;
-    text-transform: none;
-  }
-
-  .question-table__page-number--active {
-    border: 1px solid #dbe2f1;
-    border-radius: 12px;
-    background: #f8fafc;
-  }
-
-  .question-table__page-ellipsis {
-    color: #475569;
-    font-weight: 700;
-  }
-
-  .question-table__footer-meta {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-    color: #475569;
-    font-size: 0.94rem;
-    font-weight: 500;
-  }
-
-  .question-table__show-button {
-    padding: 0 16px;
-    font-size: 0.98rem;
+  .question-table__grid .MuiDataGrid-root {
+    border-radius: 0 0 22px 22px;
   }
 
   .MuiDataGrid-overlayWrapper {

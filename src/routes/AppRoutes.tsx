@@ -1,25 +1,60 @@
 import type { ReactNode } from 'react'
+import { lazy } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
-import {
-  AddCenterPage,
-  AddQuestionPage,
-  AllStudentsPage,
-  CentersPage,
-  CoursesPage,
-  DashboardPage,
-  FeaturePage,
-  HomePage,
-  PaymentsPage,
-  PrizeQuizzesPage,
-  QuestionsPage,
-  StatisticsPage,
-} from '../pages'
-import { SignInPage, SignUpPage } from '../pages/Auth'
 import { useAppSelector } from '../store/hooks'
 import { selectAuthToken, selectUserRole } from '../store'
 import { hasRequiredRole, USER_ROLES, type UserRole } from '../store/slices/authSlice'
 import { ROUTES_PATH } from './paths'
+
+const DashboardPage = lazy(() =>
+  import('../pages/DashboardPage').then((m) => ({ default: m.DashboardPage })),
+)
+const HomePage = lazy(() =>
+  import('../pages/HomePage').then((m) => ({ default: m.HomePage })),
+)
+const PrizeQuizzesPage = lazy(() =>
+  import('../pages/PrizeQuizzesPage').then((m) => ({ default: m.PrizeQuizzesPage })),
+)
+const CentersPage = lazy(() =>
+  import('../pages/Centers').then((m) => ({ default: m.CentersPage })),
+)
+const AddCenterPage = lazy(() =>
+  import('../pages/AddCenter').then((m) => ({ default: m.AddCenterPage })),
+)
+const CoursesPage = lazy(() =>
+  import('../pages/CoursesPage').then((m) => ({ default: m.CoursesPage })),
+)
+const FeaturePage = lazy(() =>
+  import('../pages/FeaturePage/FeaturePage').then((m) => ({ default: m.FeaturePage })),
+)
+const QuestionsPage = lazy(() =>
+  import('../pages/QuestionsPage').then((m) => ({ default: m.QuestionsPage })),
+)
+const AddQuestionPage = lazy(() =>
+  import('../pages/AddQuestionPage').then((m) => ({ default: m.AddQuestionPage })),
+)
+const AllStudentsPage = lazy(() =>
+  import('../pages/AllStudentsPage').then((m) => ({ default: m.AllStudentsPage })),
+)
+const StatisticsPage = lazy(() =>
+  import('../pages/StatisticsPage').then((m) => ({ default: m.StatisticsPage })),
+)
+const PaymentsPage = lazy(() =>
+  import('../pages/PaymentsPage').then((m) => ({ default: m.PaymentsPage })),
+)
+const SignInPage = lazy(() =>
+  import('../pages/Auth/SignInPage').then((m) => ({ default: m.SignInPage })),
+)
+const SignUpPage = lazy(() =>
+  import('../pages/Auth/SignUpPage').then((m) => ({ default: m.SignUpPage })),
+)
+const SignupFormsPage = lazy(() =>
+  import('../pages/SignupFormsPage').then((m) => ({ default: m.SignupFormsPage })),
+)
+const StudentLeadSignupPage = lazy(() =>
+  import('../pages/StudentLeadSignupPage').then((m) => ({ default: m.StudentLeadSignupPage })),
+)
 
 type AppRouteConfig = {
   path: string
@@ -43,32 +78,22 @@ function ProtectedRoute({
   const token = useAppSelector(selectAuthToken)
   const role = useAppSelector(selectUserRole)
 
-  if (!token) {
+  if (!token || !role) {
     return <Navigate to={ROUTES_PATH.signIn} replace />
   }
 
   if (!hasRequiredRole(role, allowedRoles)) {
-    // #region agent log
-    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': '24497a',
-      },
-      body: JSON.stringify({
-        sessionId: '24497a',
-        runId: 'pre-fix',
-        hypothesisId: 'H-role-guard',
-        location: 'AppRoutes.tsx:ProtectedRoute',
-        message: 'Role rejected by guard',
-        data: {
-          currentRole: role,
-          allowedRoles,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {})
-    // #endregion
+    return <Navigate to={ROUTES_PATH.signIn} replace />
+  }
+
+  return <>{element}</>
+}
+
+function PublicOnlyRoute({ element }: { element: ReactNode }) {
+  const token = useAppSelector(selectAuthToken)
+  const role = useAppSelector(selectUserRole)
+
+  if (token && role) {
     return <Navigate to={ROUTES_PATH.dashboard} replace />
   }
 
@@ -171,13 +196,7 @@ const appRoutes: AppRouteConfig[] = [
   },
   {
     path: ROUTES_PATH.signupForms,
-    element: (
-      <FeaturePage
-        eyebrow="People"
-        title="Signup Forms"
-        description="Use this page for student registration forms, onboarding flows, and field customization."
-      />
-    ),
+    element: <SignupFormsPage />,
     allowedRoles: centerRoles,
   },
   {
@@ -264,6 +283,14 @@ const appRoutes: AppRouteConfig[] = [
     path: ROUTES_PATH.signUp,
     element: <SignUpPage />,
   },
+  {
+    path: ROUTES_PATH.studentJoin,
+    element: <SignUpPage />,
+  },
+  {
+    path: ROUTES_PATH.studentLeadJoin,
+    element: <StudentLeadSignupPage />,
+  },
 ]
 
 export function AppRoutes() {
@@ -274,7 +301,12 @@ export function AppRoutes() {
           key={route.path}
           path={route.path}
           element={
-            route.allowedRoles ? (
+            route.path === ROUTES_PATH.signIn ||
+            route.path === ROUTES_PATH.signUp ||
+            route.path === ROUTES_PATH.studentJoin ||
+            route.path === ROUTES_PATH.studentLeadJoin ? (
+              <PublicOnlyRoute element={route.element} />
+            ) : route.allowedRoles ? (
               <ProtectedRoute
                 element={route.element}
                 allowedRoles={route.allowedRoles}
@@ -285,10 +317,7 @@ export function AppRoutes() {
           }
         />
       ))}
-      <Route
-        path="*"
-        element={<Navigate to={ROUTES_PATH.dashboard} replace />}
-      />
+      <Route path="*" element={<Navigate to={ROUTES_PATH.signIn} replace />} />
     </Routes>
   )
 }

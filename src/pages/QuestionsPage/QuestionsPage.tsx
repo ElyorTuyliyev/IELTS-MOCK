@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
+import { useQuery } from '@apollo/client/react'
 import {
   Box,
   Button,
@@ -13,43 +14,95 @@ import { DataGrid, type GridPaginationModel } from '@mui/x-data-grid'
 import { Layout } from '../../components/layout'
 import { ROUTES_PATH } from '../../routes'
 import { createQuestionColumns } from './QuestionsPage.columns'
+import { FIND_ALL_QUESTIONS_QUERY } from './api/findAllQuestionsQuery'
 import {
-  QUESTIONS,
   QUESTION_PAGE_SIZE,
+  type QuestionModuleFilter,
   type QuestionType,
+  type QuestionGridRow,
 } from './QuestionsPage.constants'
 import { QuestionsPageRoot } from './QuestionsPage.style'
 
-function getVisiblePages(currentPage: number, totalPages: number) {
-  if (totalPages <= 5) {
-    return Array.from({ length: totalPages }, (_, index) => index + 1)
-  }
-
-  if (currentPage <= 3) {
-    return [1, 2, 3, 'ellipsis-left', totalPages] as const
-  }
-
-  if (currentPage >= totalPages - 2) {
-    return [1, 'ellipsis-right', totalPages - 2, totalPages - 1, totalPages] as const
-  }
-
-  return [1, 'ellipsis-left', currentPage, 'ellipsis-right', totalPages] as const
-}
+const PAGE_SIZE_OPTIONS = [8, 16, 24, 50] as const
 
 export function QuestionsPage() {
+  const { data: questionsData } = useQuery<{
+    findAllQuestions: Array<{
+      _id: string
+      title?: string | null
+      question: string
+      type: string
+      examId: string
+      partId: string
+      ieltsModule?: string | null
+      listeningAudio?: string | null
+      speakingAudio?: string | null
+      supportingImage?: string | null
+      options?: Array<{
+        title: string
+        isCorrectAnswer: boolean
+      }> | null
+    }>
+  }>(FIND_ALL_QUESTIONS_QUERY)
   const [searchTerm, setSearchTerm] = useState('')
-  const [typeFilter, setTypeFilter] = useState<'All question types' | QuestionType>(
-    'All question types',
-  )
+  const [typeFilter, setTypeFilter] = useState<QuestionModuleFilter>('All IELTS modules')
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
     page: 0,
     pageSize: QUESTION_PAGE_SIZE,
   })
 
+  const handlePaginationModelChange = useCallback((model: GridPaginationModel) => {
+    setPaginationModel(model)
+  }, [])
+
+  const backendRows = useMemo<QuestionGridRow[]>(() => {
+    const MODULES: QuestionType[] = ['Listening', 'Reading', 'Writing', 'Speaking']
+
+    type ModuleSource = {
+      ieltsModule?: string | null
+      listeningAudio?: string | null
+      speakingAudio?: string | null
+      supportingImage?: string | null
+      type: string
+      options?: { title: string; isCorrectAnswer: boolean }[] | null
+    }
+
+    const resolveIeltsModule = (questionItem: ModuleSource): QuestionType => {
+      const stored = questionItem.ieltsModule?.trim()
+      if (stored && MODULES.includes(stored as QuestionType)) {
+        return stored as QuestionType
+      }
+      if (questionItem.listeningAudio?.trim()) {
+        return 'Listening'
+      }
+      if (questionItem.speakingAudio?.trim()) {
+        return 'Speaking'
+      }
+      if (questionItem.supportingImage?.trim()) {
+        const hasOptions = (questionItem.options?.length ?? 0) > 0
+        return questionItem.type === 'input' && !hasOptions ? 'Writing' : 'Reading'
+      }
+      return 'Listening'
+    }
+
+    return (questionsData?.findAllQuestions ?? []).map((questionItem) => ({
+      id: questionItem._id,
+      title:
+        questionItem.title?.trim() ||
+        questionItem.question.replace(/<[^>]+>/g, '').slice(0, 120) ||
+        'Untitled question',
+      tag: questionItem.type === 'input' ? 'Online lms' : 'Easy',
+      author: 'System Admin',
+      category: `Exam ${questionItem.examId.slice(-6)}`,
+      questionType: resolveIeltsModule(questionItem),
+      errorRate: 0,
+    }))
+  }, [questionsData])
+
   const filteredQuestions = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase()
 
-    return QUESTIONS.filter((question) => {
+    return backendRows.filter((question) => {
       const matchesSearch =
         normalizedSearch.length === 0 ||
         question.title.toLowerCase().includes(normalizedSearch) ||
@@ -58,31 +111,16 @@ export function QuestionsPage() {
         question.category.toLowerCase().includes(normalizedSearch)
 
       const matchesType =
-        typeFilter === 'All question types' ||
-        question.questionType === typeFilter
+        typeFilter === 'All IELTS modules' || question.questionType === typeFilter
 
       return matchesSearch && matchesType
     })
-  }, [searchTerm, typeFilter])
+  }, [backendRows, searchTerm, typeFilter])
 
-  const rows = useMemo(
-    () =>
-      filteredQuestions.map((question, index) => ({
-        id: `${question.title}-${question.tag}-${index}`,
-        ...question,
-      })),
-    [filteredQuestions],
-  )
+  const rows = filteredQuestions
 
   const columns = useMemo(() => createQuestionColumns(), [])
-  const currentPage = paginationModel.page + 1
   const totalPages = Math.max(1, Math.ceil(rows.length / paginationModel.pageSize))
-  const visiblePages = getVisiblePages(currentPage, totalPages)
-  const rangeStart = rows.length === 0 ? 0 : paginationModel.page * paginationModel.pageSize + 1
-  const rangeEnd =
-    rows.length === 0
-      ? 0
-      : Math.min((paginationModel.page + 1) * paginationModel.pageSize, rows.length)
 
   useEffect(() => {
     if (paginationModel.page > totalPages - 1) {
@@ -153,22 +191,21 @@ export function QuestionsPage() {
                 <TextField
                   select
                   className="question-table__select"
-                  aria-label="Question types"
+                  aria-label="IELTS module"
                   value={typeFilter}
                   onChange={(event) => {
-                    setTypeFilter(
-                      event.target.value as 'All question types' | QuestionType,
-                    )
+                    setTypeFilter(event.target.value as QuestionModuleFilter)
                     setPaginationModel((currentState) => ({
                       ...currentState,
                       page: 0,
                     }))
                   }}
                 >
-                  <MenuItem value="All question types">Question types</MenuItem>
-                  <MenuItem value="Multiple response">Multiple response</MenuItem>
-                  <MenuItem value="Single choice">Single choice</MenuItem>
-                  <MenuItem value="Matching">Matching</MenuItem>
+                  <MenuItem value="All IELTS modules">IELTS module</MenuItem>
+                  <MenuItem value="Listening">Listening</MenuItem>
+                  <MenuItem value="Reading">Reading</MenuItem>
+                  <MenuItem value="Writing">Writing</MenuItem>
+                  <MenuItem value="Speaking">Speaking</MenuItem>
                 </TextField>
 
                 <Button className="question-table__ghost-button" variant="outlined">
@@ -177,103 +214,55 @@ export function QuestionsPage() {
               </Box>
             </Box>
 
-            <DataGrid
-              rows={rows}
-              columns={columns}
-              pagination
-              checkboxSelection
-              disableRowSelectionOnClick
-              disableColumnMenu
-              disableColumnResize
-              hideFooter
-              autoHeight
-              rowHeight={66}
-              columnHeaderHeight={54}
-              pageSizeOptions={[QUESTION_PAGE_SIZE]}
-              paginationModel={paginationModel}
-              onPaginationModelChange={setPaginationModel}
-              localeText={{
-                noRowsLabel:
-                  'No questions matched the current search or type filter.',
-              }}
-              initialState={{
-                pagination: {
-                  paginationModel: {
-                    page: 0,
-                    pageSize: QUESTION_PAGE_SIZE,
+            <Box className="question-table__grid">
+              <DataGrid
+                rows={rows}
+                columns={columns}
+                pagination
+                paginationMode="client"
+                paginationModel={paginationModel}
+                onPaginationModelChange={handlePaginationModelChange}
+                pageSizeOptions={[...PAGE_SIZE_OPTIONS]}
+                checkboxSelection
+                disableRowSelectionOnClick
+                disableColumnMenu
+                disableColumnResize
+                rowHeight={60}
+                columnHeaderHeight={52}
+                localeText={{
+                  noRowsLabel:
+                    'No questions matched the current search or IELTS module filter.',
+                }}
+                slotProps={{
+                  pagination: {
+                    labelRowsPerPage: 'Rows per page:',
+                    labelDisplayedRows: ({
+                      from,
+                      to,
+                      count,
+                    }: {
+                      from: number
+                      to: number
+                      count: number
+                    }) =>
+                      `${from}–${to} of ${count !== -1 ? count : `more than ${to}`}`,
                   },
-                },
-              }}
-              sx={{
-                border: 0,
-              }}
-            />
-
-            <Box className="question-table__footer">
-              <Box className="question-table__pagination">
-                <Button
-                  className="question-table__page-button"
-                  variant="outlined"
-                  disabled={currentPage === 1}
-                  onClick={() =>
-                    setPaginationModel((currentState) => ({
-                      ...currentState,
-                      page: Math.max(0, currentState.page - 1),
-                    }))
-                  }
-                >
-                  ‹
-                </Button>
-
-                {visiblePages.map((item) =>
-                  typeof item === 'number' ? (
-                    <Button
-                      key={item}
-                      className={`question-table__page-number${
-                        item === currentPage
-                          ? ' question-table__page-number--active'
-                          : ''
-                      }`}
-                      variant="text"
-                      onClick={() =>
-                        setPaginationModel((currentState) => ({
-                          ...currentState,
-                          page: item - 1,
-                        }))
-                      }
-                    >
-                      {item}
-                    </Button>
-                  ) : (
-                    <span key={item} className="question-table__page-ellipsis">
-                      ...
-                    </span>
-                  ),
-                )}
-
-                <Button
-                  className="question-table__page-button"
-                  variant="outlined"
-                  disabled={currentPage === totalPages}
-                  onClick={() =>
-                    setPaginationModel((currentState) => ({
-                      ...currentState,
-                      page: Math.min(totalPages - 1, currentState.page + 1),
-                    }))
-                  }
-                >
-                  ›
-                </Button>
-              </Box>
-
-              <Box className="question-table__footer-meta">
-                <span>
-                  Showing {rangeStart} to {rangeEnd} of {rows.length} entries
-                </span>
-                <Button className="question-table__show-button" variant="outlined">
-                  Show {paginationModel.pageSize} ⌃
-                </Button>
-              </Box>
+                }}
+                sx={{
+                  border: 0,
+                  height: 'min(70vh, 640px)',
+                  '& .MuiDataGrid-main': {
+                    overflow: 'auto',
+                  },
+                  '& .MuiDataGrid-footerContainer': {
+                    borderTop: '1px solid #edf2fb',
+                    background: '#fafbff',
+                  },
+                  '& .MuiDataGrid-selectedRowCount': {
+                    display: 'none',
+                  },
+                }}
+              />
             </Box>
           </Box>
         </Box>

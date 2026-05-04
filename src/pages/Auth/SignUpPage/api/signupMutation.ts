@@ -7,6 +7,7 @@ export const SIGNUP_MUTATION = gql`
     $email: String!
     $password: String!
     $rememberMe: Boolean!
+    $centerId: String
   ) {
     signup(
       firstName: $firstName
@@ -14,6 +15,7 @@ export const SIGNUP_MUTATION = gql`
       email: $email
       password: $password
       rememberMe: $rememberMe
+      centerId: $centerId
     ) {
       _id
       firstName

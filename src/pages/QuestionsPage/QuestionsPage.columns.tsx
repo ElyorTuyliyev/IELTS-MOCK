@@ -57,7 +57,7 @@ export function createQuestionColumns(): GridColDef<QuestionGridRow>[] {
     },
     {
       field: 'questionType',
-      headerName: 'Question type',
+      headerName: 'IELTS module',
       minWidth: 190,
       sortable: false,
       headerAlign: 'left',

@@ -11,9 +11,9 @@ import {
   Typography,
 } from "@mui/material";
 
-import { useAppSelector } from "../../../store/hooks";
+import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 import { selectAuthToken, selectUserRole } from "../../../store";
-import { hasRequiredRole } from "../../../store/slices/authSlice";
+import { clearAuth, hasRequiredRole } from "../../../store/slices/authSlice";
 import { ROUTES_PATH, SIDEBAR_ROUTE_GROUPS } from "../../../routes";
 import { SidebarRoot } from "./Sidebar.style";
 
@@ -31,6 +31,7 @@ const ME_CENTER_QUERY = gql`
 export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const role = useAppSelector(selectUserRole);
   const authToken = useAppSelector(selectAuthToken);
   const [searchTerm, setSearchTerm] = useState("");
@@ -210,7 +211,8 @@ export function Sidebar() {
       }),
     }).catch(() => {});
     // #endregion
-    navigate(ROUTES_PATH.signIn);
+    dispatch(clearAuth());
+    navigate(ROUTES_PATH.signIn, { replace: true });
   };
 
   useEffect(() => {

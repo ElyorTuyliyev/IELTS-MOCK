@@ -8,12 +8,8 @@ export type StudentRow = {
   name: string
   email: string
   points: string
-  loginTime: string
   creationDate: string
-  department: string
   status: StudentStatus
-  initials: string
-  avatarGradient: string
   levelTone: StudentLevelTone
 }
 

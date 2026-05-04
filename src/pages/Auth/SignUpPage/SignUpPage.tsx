@@ -1,6 +1,6 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Controller, type SubmitHandler, useForm } from "react-hook-form";
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation } from "@apollo/client/react";
 import {
   Alert,
@@ -142,7 +142,10 @@ type SignupMutationVariables = {
   email: string;
   password: string;
   rememberMe: boolean;
+  centerId?: string | null;
 };
+
+const MONGO_OBJECT_ID_RE = /^[a-f0-9]{24}$/i;
 
 function toUserRole(role: string | null): UserRole | null {
   if (!role) return null;
@@ -152,8 +155,13 @@ function toUserRole(role: string | null): UserRole | null {
 
 export function SignUpPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const dispatch = useAppDispatch();
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const inviteCenterId = useMemo(() => {
+    const raw = searchParams.get("centerId")?.trim() ?? "";
+    return MONGO_OBJECT_ID_RE.test(raw) ? raw : null;
+  }, [searchParams]);
   const { control, handleSubmit, register } = useForm<SignUpFormValues>({
     defaultValues: {
       fullName: "",
@@ -167,29 +175,6 @@ export function SignUpPage() {
     SIGNUP_MUTATION,
   );
 
-  useEffect(() => {
-    // #region agent log
-    fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "24497a",
-      },
-      body: JSON.stringify({
-        sessionId: "24497a",
-        runId: "pre-fix",
-        hypothesisId: "H0",
-        location: "SignUpPage.tsx:useEffect",
-        message: "SignUp page mounted",
-        data: {
-          path: window.location.pathname,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-  }, []);
-
   const onSubmit: SubmitHandler<SignUpFormValues> = async (values) => {
     setSubmitError(null);
     const [firstNameRaw, ...lastNameParts] = values.fullName.trim().split(" ");
@@ -197,32 +182,6 @@ export function SignUpPage() {
     const lastNameJoined = lastNameParts.join(" ").trim();
     const lastName = lastNameJoined.length > 0 ? lastNameJoined : "";
     const email = values.email.trim().toLowerCase();
-
-    // #region agent log
-    fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "24497a",
-      },
-      body: JSON.stringify({
-        sessionId: "24497a",
-        runId: "pre-fix",
-        hypothesisId: "H1",
-        location: "SignUpPage.tsx:onSubmit",
-        message: "Signup submit payload snapshot",
-        data: {
-          fullNameLength: values.fullName.trim().length,
-          firstNameLength: firstName.length,
-          lastNameLength: lastName.length,
-          emailTrimmedLength: email.length,
-          passwordLength: values.password.length,
-          rememberAccount: values.rememberAccount,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
 
     try {
       const result = await signup({
@@ -232,6 +191,7 @@ export function SignUpPage() {
           email,
           password: values.password,
           rememberMe: values.rememberAccount,
+          centerId: inviteCenterId,
         },
       });
 
@@ -244,67 +204,20 @@ export function SignUpPage() {
               .filter((message): message is string => Boolean(message))
           : [];
 
-      // #region agent log
-      fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Debug-Session-Id": "24497a",
-        },
-        body: JSON.stringify({
-          sessionId: "24497a",
-          runId: "pre-fix",
-          hypothesisId: "H2",
-          location: "SignUpPage.tsx:onSubmit",
-          message: "Signup mutation result snapshot",
-          data: {
-            hasSignupData: Boolean(signupData),
-            hasToken: Boolean(signupData?.token),
-            role: signupData?.role ?? null,
-            errorCount: graphQLErrorMessages.length,
-            hasApolloError: Boolean(result.error),
-            apolloErrorMessage,
-            graphQLErrorMessagesCount: graphQLErrorMessages.length,
-            resultDataKeys: result.data ? Object.keys(result.data) : [],
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
-
       if (!signupData?.token) {
         const fallbackErrorMessage =
           graphQLErrorMessages[0] ??
           apolloErrorMessage ??
           "Signup completed but token was not returned by backend.";
         setSubmitError(fallbackErrorMessage);
-
-        // #region agent log
-        fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Debug-Session-Id": "24497a",
-          },
-          body: JSON.stringify({
-            sessionId: "24497a",
-            runId: "pre-fix",
-            hypothesisId: "H3",
-            location: "SignUpPage.tsx:onSubmit",
-            message: "Signup succeeded without token",
-            data: {
-              role: signupData?.role ?? null,
-              email: signupData?.email ?? null,
-              fallbackErrorMessage,
-            },
-            timestamp: Date.now(),
-          }),
-        }).catch(() => {});
-        // #endregion
         return;
       }
 
       const normalizedRole = toUserRole(signupData.role);
+      if (normalizedRole !== USER_ROLES.student) {
+        setSubmitError("Sign up is only available for student accounts.");
+        return;
+      }
       dispatch(
         setAuthSession({
           token: signupData.token,
@@ -313,51 +226,9 @@ export function SignUpPage() {
         }),
       );
 
-      // #region agent log
-      fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Debug-Session-Id": "24497a",
-        },
-        body: JSON.stringify({
-          sessionId: "24497a",
-          runId: "pre-fix",
-          hypothesisId: "H4",
-          location: "SignUpPage.tsx:onSubmit",
-          message: "Auth session persisted from signup",
-          data: {
-            tokenLength: signupData.token.length,
-            roleAfterNormalization: normalizedRole,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
-
       navigate(ROUTES_PATH.dashboard);
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Signup request failed.");
-      // #region agent log
-      fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Debug-Session-Id": "24497a",
-        },
-        body: JSON.stringify({
-          sessionId: "24497a",
-          runId: "pre-fix",
-          hypothesisId: "H5",
-          location: "SignUpPage.tsx:onSubmit",
-          message: "Signup mutation threw exception",
-          data: {
-            errorMessage: error instanceof Error ? error.message : "unknown-error",
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
     }
   };
 
@@ -367,7 +238,7 @@ export function SignUpPage() {
         <Box component="section" className="sign-up-page__hero">
           <Box
             component={Link}
-            to={ROUTES_PATH.dashboard}
+            to={ROUTES_PATH.signIn}
             className="sign-up-page__brand"
           >
             <Box component="span" className="sign-up-page__brand-mark">
@@ -553,6 +424,11 @@ export function SignUpPage() {
             </Box>
 
             {submitError ? <Alert severity="error">{submitError}</Alert> : null}
+            {inviteCenterId ? (
+              <Alert severity="info">
+                You are signing up through a center invite — your account will be linked to that center.
+              </Alert>
+            ) : null}
 
             <Typography component="h2" className="sign-up-page__form-title">
               Welcome Back IELTS Study
@@ -602,31 +478,7 @@ export function SignUpPage() {
                 className="sign-up-page__field"
                 type="text"
                 placeholder="Enter your name"
-                {...register("fullName", {
-                  onChange: (event) => {
-                    const nextFullName = event.target.value;
-                    // #region agent log
-                    fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
-                      method: "POST",
-                      headers: {
-                        "Content-Type": "application/json",
-                        "X-Debug-Session-Id": "24497a",
-                      },
-                      body: JSON.stringify({
-                        sessionId: "24497a",
-                        runId: "pre-fix",
-                        hypothesisId: "H1",
-                        location: "SignUpPage.tsx:fullNameOnChange",
-                        message: "Full name field changed",
-                        data: {
-                          length: nextFullName.length,
-                        },
-                        timestamp: Date.now(),
-                      }),
-                    }).catch(() => {});
-                    // #endregion
-                  },
-                })}
+                {...register("fullName")}
                 slotProps={{
                   input: {
                     startAdornment: (
@@ -720,28 +572,6 @@ export function SignUpPage() {
               className="sign-up-page__submit-button"
               variant="contained"
               disabled={loading}
-              onClick={() => {
-                // #region agent log
-                fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    "X-Debug-Session-Id": "24497a",
-                  },
-                  body: JSON.stringify({
-                    sessionId: "24497a",
-                    runId: "pre-fix",
-                    hypothesisId: "H0",
-                    location: "SignUpPage.tsx:submitButtonOnClick",
-                    message: "SignUp submit button clicked",
-                    data: {
-                      loading,
-                    },
-                    timestamp: Date.now(),
-                  }),
-                }).catch(() => {});
-                // #endregion
-              }}
             >
               {loading ? "Signing up..." : "Sign Up"}
             </Button>

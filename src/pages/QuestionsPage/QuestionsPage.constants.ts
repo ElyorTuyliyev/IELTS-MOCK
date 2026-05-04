@@ -4,10 +4,9 @@ export type QuestionTag =
   | 'Online lms'
   | 'Matching'
 
-export type QuestionType =
-  | 'Multiple response'
-  | 'Single choice'
-  | 'Matching'
+export type QuestionType = 'Listening' | 'Reading' | 'Writing' | 'Speaking'
+
+export type QuestionModuleFilter = 'All IELTS modules' | QuestionType
 
 export type QuestionRow = {
   title: string
@@ -30,7 +29,7 @@ const BASE_QUESTIONS: QuestionRow[] = [
     tag: 'Easy',
     author: 'System Admin',
     category: 'Samples',
-    questionType: 'Multiple response',
+    questionType: 'Listening',
     errorRate: 0,
   },
   {
@@ -38,7 +37,7 @@ const BASE_QUESTIONS: QuestionRow[] = [
     tag: 'Anti cheating',
     author: 'System Admin',
     category: 'Samples',
-    questionType: 'Multiple response',
+    questionType: 'Reading',
     errorRate: 25,
   },
   {
@@ -46,7 +45,7 @@ const BASE_QUESTIONS: QuestionRow[] = [
     tag: 'Online lms',
     author: 'System Admin',
     category: 'Samples',
-    questionType: 'Multiple response',
+    questionType: 'Writing',
     errorRate: 50,
   },
   {
@@ -54,7 +53,7 @@ const BASE_QUESTIONS: QuestionRow[] = [
     tag: 'Matching',
     author: 'System Admin',
     category: 'Samples',
-    questionType: 'Multiple response',
+    questionType: 'Speaking',
     errorRate: 25,
   },
   {
@@ -62,7 +61,7 @@ const BASE_QUESTIONS: QuestionRow[] = [
     tag: 'Easy',
     author: 'System Admin',
     category: 'Samples',
-    questionType: 'Multiple response',
+    questionType: 'Listening',
     errorRate: 0,
   },
   {
@@ -70,7 +69,7 @@ const BASE_QUESTIONS: QuestionRow[] = [
     tag: 'Anti cheating',
     author: 'System Admin',
     category: 'Samples',
-    questionType: 'Multiple response',
+    questionType: 'Reading',
     errorRate: 75,
   },
   {
@@ -78,7 +77,7 @@ const BASE_QUESTIONS: QuestionRow[] = [
     tag: 'Matching',
     author: 'System Admin',
     category: 'Samples',
-    questionType: 'Multiple response',
+    questionType: 'Writing',
     errorRate: 100,
   },
   {
@@ -86,7 +85,7 @@ const BASE_QUESTIONS: QuestionRow[] = [
     tag: 'Online lms',
     author: 'System Admin',
     category: 'Samples',
-    questionType: 'Multiple response',
+    questionType: 'Speaking',
     errorRate: 0,
   },
   {
@@ -94,7 +93,7 @@ const BASE_QUESTIONS: QuestionRow[] = [
     tag: 'Matching',
     author: 'System Admin',
     category: 'Samples',
-    questionType: 'Multiple response',
+    questionType: 'Listening',
     errorRate: 25,
   },
   {
@@ -102,7 +101,7 @@ const BASE_QUESTIONS: QuestionRow[] = [
     tag: 'Easy',
     author: 'System Admin',
     category: 'Samples',
-    questionType: 'Multiple response',
+    questionType: 'Reading',
     errorRate: 0,
   },
 ]

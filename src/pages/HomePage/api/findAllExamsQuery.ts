@@ -7,6 +7,7 @@ export const FIND_ALL_EXAMS_QUERY = gql`
       title
       examiner
       examType
+      centerId
       examDate
       startTime
       endTime

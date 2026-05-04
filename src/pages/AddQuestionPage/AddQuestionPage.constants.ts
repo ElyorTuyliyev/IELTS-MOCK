@@ -44,6 +44,39 @@ export const QUESTION_TEMPLATES: QuestionTemplate[] = [
       'Provide the transcript excerpt or completion form that students will hear.',
   },
   {
+    id: 'listening-note',
+    module: 'Listening',
+    title: 'Note / Summary Completion',
+    description: 'Fill missing words or numbers from lecture or monologue notes.',
+    answerMode: 'text',
+    instructionLabel: 'Completion instruction',
+    sourceLabel: 'Lecture notes / transcript',
+    sourcePlaceholder:
+      'Paste note-summary structure and transcript segment used to derive answers.',
+  },
+  {
+    id: 'listening-map',
+    module: 'Listening',
+    title: 'Map / Plan Labeling',
+    description: 'Label map locations from spoken directions and landmarks.',
+    answerMode: 'single',
+    instructionLabel: 'Labeling instruction',
+    sourceLabel: 'Map context and transcript',
+    sourcePlaceholder:
+      'Provide location map context and direction transcript for labeling items.',
+  },
+  {
+    id: 'listening-matching',
+    module: 'Listening',
+    title: 'Matching Information',
+    description: 'Match speakers, features, or statements based on audio clues.',
+    answerMode: 'single',
+    instructionLabel: 'Matching instruction',
+    sourceLabel: 'Matching list context',
+    sourcePlaceholder:
+      'Include matching list (A-F etc.) and transcript clues for each prompt.',
+  },
+  {
     id: 'reading-tfng',
     module: 'Reading',
     title: 'True / False / Not Given',

@@ -1,63 +1,56 @@
 import type { CSSProperties } from 'react'
+import { useMemo, useState } from 'react'
 
-import { Box, Button, Typography } from '@mui/material'
+import { useQuery } from '@apollo/client/react'
+import { Alert, Box, MenuItem, TextField, Typography } from '@mui/material'
 
 import { Layout } from '../../components/layout'
+import { FIND_ALL_QUESTIONS_QUERY } from '../QuestionsPage/api/findAllQuestionsQuery'
+import { selectAuthToken, selectUserRole } from '../../store'
+import { useAppSelector } from '../../store/hooks'
+import { USER_ROLES } from '../../store/slices/authSlice'
+import {
+  STUDENT_DASHBOARD_STATS_QUERY,
+  type StudentDashboardStatsResponse,
+} from './api/studentDashboardStatsQuery'
 import { DashboardPageRoot } from './DashboardPage.style'
 
-const statCards = [
-  {
-    title: 'Need to grade',
-    value: '87%',
-    delta: '↗ +4.56%',
-    detail: 'yearly student exam test online system',
-    icon: '◔',
-    accent: '#7c3aed',
-    softAccent: 'rgba(124, 58, 237, 0.12)',
-    type: 'ring' as const,
-  },
-  {
-    title: 'New Active student',
-    value: '536',
-    delta: '↗ +6.354%',
-    detail: 'student growth within this month',
-    icon: '◌',
-    accent: '#8b5cf6',
-    softAccent: 'rgba(139, 92, 246, 0.12)',
-    type: 'bars' as const,
-    bars: [34, 46, 42, 16, 38, 24, 58, 36, 12, 22, 26, 18, 44, 50],
-  },
-  {
-    title: 'Questions',
-    value: '64',
-    delta: '↘ +2.56%',
-    detail: 'yearly student exam test online system monthly time remaining',
-    icon: '?',
-    accent: '#38b2ac',
-    softAccent: 'rgba(56, 178, 172, 0.12)',
-    type: 'wave' as const,
-    pills: [34, 22, 48, 30, 16, 40, 22, 12, 18, 40],
-  },
+type ChartRow = { label: string; bars: number; line: number }
+
+function formatMonthShort(ym: string): string {
+  const parts = ym.split('-').map(Number)
+  const y = parts[0]
+  const m = parts[1]
+  if (!y || !m) {
+    return ym
+  }
+
+  return new Date(y, m - 1, 1).toLocaleDateString('en-US', {
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+const MOCK_CHART_ROWS: ChartRow[] = [
+  { label: 'Jan', bars: 22, line: 10 },
+  { label: 'Feb', bars: 30, line: 12 },
+  { label: 'Mar', bars: 14, line: 11 },
+  { label: 'Apr', bars: 14, line: 10 },
+  { label: 'May', bars: 26, line: 16 },
+  { label: 'Jun', bars: 34, line: 22 },
+  { label: 'Jul', bars: 36, line: 27 },
+  { label: 'Aug', bars: 24, line: 21 },
+  { label: 'Sep', bars: 17, line: 12 },
+  { label: 'Oct', bars: 15, line: 10 },
+  { label: 'Nov', bars: 22, line: 16 },
+  { label: 'Dec', bars: 40, line: 15 },
 ]
 
-const chartData = [
-  { month: 'Jan', bars: 22, line: 10 },
-  { month: 'Feb', bars: 30, line: 12 },
-  { month: 'Mar', bars: 14, line: 11 },
-  { month: 'Apr', bars: 14, line: 10 },
-  { month: 'May', bars: 26, line: 16 },
-  { month: 'Jun', bars: 34, line: 22 },
-  { month: 'Jul', bars: 36, line: 27 },
-  { month: 'Aug', bars: 24, line: 21 },
-  { month: 'Sep', bars: 17, line: 12 },
-  { month: 'Oct', bars: 15, line: 10 },
-  { month: 'Nov', bars: 22, line: 16 },
-  { month: 'Dec', bars: 40, line: 15 },
-]
+const DEFAULT_STUDENT_SPARK = [34, 46, 42, 16, 38, 24, 58, 36, 12, 22, 26, 18, 44, 50]
 
 const averageResults = [
   {
-    subject: 'Mathematic',
+    subject: 'Mathematics',
     segments: [
       { color: '#7c3aed', width: '24%' },
       { color: '#5cc0b8', width: '22%' },
@@ -98,78 +91,6 @@ const averageResults = [
   },
 ]
 
-const tableRows = [
-  {
-    name: 'Tahsan Khan',
-    initials: 'TK',
-    avatarGradient: 'linear-gradient(135deg, #7c3aed 0%, #f472d0 100%)',
-    totalScore: '16.7%',
-    totalStyle: {
-      background: '#fff3e8',
-      border: '#ffd7ba',
-      color: '#ea580c',
-    },
-    reasoning: '50% (1/2)',
-    miniBars: [8, 12, 16],
-    time: '00:53',
-    analysis: 4,
-    analysisText: '100%',
-    startDate: 'Jan 20, 2025',
-    generic: '0% (0/2)',
-    genericStyle: {
-      background: '#fff1fd',
-      border: '#f5c2f0',
-      color: '#ef5ad7',
-    },
-  },
-  {
-    name: 'Anwar Hussen',
-    initials: 'AH',
-    avatarGradient: 'linear-gradient(135deg, #38b2ac 0%, #7dd3fc 100%)',
-    totalScore: '19.7%',
-    totalStyle: {
-      background: '#ecfeff',
-      border: '#c7f9f7',
-      color: '#0f766e',
-    },
-    reasoning: '100% (2/2)',
-    miniBars: [10, 14, 18],
-    time: '01:00',
-    analysis: 0,
-    analysisText: '00%',
-    startDate: 'Jan 20, 2025',
-    generic: '0% (0/2)',
-    genericStyle: {
-      background: '#f0f9ff',
-      border: '#bfdbfe',
-      color: '#60a5fa',
-    },
-  },
-  {
-    name: 'Hasan Khan',
-    initials: 'HK',
-    avatarGradient: 'linear-gradient(135deg, #fb923c 0%, #facc15 100%)',
-    totalScore: '13.7%',
-    totalStyle: {
-      background: '#fff8e7',
-      border: '#fde68a',
-      color: '#ca8a04',
-    },
-    reasoning: '0% (0/2)',
-    miniBars: [6, 10, 14],
-    time: '01:01',
-    analysis: 2,
-    analysisText: '50%',
-    startDate: 'Jan 20, 2025',
-    generic: '0% (0/2)',
-    genericStyle: {
-      background: '#fff7ed',
-      border: '#fdba74',
-      color: '#f97316',
-    },
-  },
-]
-
 const legendItems = [
   { label: 'Easy questions', color: '#7c3aed', soft: 'rgba(124, 58, 237, 0.12)' },
   { label: 'Medium questions', color: '#5cc0b8', soft: 'rgba(92, 192, 184, 0.12)' },
@@ -191,103 +112,276 @@ function getLineSegmentStyle(start: number, end: number): CSSProperties {
   }
 }
 
+type QuestionsCountResponse = { findAllQuestions: { _id: string }[] }
+
 export function DashboardPage() {
+  const token = useAppSelector(selectAuthToken)
+  const role = useAppSelector(selectUserRole)
+  const loadStudentStats = Boolean(
+    token && (role === USER_ROLES.superAdmin || role === USER_ROLES.center),
+  )
+
+  const [chartPeriod, setChartPeriod] = useState<'monthly' | 'yearly'>('monthly')
+
+  const { data: statsData, error: statsError } = useQuery<
+    StudentDashboardStatsResponse,
+    Record<string, never>
+  >(STUDENT_DASHBOARD_STATS_QUERY, {
+    skip: !loadStudentStats,
+  })
+
+  const { data: questionsData } = useQuery<QuestionsCountResponse>(FIND_ALL_QUESTIONS_QUERY, {
+    skip: !loadStudentStats,
+  })
+
+  const stats = statsData?.studentDashboardStats
+
+  const aggregatedMonthly = useMemo(() => {
+    if (!stats?.centers?.length) {
+      return null
+    }
+
+    const keys = stats.centers[0].monthlyNewStudents.map((row) => row.month)
+
+    return keys.map((month) => ({
+      key: month,
+      label: formatMonthShort(month),
+      bars: stats.centers.reduce((sum, center) => {
+        const row = center.monthlyNewStudents.find((m) => m.month === month)
+        return sum + (row?.count ?? 0)
+      }, 0),
+    }))
+  }, [stats])
+
+  const chartPoints: ChartRow[] = useMemo(() => {
+    if (!aggregatedMonthly?.length) {
+      return MOCK_CHART_ROWS
+    }
+
+    if (chartPeriod === 'monthly') {
+      return aggregatedMonthly.map((row) => ({
+        label: row.label,
+        bars: row.bars,
+        line: Math.max(0, Math.round(row.bars * 0.72)),
+      }))
+    }
+
+    const byYear = new Map<string, number>()
+    for (const row of aggregatedMonthly) {
+      const year = row.key.slice(0, 4)
+      byYear.set(year, (byYear.get(year) ?? 0) + row.bars)
+    }
+
+    return [...byYear.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([year, bars]) => ({
+        label: year,
+        bars,
+        line: Math.max(0, Math.round(bars * 0.75)),
+      }))
+  }, [aggregatedMonthly, chartPeriod])
+
+  const yTop = useMemo(() => {
+    const peak = Math.max(...chartPoints.map((p) => Math.max(p.bars, p.line)), 1)
+    return Math.max(5, Math.ceil(peak / 5) * 5)
+  }, [chartPoints])
+
+  const yTicks = useMemo(
+    () => [yTop, Math.round(yTop * 0.75), Math.round(yTop * 0.5), Math.round(yTop * 0.25), 0],
+    [yTop],
+  )
+
+  const norm = (v: number) => (v / yTop) * 40
+
+  const studentSparkBars = useMemo(() => {
+    if (!aggregatedMonthly?.length) {
+      return DEFAULT_STUDENT_SPARK
+    }
+
+    const vals = aggregatedMonthly.map((row) => row.bars)
+    const maxVal = Math.max(1, ...vals)
+    return vals.map((v) => Math.round(8 + (v / maxVal) * 46))
+  }, [aggregatedMonthly])
+
+  const newStudentDelta = useMemo(() => {
+    if (!aggregatedMonthly || aggregatedMonthly.length < 2) {
+      return { text: '↗ +6.35%', down: false }
+    }
+
+    const last = aggregatedMonthly[aggregatedMonthly.length - 1]?.bars ?? 0
+    const prev = aggregatedMonthly[aggregatedMonthly.length - 2]?.bars ?? 0
+
+    if (prev === 0) {
+      return last === 0
+        ? { text: '—', down: false }
+        : { text: '↗ +100%', down: false }
+    }
+
+    const pct = Math.round(((last - prev) / prev) * 1000) / 10
+    return {
+      text: `${pct >= 0 ? '↗' : '↘'} ${pct >= 0 ? '+' : ''}${pct}%`,
+      down: pct < 0,
+    }
+  }, [aggregatedMonthly])
+
+  const questionsCount = questionsData?.findAllQuestions?.length
+  const questionPills = useMemo(() => {
+    const n = questionsCount ?? 64
+    return Array.from({ length: 10 }, (_, i) => 18 + ((n * (i + 1) * 17) % 34))
+  }, [questionsCount])
+
+  const newStudentValue =
+    loadStudentStats && stats ? String(stats.totals.newStudentsThisMonth) : loadStudentStats ? '…' : '—'
+
   return (
     <Layout>
       <DashboardPageRoot>
         <Box className="dashboard-screen">
           <Box className="dashboard-screen__stats">
-            {statCards.map((card) => (
-              <Box
-                key={card.title}
-                className="dashboard-stat"
-                sx={
-                  {
-                    '--accent': card.accent,
-                    '--soft-accent': card.softAccent,
-                    '--delta-color': card.title === 'Questions' ? '#f08a34' : '#5bc8bd',
-                  } as CSSProperties
-                }
-              >
-                <Box className="dashboard-stat__header">
-                  <Box>
-                    <Typography component="p" className="dashboard-stat__eyebrow">
-                      {card.title}
+            <Box
+              className="dashboard-stat"
+              sx={
+                {
+                  '--accent': '#7c3aed',
+                  '--soft-accent': 'rgba(124, 58, 237, 0.12)',
+                  '--delta-color': '#5bc8bd',
+                } as CSSProperties
+              }
+            >
+              <Box className="dashboard-stat__header">
+                <Box>
+                  <Typography component="p" className="dashboard-stat__eyebrow">
+                    Need to grade
+                  </Typography>
+                  <Box className="dashboard-stat__value-row">
+                    <Typography component="h2" className="dashboard-stat__value">
+                      87%
                     </Typography>
-
-                    <Box className="dashboard-stat__value-row">
-                      <Typography component="h2" className="dashboard-stat__value">
-                        {card.value}
-                      </Typography>
-                      {card.title === 'Need to grade' ? (
-                        <Typography component="span" className="dashboard-stat__suffix">
-                          Grade
-                        </Typography>
-                      ) : null}
-                    </Box>
-
-                    <Typography component="span" className="dashboard-stat__delta">
-                      {card.delta}
+                    <Typography component="span" className="dashboard-stat__suffix">
+                      Grade
                     </Typography>
                   </Box>
-
-                  <Box className="dashboard-stat__visual">
-                    {card.type === 'ring' ? (
-                      <Box className="dashboard-stat__ring">
-                        <Typography component="span" className="dashboard-stat__ring-value">
-                          87%
-                        </Typography>
-                      </Box>
-                    ) : null}
-
-                    {card.type === 'bars' ? (
-                      <Box className="dashboard-stat__badge">👥</Box>
-                    ) : null}
-                  </Box>
-                </Box>
-
-                {card.type === 'bars' ? (
-                  <Box className="dashboard-stat__sparkbars">
-                    {card.bars?.map((bar, index) => (
-                      <Box
-                        key={`${card.title}-${bar}-${index}`}
-                        className="dashboard-stat__sparkbar"
-                        sx={
-                          {
-                            '--bar-height': `${bar + 10}px`,
-                            '--bar-opacity': index % 3 === 0 ? 1 : 0.42,
-                          } as CSSProperties
-                        }
-                      />
-                    ))}
-                  </Box>
-                ) : null}
-
-                {card.type === 'wave' ? (
-                  <Box className="dashboard-stat__wave">
-                    {card.pills?.map((pill, index) => (
-                      <Box
-                        key={`${card.title}-${pill}-${index}`}
-                        className="dashboard-stat__wave-pill"
-                        sx={
-                          {
-                            '--pill-height': `${pill + 6}px`,
-                            '--pill-opacity': index % 2 === 0 ? 1 : 0.82,
-                          } as CSSProperties
-                        }
-                      />
-                    ))}
-                  </Box>
-                ) : null}
-
-                <Box className="dashboard-stat__footer">
-                  <Box className="dashboard-stat__footer-icon">{card.icon}</Box>
-                  <Typography component="p" className="dashboard-stat__footer-text">
-                    {card.detail}
+                  <Typography component="span" className="dashboard-stat__delta">
+                    ↗ +4.56%
                   </Typography>
                 </Box>
+                <Box className="dashboard-stat__visual">
+                  <Box className="dashboard-stat__ring">
+                    <Typography component="span" className="dashboard-stat__ring-value">
+                      87%
+                    </Typography>
+                  </Box>
+                </Box>
               </Box>
-            ))}
+              <Box className="dashboard-stat__footer">
+                <Box className="dashboard-stat__footer-icon">◔</Box>
+                <Typography component="p" className="dashboard-stat__footer-text">
+                  yearly student exam test online system
+                </Typography>
+              </Box>
+            </Box>
+
+            <Box
+              className="dashboard-stat"
+              sx={
+                {
+                  '--accent': '#8b5cf6',
+                  '--soft-accent': 'rgba(139, 92, 246, 0.12)',
+                  '--delta-color': newStudentDelta.down ? '#f08a34' : '#5bc8bd',
+                } as CSSProperties
+              }
+            >
+              <Box className="dashboard-stat__header">
+                <Box>
+                  <Typography component="p" className="dashboard-stat__eyebrow">
+                    New students
+                  </Typography>
+                  <Box className="dashboard-stat__value-row">
+                    <Typography component="h2" className="dashboard-stat__value">
+                      {newStudentValue}
+                    </Typography>
+                  </Box>
+                  <Typography component="span" className="dashboard-stat__delta">
+                    {newStudentDelta.text}
+                  </Typography>
+                </Box>
+                <Box className="dashboard-stat__visual">
+                  <Box className="dashboard-stat__badge">👥</Box>
+                </Box>
+              </Box>
+              <Box className="dashboard-stat__sparkbars">
+                {studentSparkBars.map((bar, index) => (
+                  <Box
+                    key={`spark-${bar}-${index}`}
+                    className="dashboard-stat__sparkbar"
+                    sx={
+                      {
+                        '--bar-height': `${bar + 10}px`,
+                        '--bar-opacity': index % 3 === 0 ? 1 : 0.42,
+                      } as CSSProperties
+                    }
+                  />
+                ))}
+              </Box>
+              <Box className="dashboard-stat__footer">
+                <Box className="dashboard-stat__footer-icon">◌</Box>
+                <Typography component="p" className="dashboard-stat__footer-text">
+                  {role === USER_ROLES.superAdmin
+                    ? 'New students registered this month (all centers combined)'
+                    : 'New students registered this month (your center)'}
+                </Typography>
+              </Box>
+            </Box>
+
+            <Box
+              className="dashboard-stat"
+              sx={
+                {
+                  '--accent': '#38b2ac',
+                  '--soft-accent': 'rgba(56, 178, 172, 0.12)',
+                  '--delta-color': '#f08a34',
+                } as CSSProperties
+              }
+            >
+              <Box className="dashboard-stat__header">
+                <Box>
+                  <Typography component="p" className="dashboard-stat__eyebrow">
+                    Questions
+                  </Typography>
+                  <Box className="dashboard-stat__value-row">
+                    <Typography component="h2" className="dashboard-stat__value">
+                      {questionsCount != null ? String(questionsCount) : loadStudentStats ? '…' : '64'}
+                    </Typography>
+                  </Box>
+                  <Typography component="span" className="dashboard-stat__delta">
+                    {questionsCount != null ? '↑ total' : '↘ +2.56%'}
+                  </Typography>
+                </Box>
+                <Box className="dashboard-stat__visual">
+                  <Box className="dashboard-stat__badge">?</Box>
+                </Box>
+              </Box>
+              <Box className="dashboard-stat__wave">
+                {questionPills.map((pill, index) => (
+                  <Box
+                    key={`q-pill-${pill}-${index}`}
+                    className="dashboard-stat__wave-pill"
+                    sx={
+                      {
+                        '--pill-height': `${pill + 6}px`,
+                        '--pill-opacity': index % 2 === 0 ? 1 : 0.82,
+                      } as CSSProperties
+                    }
+                  />
+                ))}
+              </Box>
+              <Box className="dashboard-stat__footer">
+                <Box className="dashboard-stat__footer-icon">?</Box>
+                <Typography component="p" className="dashboard-stat__footer-text">
+                  Question bank for exams you can access
+                </Typography>
+              </Box>
+            </Box>
           </Box>
 
           <Box className="dashboard-screen__analytics">
@@ -295,17 +389,44 @@ export function DashboardPage() {
               <Box className="dashboard-screen__panel-head">
                 <Box>
                   <Typography component="h2" className="dashboard-screen__panel-title">
-                    Exam Taken Times
+                    New students over time
                   </Typography>
                   <Typography component="p" className="dashboard-screen__panel-subtitle">
-                    Taken records of last Years
+                    {!loadStudentStats
+                      ? 'Sample trend chart (live data for administrators and centers)'
+                      : chartPeriod === 'monthly'
+                        ? role === USER_ROLES.superAdmin
+                          ? 'Last 12 months — new students across all centers'
+                          : 'Last 12 months — new students at your center'
+                        : role === USER_ROLES.superAdmin
+                          ? 'Total new students aggregated by calendar year'
+                          : 'New students at your center by calendar year'}
                   </Typography>
                 </Box>
 
-                <Button className="dashboard-screen__panel-action" variant="outlined">
-                  🗓 Monthly
-                </Button>
+                <TextField
+                  select
+                  size="small"
+                  value={chartPeriod}
+                  className="dashboard-screen__period-select"
+                  onChange={(event) =>
+                    setChartPeriod(event.target.value as 'monthly' | 'yearly')
+                  }
+                  slotProps={{
+                    select: { displayEmpty: true },
+                    htmlInput: { 'aria-label': 'Chart period' },
+                  }}
+                >
+                  <MenuItem value="monthly">Monthly</MenuItem>
+                  <MenuItem value="yearly">Yearly</MenuItem>
+                </TextField>
               </Box>
+
+              {statsError && loadStudentStats ? (
+                <Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>
+                  Student statistics failed to load — the chart is showing sample data.
+                </Alert>
+              ) : null}
 
               <Box className="dashboard-line-chart__legend">
                 <Box className="dashboard-line-chart__legend-item">
@@ -318,7 +439,7 @@ export function DashboardPage() {
                       } as CSSProperties
                     }
                   />
-                  <span>Active Exams</span>
+                  <span>New students (bars)</span>
                 </Box>
                 <Box className="dashboard-line-chart__legend-item">
                   <Box
@@ -330,22 +451,22 @@ export function DashboardPage() {
                       } as CSSProperties
                     }
                   />
-                  <span>Active Exam Takers</span>
+                  <span>Trend (line)</span>
                 </Box>
               </Box>
 
               <Box className="dashboard-line-chart__canvas">
-                {[40, 30, 20, 10].map((value, index) => (
+                {yTicks.slice(0, -1).map((value, index) => (
                   <Box
-                    key={value}
+                    key={`grid-${value}`}
                     className="dashboard-line-chart__grid-line"
                     sx={{ top: `${18 + index * 56}px` }}
                   />
                 ))}
 
-                {[40, 30, 20, 10, 0].map((value, index) => (
+                {yTicks.map((value, index) => (
                   <Box
-                    key={`label-${value}`}
+                    key={`ylabel-${value}`}
                     className="dashboard-line-chart__y-label"
                     sx={{ top: `${18 + index * 56}px` }}
                   >
@@ -354,32 +475,35 @@ export function DashboardPage() {
                 ))}
 
                 <Box className="dashboard-line-chart__columns">
-                  {chartData.map((item, index) => (
-                    <Box key={item.month} className="dashboard-line-chart__month">
+                  {chartPoints.map((item, index) => (
+                    <Box key={`${item.label}-${index}`} className="dashboard-line-chart__month">
                       <Box
                         className="dashboard-line-chart__bar"
                         sx={
                           {
-                            '--bar-height': `${item.bars * 7}px`,
+                            '--bar-height': `${norm(item.bars) * 7}px`,
                           } as CSSProperties
                         }
                       />
-                      {index < chartData.length - 1 ? (
+                      {index < chartPoints.length - 1 ? (
                         <Box
                           className="dashboard-line-chart__line-segment"
-                          sx={getLineSegmentStyle(item.line, chartData[index + 1].line)}
+                          sx={getLineSegmentStyle(
+                            norm(item.line),
+                            norm(chartPoints[index + 1].line),
+                          )}
                         />
                       ) : null}
                       <Box
                         className="dashboard-line-chart__point"
                         sx={
                           {
-                            '--point-height': `${item.line * 7}px`,
+                            '--point-height': `${norm(item.line) * 7}px`,
                           } as CSSProperties
                         }
                       />
                       <Typography component="span" className="dashboard-line-chart__month-label">
-                        {item.month}
+                        {item.label}
                       </Typography>
                     </Box>
                   ))}
@@ -442,7 +566,7 @@ export function DashboardPage() {
 
               <Box className="dashboard-average__scale">
                 <Typography component="span" className="dashboard-average__scale-title">
-                  Pass Mark :
+                  Pass mark:
                 </Typography>
                 <Box className="dashboard-average__ticks">
                   {[10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((tick) => (
@@ -451,126 +575,6 @@ export function DashboardPage() {
                 </Box>
               </Box>
             </Box>
-          </Box>
-
-          <Box className="dashboard-table">
-            <Box className="dashboard-table__head">
-              <Typography component="h2" className="dashboard-table__title">
-                Browse test results
-              </Typography>
-
-              <Button className="dashboard-table__action" variant="outlined">
-                ✉ Send certificates
-              </Button>
-            </Box>
-
-            <Box className="dashboard-table__header">
-              <Box className="dashboard-table__checkbox" />
-              <span>Name</span>
-              <span>Total score</span>
-              <span>Score Reasoning</span>
-              <span>Time</span>
-              <span>Score Analysis</span>
-              <span>Start Date</span>
-              <span>Score Generic</span>
-              <span>Action</span>
-            </Box>
-
-            {tableRows.map((row) => (
-              <Box key={row.name} className="dashboard-table__row">
-                <Box className="dashboard-table__checkbox" />
-
-                <Box className="dashboard-table__name">
-                  <Box
-                    className="dashboard-table__avatar"
-                    sx={
-                      {
-                        '--avatar-gradient': row.avatarGradient,
-                      } as CSSProperties
-                    }
-                  >
-                    {row.initials}
-                  </Box>
-                  <Typography component="p" className="dashboard-table__name-text">
-                    {row.name}
-                  </Typography>
-                </Box>
-
-                <Box
-                  className="dashboard-table__pill"
-                  sx={
-                    {
-                      '--pill-bg': row.totalStyle.background,
-                      '--pill-border': row.totalStyle.border,
-                      '--pill-color': row.totalStyle.color,
-                    } as CSSProperties
-                  }
-                >
-                  {row.totalScore}
-                </Box>
-
-                <Box className="dashboard-table__reasoning">
-                  <Box className="dashboard-table__reasoning-bars">
-                    {row.miniBars.map((bar, index) => (
-                      <Box
-                        key={`${row.name}-mini-${index}`}
-                        className="dashboard-table__reasoning-bar"
-                        sx={
-                          {
-                            '--mini-height': `${bar}px`,
-                            '--mini-opacity': index === 2 ? 1 : 0.55,
-                          } as CSSProperties
-                        }
-                      />
-                    ))}
-                  </Box>
-                  <span>{row.reasoning}</span>
-                </Box>
-
-                <span className="dashboard-table__time">{row.time}</span>
-
-                <Box className="dashboard-table__analysis">
-                  <Box className="dashboard-table__analysis-bars">
-                    {Array.from({ length: 4 }).map((_, index) => (
-                      <Box
-                        key={`${row.name}-analysis-${index}`}
-                        className={`dashboard-table__analysis-bar${
-                          index < row.analysis ? ' dashboard-table__analysis-bar--filled' : ''
-                        }`}
-                      />
-                    ))}
-                  </Box>
-                  <span className="dashboard-table__analysis-text">{row.analysisText}</span>
-                </Box>
-
-                <span className="dashboard-table__date">{row.startDate}</span>
-
-                <Box
-                  className="dashboard-table__pill"
-                  sx={
-                    {
-                      '--pill-bg': row.genericStyle.background,
-                      '--pill-border': row.genericStyle.border,
-                      '--pill-color': row.genericStyle.color,
-                    } as CSSProperties
-                  }
-                >
-                  {row.generic}
-                </Box>
-
-                <Box className="dashboard-table__actions">
-                  <Button className="dashboard-table__icon-button" variant="outlined">
-                    🗑
-                  </Button>
-                  <Button className="dashboard-table__icon-button" variant="outlined">
-                    ✎
-                  </Button>
-                  <Button className="dashboard-table__icon-button" variant="outlined">
-                    ⋯
-                  </Button>
-                </Box>
-              </Box>
-            ))}
           </Box>
         </Box>
       </DashboardPageRoot>

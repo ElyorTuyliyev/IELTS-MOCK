@@ -1,5 +1,5 @@
 import { Global } from '@emotion/react'
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useMutation, useQuery } from '@apollo/client/react'
 import {
   Alert,
@@ -24,25 +24,11 @@ import { DELETE_STUDENT_MUTATION } from './api/deleteStudentMutation'
 import { FIND_ALL_USERS_QUERY } from './api/findAllUsersQuery'
 import { UPDATE_STUDENT_MUTATION } from './api/updateStudentMutation'
 import { createStudentColumnsWithActions } from './AllStudentsPage.columns'
-import {
-  STUDENTS,
-  STUDENTS_PAGE_SIZE,
-  type StudentLevelTone,
-  type StudentRow,
-} from './AllStudentsPage.constants'
+import { STUDENTS, type StudentLevelTone, type StudentRow } from './AllStudentsPage.constants'
 import {
   AllStudentsPageRoot,
   allStudentsModalGlobalStyles,
 } from './AllStudentsPage.style'
-
-const avatarGradients = [
-  'linear-gradient(135deg, #38b2ac 0%, #7c3aed 100%)',
-  'linear-gradient(135deg, #7dd3fc 0%, #60a5fa 100%)',
-  'linear-gradient(135deg, #f59e0b 0%, #78350f 100%)',
-  'linear-gradient(135deg, #06b6d4 0%, #7c3aed 100%)',
-  'linear-gradient(135deg, #fb7185 0%, #7c3aed 100%)',
-  'linear-gradient(135deg, #38bdf8 0%, #6366f1 100%)',
-] as const
 
 const levelTones: StudentLevelTone[] = ['orange', 'teal', 'pink', 'yellow', 'blue']
 const OBJECT_ID_PATTERN = /^[a-f\d]{24}$/i
@@ -158,22 +144,6 @@ function CloseIcon() {
   )
 }
 
-function getVisiblePages(currentPage: number, totalPages: number) {
-  if (totalPages <= 5) {
-    return Array.from({ length: totalPages }, (_, index) => index + 1)
-  }
-
-  if (currentPage <= 3) {
-    return [1, 2, 3, 'ellipsis-left', totalPages] as const
-  }
-
-  if (currentPage >= totalPages - 2) {
-    return [1, 'ellipsis-right', totalPages - 2, totalPages - 1, totalPages] as const
-  }
-
-  return [1, 'ellipsis-left', currentPage, 'ellipsis-right', totalPages] as const
-}
-
 export function AllStudentsPage() {
   const authToken = useAppSelector(selectAuthToken)
   const currentRole = useAppSelector(selectUserRole)
@@ -192,7 +162,7 @@ export function AllStudentsPage() {
   const [formError, setFormError] = useState('')
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
     page: 0,
-    pageSize: STUDENTS_PAGE_SIZE,
+    pageSize: 10,
   })
   const [createStudent, { loading: isCreatingStudent }] = useMutation<
     CreateStudentMutationResponse,
@@ -206,9 +176,8 @@ export function AllStudentsPage() {
     DeleteStudentMutationResponse,
     DeleteStudentMutationVariables
   >(DELETE_STUDENT_MUTATION)
-  const { data: usersData, refetch: refetchUsers } = useQuery<FindAllUsersQueryResponse>(
-    FIND_ALL_USERS_QUERY,
-  )
+  const { data: usersData, loading: usersLoading, refetch: refetchUsers } =
+    useQuery<FindAllUsersQueryResponse>(FIND_ALL_USERS_QUERY)
 
   const resetStudentModal = () => {
     setStudentFirstName('')
@@ -227,38 +196,44 @@ export function AllStudentsPage() {
     resetStudentModal()
   }
 
-  const handleEditStudent = (row: StudentRow) => {
-    const sourceUser = (usersData?.findAllUsers ?? []).find((user) => user._id === row.userId)
-    const [firstNameRaw, ...lastNameParts] = row.name.split(/\s+/).filter(Boolean)
-    setStudentFirstName(firstNameRaw ?? '')
-    setStudentLastName(lastNameParts.join(' '))
-    setStudentEmail(row.email === '-' ? '' : row.email)
-    setStudentBirthday(sourceUser?.birthday ? sourceUser.birthday.slice(0, 10) : '')
-    setStudentGender(sourceUser?.gender ?? '')
-    setStudentPhone(sourceUser?.phone ?? '')
-    setStudentPassword('')
-    setEditingStudentId(row.userId)
-    setFormError('')
-    setIsAddStudentOpen(true)
-  }
+  const handleEditStudent = useCallback(
+    (row: StudentRow) => {
+      const sourceUser = (usersData?.findAllUsers ?? []).find((user) => user._id === row.userId)
+      const [firstNameRaw, ...lastNameParts] = row.name.split(/\s+/).filter(Boolean)
+      setStudentFirstName(firstNameRaw ?? '')
+      setStudentLastName(lastNameParts.join(' '))
+      setStudentEmail(row.email === '-' ? '' : row.email)
+      setStudentBirthday(sourceUser?.birthday ? sourceUser.birthday.slice(0, 10) : '')
+      setStudentGender(sourceUser?.gender ?? '')
+      setStudentPhone(sourceUser?.phone ?? '')
+      setStudentPassword('')
+      setEditingStudentId(row.userId)
+      setFormError('')
+      setIsAddStudentOpen(true)
+    },
+    [usersData],
+  )
 
-  const handleDeleteStudent = async (row: StudentRow) => {
-    if (!row.userId || isDeletingStudent) {
-      return
-    }
-    try {
-      const result = await deleteStudent({
-        variables: { _id: row.userId },
-      })
-      if (!result.data?.removeUser) {
-        setFormError(result.error?.message ?? "Student o'chirishda xatolik bo'ldi.")
+  const handleDeleteStudent = useCallback(
+    async (row: StudentRow) => {
+      if (!row.userId || isDeletingStudent) {
         return
       }
-      await refetchUsers()
-    } catch (error) {
-      setFormError(error instanceof Error ? error.message : "Student o'chirishda xatolik bo'ldi.")
-    }
-  }
+      try {
+        const result = await deleteStudent({
+          variables: { _id: row.userId },
+        })
+        if (!result.data?.removeUser) {
+          setFormError(result.error?.message ?? 'Could not delete student.')
+          return
+        }
+        await refetchUsers()
+      } catch (error) {
+        setFormError(error instanceof Error ? error.message : 'Could not delete student.')
+      }
+    },
+    [deleteStudent, isDeletingStudent, refetchUsers],
+  )
 
   const handleSaveStudent = async () => {
     const trimmedFirstName = studentFirstName.trim()
@@ -449,12 +424,6 @@ export function AllStudentsPage() {
     const studentUsers = serverUsers.filter((user) => user.role === 'student')
     const mappedStudents: StudentRow[] = studentUsers.map((user, index) => {
       const fullName = `${user.firstName} ${user.lastName}`.trim()
-      const initials = fullName
-        .split(/\s+/)
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((item) => item[0]?.toUpperCase() ?? '')
-        .join('')
 
       return {
         userId: user._id,
@@ -462,16 +431,12 @@ export function AllStudentsPage() {
         name: fullName || 'Student',
         email: user.email ?? '-',
         points: '00/100',
-        loginTime: '--:--',
         creationDate: new Date(user.createdAt).toLocaleDateString('en-US', {
           month: 'short',
           day: '2-digit',
           year: 'numeric',
         }),
-        department: user.centerId ?? 'No center',
         status: 'Active',
-        initials: initials || 'ST',
-        avatarGradient: avatarGradients[index % avatarGradients.length],
         levelTone: levelTones[index % levelTones.length],
       }
     })
@@ -510,7 +475,6 @@ export function AllStudentsPage() {
         normalizedSearch.length === 0 ||
         student.name.toLowerCase().includes(normalizedSearch) ||
         student.email.toLowerCase().includes(normalizedSearch) ||
-        student.department.toLowerCase().includes(normalizedSearch) ||
         student.status.toLowerCase().includes(normalizedSearch)
       )
     })
@@ -536,28 +500,11 @@ export function AllStudentsPage() {
   const columns = useMemo(
     () =>
       createStudentColumnsWithActions({
-        onDelete: (row) => handleDeleteStudent(row),
-        onEdit: (row) => handleEditStudent(row),
+        onDelete: handleDeleteStudent,
+        onEdit: handleEditStudent,
       }),
-    [isDeletingStudent],
+    [handleDeleteStudent, handleEditStudent],
   )
-  const currentPage = paginationModel.page + 1
-  const totalPages = Math.max(1, Math.ceil(rows.length / paginationModel.pageSize))
-  const visiblePages = getVisiblePages(currentPage, totalPages)
-  const rangeStart = rows.length === 0 ? 0 : paginationModel.page * paginationModel.pageSize + 1
-  const rangeEnd =
-    rows.length === 0
-      ? 0
-      : Math.min((paginationModel.page + 1) * paginationModel.pageSize, rows.length)
-
-  useEffect(() => {
-    if (paginationModel.page > totalPages - 1) {
-      setPaginationModel((currentState) => ({
-        ...currentState,
-        page: Math.max(0, totalPages - 1),
-      }))
-    }
-  }, [paginationModel.page, totalPages])
 
   return (
     <Layout>
@@ -680,102 +627,28 @@ export function AllStudentsPage() {
               </Box>
             </Box>
 
-            <DataGrid
-              rows={rows}
-              columns={columns}
-              pagination
-              checkboxSelection
-              disableRowSelectionOnClick
-              disableColumnMenu
-              disableColumnResize
-              hideFooter
-              autoHeight
-              rowHeight={72}
-              columnHeaderHeight={54}
-              pageSizeOptions={[STUDENTS_PAGE_SIZE]}
-              paginationModel={paginationModel}
-              onPaginationModelChange={setPaginationModel}
-              localeText={{
-                noRowsLabel: 'No students matched the current search.',
-              }}
-              initialState={{
-                pagination: {
-                  paginationModel: {
-                    page: 0,
-                    pageSize: STUDENTS_PAGE_SIZE,
+            <Box className="students-table__grid-wrap">
+              <DataGrid
+                rows={rows}
+                columns={columns}
+                loading={usersLoading}
+                pagination
+                paginationModel={paginationModel}
+                onPaginationModelChange={setPaginationModel}
+                pageSizeOptions={[8, 10, 25, 50]}
+                disableRowSelectionOnClick
+                rowHeight={72}
+                columnHeaderHeight={54}
+                localeText={{
+                  noRowsLabel: 'No students matched the current search.',
+                }}
+                sx={{
+                  border: 0,
+                  '& .MuiDataGrid-footerContainer': {
+                    borderTop: '1px solid #dbe2f1',
                   },
-                },
-              }}
-              sx={{
-                border: 0,
-              }}
-            />
-
-            <Box className="students-table__footer">
-              <Box className="students-table__pagination">
-                <Button
-                  className="students-table__page-button"
-                  variant="outlined"
-                  disabled={currentPage === 1}
-                  onClick={() =>
-                    setPaginationModel((currentState) => ({
-                      ...currentState,
-                      page: Math.max(0, currentState.page - 1),
-                    }))
-                  }
-                >
-                  ‹
-                </Button>
-
-                {visiblePages.map((item) =>
-                  typeof item === 'number' ? (
-                    <Button
-                      key={item}
-                      className={`students-table__page-number${
-                        item === currentPage
-                          ? ' students-table__page-number--active'
-                          : ''
-                      }`}
-                      variant="text"
-                      onClick={() =>
-                        setPaginationModel((currentState) => ({
-                          ...currentState,
-                          page: item - 1,
-                        }))
-                      }
-                    >
-                      {item}
-                    </Button>
-                  ) : (
-                    <span key={item} className="students-table__page-ellipsis">
-                      ...
-                    </span>
-                  ),
-                )}
-
-                <Button
-                  className="students-table__page-button"
-                  variant="outlined"
-                  disabled={currentPage === totalPages}
-                  onClick={() =>
-                    setPaginationModel((currentState) => ({
-                      ...currentState,
-                      page: Math.min(totalPages - 1, currentState.page + 1),
-                    }))
-                  }
-                >
-                  ›
-                </Button>
-              </Box>
-
-              <Box className="students-table__footer-meta">
-                <span>
-                  Showing {rangeStart} to {rangeEnd} of {rows.length} entries
-                </span>
-                <Button className="students-table__show-button" variant="outlined">
-                  Show {paginationModel.pageSize} ⌃
-                </Button>
-              </Box>
+                }}
+              />
             </Box>
           </Box>
 

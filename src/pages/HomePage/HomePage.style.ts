@@ -258,6 +258,13 @@ export const HomePageRoot = styled.div`
     color: #334155;
   }
 
+  .exam-card__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+
   .exam-card__action {
     min-height: 42px;
     border: 1px solid #d8def0;
@@ -265,6 +272,11 @@ export const HomePageRoot = styled.div`
     background: #ffffff;
     color: #0f172a;
     text-transform: none;
+  }
+
+  .exam-card__action--danger {
+    border-color: #fecaca;
+    color: #b91c1c;
   }
 
   .content__empty-state {

@@ -122,6 +122,15 @@ export const AllStudentsPageRoot = styled.div`
     text-transform: none;
   }
 
+  .students-table__grid-wrap {
+    width: 100%;
+    height: 560px;
+  }
+
+  .students-table__grid-wrap .MuiDataGrid-root {
+    height: 100%;
+  }
+
   .MuiDataGrid-root {
     border: 0;
     background: transparent;
@@ -219,33 +228,11 @@ export const AllStudentsPageRoot = styled.div`
     font-weight: 700;
   }
 
-  .students-table__name {
-    display: flex;
-    align-items: center;
-    width: 100%;
-    height: 100%;
-    gap: 12px;
-    min-width: 0;
-  }
-
-  .students-table__avatar {
-    display: grid;
-    place-items: center;
-    width: 46px;
-    height: 46px;
-    border-radius: 50%;
-    background: var(--avatar-gradient, linear-gradient(135deg, #7c3aed 0%, #c084fc 100%));
-    color: #ffffff;
-    font-size: 0.76rem;
-    font-weight: 700;
-    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
-  }
-
   .students-table__name-text {
     margin: 0;
     display: flex;
     align-items: center;
-    min-height: 46px;
+    min-height: 0;
     color: #111827;
     font-size: 1rem;
     font-weight: 600;
@@ -285,16 +272,6 @@ export const AllStudentsPageRoot = styled.div`
   .students-table__points-text {
     font-size: 0.96rem;
     line-height: 1;
-  }
-
-  .students-table__department {
-    display: block;
-    width: 100%;
-    color: #111827;
-    font-size: 0.98rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   .students-table__pill {
@@ -349,69 +326,6 @@ export const AllStudentsPageRoot = styled.div`
     color: #334155;
     font-size: 0.95rem;
     line-height: 1;
-  }
-
-  .students-table__footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-    padding: 16px 20px;
-    border-top: 1px solid #edf2fb;
-    flex-wrap: wrap;
-  }
-
-  .students-table__pagination {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .students-table__page-button,
-  .students-table__show-button {
-    min-width: 44px;
-    height: 44px;
-    border: 1px solid #dbe2f1;
-    border-radius: 14px;
-    background: #ffffff;
-    color: #111827;
-    text-transform: none;
-    font-size: 1.1rem;
-  }
-
-  .students-table__page-number {
-    min-width: 34px;
-    height: 34px;
-    color: #111827;
-    font-size: 1rem;
-    font-weight: 600;
-    text-transform: none;
-  }
-
-  .students-table__page-number--active {
-    border: 1px solid #dbe2f1;
-    border-radius: 12px;
-    background: #f8fafc;
-  }
-
-  .students-table__page-ellipsis {
-    color: #475569;
-    font-weight: 700;
-  }
-
-  .students-table__footer-meta {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-    color: #475569;
-    font-size: 0.94rem;
-    font-weight: 500;
-  }
-
-  .students-table__show-button {
-    padding: 0 16px;
-    font-size: 0.98rem;
   }
 
   .students-modal__backdrop {

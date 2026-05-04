@@ -32,7 +32,8 @@ const authLink = setContext((operation, { headers }) => {
   const isPublicAuthOperation =
     operationName === 'login' ||
     operationName === 'signup' ||
-    operationName === 'logout'
+    operationName === 'logout' ||
+    operationName === 'createstudentsignupleaddata'
 
   if (isPublicAuthOperation) {
     return {

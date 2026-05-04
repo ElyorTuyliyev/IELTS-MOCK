@@ -85,21 +85,9 @@ export function createStudentColumnsWithActions(
       sortable: false,
       headerAlign: "left",
       renderCell: (params) => (
-        <Box className="students-table__name">
-          <Box
-            className="students-table__avatar"
-            sx={
-              {
-                "--avatar-gradient": params.row.avatarGradient,
-              } as CSSProperties
-            }
-          >
-            {params.row.initials}
-          </Box>
-          <Typography component="p" className="students-table__name-text">
-            {params.row.name}
-          </Typography>
-        </Box>
+        <Typography component="span" className="students-table__name-text">
+          {params.row.name}
+        </Typography>
       ),
     },
     {
@@ -149,18 +137,6 @@ export function createStudentColumnsWithActions(
       },
     },
     {
-      field: "loginTime",
-      headerName: "Logon time",
-      minWidth: 132,
-      sortable: false,
-      headerAlign: "left",
-      renderCell: (params) => (
-        <span className="students-table__meta students-table__meta--strong">
-          {params.row.loginTime}
-        </span>
-      ),
-    },
-    {
       field: "creationDate",
       headerName: "Creation date",
       minWidth: 150,
@@ -168,19 +144,6 @@ export function createStudentColumnsWithActions(
       headerAlign: "left",
       renderCell: (params) => (
         <span className="students-table__meta">{params.row.creationDate}</span>
-      ),
-    },
-    {
-      field: "department",
-      headerName: "Department",
-      minWidth: 230,
-      flex: 1.15,
-      sortable: false,
-      headerAlign: "left",
-      renderCell: (params) => (
-        <span className="students-table__department">
-          {params.row.department}
-        </span>
       ),
     },
     {

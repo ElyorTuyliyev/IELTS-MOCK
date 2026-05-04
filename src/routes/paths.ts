@@ -4,6 +4,10 @@ export const ROUTES_PATH = {
   dashboard: '/',
   signIn: '/sign-in',
   signUp: '/sign-up',
+  /** Public student registration (shareable invite URL). */
+  studentJoin: '/join',
+  /** Short interest form (name + phone) for Signup Forms inbox. */
+  studentLeadJoin: '/join/lead',
   allExams: '/exams',
   center: '/centers',
   surveys: '/surveys',

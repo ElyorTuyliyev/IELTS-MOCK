@@ -1,12 +1,44 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useMutation, useQuery } from '@apollo/client/react'
-import { Box, Button, MenuItem, TextField, Typography } from '@mui/material'
+import { Alert, Box, Button, MenuItem, TextField, Typography } from '@mui/material'
 
 import { Layout } from '../../components/layout'
-import { EXAMS, type ExamCard } from './HomePage.constants'
+import { selectAuthToken, selectUserRole } from '../../store'
+import { useAppSelector } from '../../store/hooks'
+import { USER_ROLES } from '../../store/slices/authSlice'
+import { type ExamCard } from './HomePage.constants'
 import { CREATE_EXAM_MUTATION } from './api/createExamMutation'
 import { FIND_ALL_EXAMS_QUERY } from './api/findAllExamsQuery'
+import { REMOVE_EXAM_MUTATION } from './api/removeExamMutation'
+import { UPDATE_EXAM_MUTATION } from './api/updateExamMutation'
 import { HomePageRoot } from './HomePage.style'
+
+type ExamFormDialog = null | { mode: 'create' } | { mode: 'edit'; examId: string }
+
+function isoToDateInputValue(iso: string) {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) {
+    return ''
+  }
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function normalizeTimeForInput(t: string) {
+  const trimmed = t.trim()
+  const m = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(trimmed)
+  if (!m) {
+    return trimmed
+  }
+  const h = Number(m[1])
+  const min = m[2]
+  if (!Number.isFinite(h)) {
+    return trimmed
+  }
+  return `${String(h).padStart(2, '0')}:${min}`
+}
 
 type FindAllExamsQueryResponse = {
   findAllExams: Array<{
@@ -21,16 +53,20 @@ type FindAllExamsQueryResponse = {
     isActive: boolean
     isCompleted: boolean
     createdAt: string
+    centerId?: string | null
   }>
 }
 
 export function HomePage() {
+  const authToken = useAppSelector(selectAuthToken)
+  const userRole = useAppSelector(selectUserRole)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('All statuses')
   const [categoryFilter, setCategoryFilter] = useState('All categories')
   const [newCategory, setNewCategory] = useState('')
   const [customCategories, setCustomCategories] = useState<string[]>([])
-  const [isCreateExamModalOpen, setIsCreateExamModalOpen] = useState(false)
+  const [examFormDialog, setExamFormDialog] = useState<ExamFormDialog>(null)
+  const [examCardActionError, setExamCardActionError] = useState<string | null>(null)
   const [examTitle, setExamTitle] = useState('')
   const [examiner, setExaminer] = useState('')
   const [examType, setExamType] = useState<'IELTS' | 'CEFR'>('IELTS')
@@ -41,9 +77,16 @@ export function HomePage() {
   const [createExamError, setCreateExamError] = useState<string | null>(null)
   const [createExamSuccess, setCreateExamSuccess] = useState<string | null>(null)
   const [createExam, { loading: isCreatingExam }] = useMutation(CREATE_EXAM_MUTATION)
+  const [updateExam, { loading: isUpdatingExam }] = useMutation(UPDATE_EXAM_MUTATION)
+  const [removeExam, { loading: isRemovingExam }] = useMutation(REMOVE_EXAM_MUTATION)
   const { data: examsData, refetch: refetchExams } = useQuery<FindAllExamsQueryResponse>(
     FIND_ALL_EXAMS_QUERY,
   )
+
+  const canManageExams =
+    userRole === USER_ROLES.center || userRole === USER_ROLES.superAdmin
+
+  const examModalBusy = isCreatingExam || isUpdatingExam
 
   const formatPriceInSom = (value: number) => {
     const safeValue = Number.isFinite(value) ? value : 0
@@ -60,7 +103,32 @@ export function HomePage() {
       'linear-gradient(135deg, #8b5cf6 0%, #c4b5fd 100%)',
     ]
 
-    const backendExams = (examsData?.findAllExams ?? []).map((exam, index): ExamCard => {
+    const actorCenterId = (() => {
+      if (!authToken) {
+        return null
+      }
+
+      const parts = authToken.split('.')
+      if (parts.length < 2) {
+        return null
+      }
+
+      try {
+        const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+        const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')
+        const payload = JSON.parse(atob(padded)) as { centerId?: string | null }
+        return payload.centerId ?? null
+      } catch {
+        return null
+      }
+    })()
+
+    const scopedExams =
+      userRole === USER_ROLES.center && actorCenterId
+        ? (examsData?.findAllExams ?? []).filter((exam) => exam.centerId === actorCenterId)
+        : (examsData?.findAllExams ?? [])
+
+    const backendExams = scopedExams.map((exam, index): ExamCard => {
       const status: ExamCard['status'] = exam.isCompleted
         ? 'Archived'
         : exam.isActive
@@ -68,6 +136,7 @@ export function HomePage() {
           : 'Draft'
 
       return {
+        id: exam._id,
         title: exam.title,
         gradient: gradientPalette[index % gradientPalette.length],
         category: exam.examType ?? 'Mock Exam',
@@ -78,11 +147,17 @@ export function HomePage() {
           `Price: ${formatPriceInSom(exam.price)}`,
         ],
         date: formatExamDateLabel(exam.examDate || exam.createdAt),
+        examiner: exam.examiner,
+        examType: exam.examType === 'CEFR' ? 'CEFR' : 'IELTS',
+        examDateIso: exam.examDate || exam.createdAt,
+        startTime: exam.startTime,
+        endTime: exam.endTime,
+        price: exam.price,
       }
     })
 
-    return backendExams.length > 0 ? backendExams : EXAMS
-  }, [examsData])
+    return backendExams
+  }, [authToken, examsData, userRole])
 
   const categories = useMemo(() => {
     const sourceCategories = allExams.map((exam) => exam.category)
@@ -155,12 +230,30 @@ export function HomePage() {
     setCreateExamSuccess(null)
   }
 
-  const handleCloseCreateExamModal = () => {
-    setIsCreateExamModalOpen(false)
+  const handleCloseExamModal = () => {
+    setExamFormDialog(null)
     resetCreateExamForm()
   }
 
-  const handleCreateExam = async () => {
+  const openCreateExamModal = () => {
+    resetCreateExamForm()
+    setExamFormDialog({ mode: 'create' })
+  }
+
+  const openEditExamModal = (exam: ExamCard) => {
+    setCreateExamError(null)
+    setCreateExamSuccess(null)
+    setExamTitle(exam.title)
+    setExaminer(exam.examiner)
+    setExamType(exam.examType === 'CEFR' ? 'CEFR' : 'IELTS')
+    setExamDate(isoToDateInputValue(exam.examDateIso))
+    setStartTime(normalizeTimeForInput(exam.startTime))
+    setEndTime(normalizeTimeForInput(exam.endTime))
+    setPrice(String(exam.price))
+    setExamFormDialog({ mode: 'edit', examId: exam.id })
+  }
+
+  const handleSaveExam = async () => {
     const normalizedTitle = examTitle.trim()
     const normalizedExaminer = examiner.trim()
     const normalizedPrice = Number(price)
@@ -175,31 +268,101 @@ export function HomePage() {
       return
     }
 
-    try {
-      setCreateExamError(null)
-      const examDateIso = new Date(`${examDate}T00:00:00`).toISOString()
+    setCreateExamError(null)
+    const examDateIso = new Date(`${examDate}T00:00:00`).toISOString()
 
-      await createExam({
-        variables: {
-          title: normalizedTitle,
-          examiner: normalizedExaminer,
-          examType,
-          examDate: examDateIso,
-          startTime,
-          endTime,
-          price: normalizedPrice,
-        },
-      })
+    const gqlErrorMessage = (err: unknown): string | null => {
+      if (!err || typeof err !== 'object') {
+        return null
+      }
+      const graphQLErrors =
+        'graphQLErrors' in err && Array.isArray((err as { graphQLErrors: unknown }).graphQLErrors)
+          ? (err as { graphQLErrors: Array<{ message?: string }> }).graphQLErrors
+          : []
+      const gqlMsg =
+        graphQLErrors[0] && typeof graphQLErrors[0].message === 'string' ? graphQLErrors[0].message : null
+      if (gqlMsg) {
+        return gqlMsg
+      }
+      if ('message' in err && typeof (err as { message: unknown }).message === 'string') {
+        return (err as { message: string }).message
+      }
+      return null
+    }
+
+    try {
+      if (examFormDialog?.mode === 'edit') {
+        const res = await updateExam({
+          variables: {
+            _id: examFormDialog.examId,
+            title: normalizedTitle,
+            examiner: normalizedExaminer,
+            examType,
+            examDate: examDateIso,
+            startTime,
+            endTime,
+            price: normalizedPrice,
+          },
+        })
+        if (res.error) {
+          setCreateExamError(gqlErrorMessage(res.error) ?? 'Failed to update exam.')
+          return
+        }
+        setCreateExamSuccess('Exam updated successfully.')
+      } else {
+        const res = await createExam({
+          variables: {
+            title: normalizedTitle,
+            examiner: normalizedExaminer,
+            examType,
+            examDate: examDateIso,
+            startTime,
+            endTime,
+            price: normalizedPrice,
+          },
+        })
+        if (res.error) {
+          setCreateExamError(gqlErrorMessage(res.error) ?? 'Failed to create exam.')
+          return
+        }
+        setCreateExamSuccess('Exam created successfully.')
+      }
 
       await refetchExams()
-      setCreateExamSuccess('Exam created successfully.')
       setTimeout(() => {
-        handleCloseCreateExamModal()
+        handleCloseExamModal()
       }, 700)
-    } catch (error: any) {
-      setCreateExamError(error?.message ?? 'Failed to create exam.')
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to save exam.'
+      setCreateExamError(message)
     }
   }
+
+  const handleDeleteExam = useCallback(
+    async (exam: ExamCard) => {
+      if (!window.confirm(`Delete "${exam.title}"? This cannot be undone.`)) {
+        return
+      }
+      setExamCardActionError(null)
+      try {
+        const res = await removeExam({ variables: { _id: exam.id } })
+        if (res.error) {
+          const gqlErrors =
+            'graphQLErrors' in res.error && Array.isArray(res.error.graphQLErrors)
+              ? res.error.graphQLErrors
+              : []
+          const gqlMsg = gqlErrors[0] && 'message' in gqlErrors[0] ? String(gqlErrors[0].message) : null
+          setExamCardActionError(gqlMsg ?? res.error.message ?? 'Delete failed.')
+          return
+        }
+        await refetchExams()
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Failed to delete exam.'
+        setExamCardActionError(message)
+      }
+    },
+    [refetchExams, removeExam],
+  )
 
   return (
     <Layout>
@@ -209,13 +372,11 @@ export function HomePage() {
             <Typography component="h2" className="content__section-title">
               All Exams
             </Typography>
-            <Button
-              className="content__primary-button"
-              variant="contained"
-              onClick={() => setIsCreateExamModalOpen(true)}
-            >
-              + Add New Exam
-            </Button>
+            {canManageExams ? (
+              <Button className="content__primary-button" variant="contained" onClick={openCreateExamModal}>
+                + Add New Exam
+              </Button>
+            ) : null}
           </Box>
 
           <Box className="content__toolbar-filters">
@@ -289,10 +450,16 @@ export function HomePage() {
             </Typography>
           </Box>
 
+          {examCardActionError ? (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setExamCardActionError(null)}>
+              {examCardActionError}
+            </Alert>
+          ) : null}
+
           {filteredExams.length > 0 ? (
             <Box className="content__grid">
               {filteredExams.map((exam) => (
-                <Box key={`${exam.title}-${exam.gradient}`} component="article" className="exam-card">
+                <Box key={exam.id} component="article" className="exam-card">
                   <Box className="exam-card__visual" sx={{ background: exam.gradient }}>
                     <Box component="span" className="exam-card__orb exam-card__orb--large" />
                     <Box component="span" className="exam-card__orb exam-card__orb--small" />
@@ -328,9 +495,32 @@ export function HomePage() {
                       {exam.date}
                     </Typography>
 
-                    <Button className="exam-card__action" variant="outlined">
-                      View More
-                    </Button>
+                    <Box className="exam-card__actions">
+                      <Button className="exam-card__action" variant="outlined" type="button">
+                        View More
+                      </Button>
+                      {canManageExams ? (
+                        <>
+                          <Button
+                            className="exam-card__action"
+                            variant="outlined"
+                            type="button"
+                            onClick={() => openEditExamModal(exam)}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            className="exam-card__action exam-card__action--danger"
+                            variant="outlined"
+                            type="button"
+                            disabled={isRemovingExam}
+                            onClick={() => void handleDeleteExam(exam)}
+                          >
+                            Delete
+                          </Button>
+                        </>
+                      ) : null}
+                    </Box>
                   </Box>
                 </Box>
               ))}
@@ -342,7 +532,7 @@ export function HomePage() {
           )}
         </Box>
 
-        {isCreateExamModalOpen ? (
+        {examFormDialog ? (
           <Box
             sx={{
               position: 'fixed',
@@ -354,7 +544,7 @@ export function HomePage() {
               backgroundColor: 'rgba(6, 10, 28, 0.58)',
               p: 2,
             }}
-            onClick={handleCloseCreateExamModal}
+            onClick={handleCloseExamModal}
           >
             <Box
               sx={{
@@ -371,7 +561,7 @@ export function HomePage() {
               onClick={(event) => event.stopPropagation()}
             >
               <Typography component="h3" variant="h6" sx={{ fontWeight: 700 }}>
-                Add New Exam
+                {examFormDialog.mode === 'edit' ? 'Edit exam' : 'Add New Exam'}
               </Typography>
 
               <TextField
@@ -442,11 +632,11 @@ export function HomePage() {
               ) : null}
 
               <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5, pt: 1 }}>
-                <Button variant="outlined" onClick={handleCloseCreateExamModal}>
+                <Button variant="outlined" onClick={handleCloseExamModal}>
                   Cancel
                 </Button>
-                <Button variant="contained" onClick={handleCreateExam} disabled={isCreatingExam}>
-                  {isCreatingExam ? 'Saving...' : 'Save Exam'}
+                <Button variant="contained" onClick={handleSaveExam} disabled={examModalBusy}>
+                  {examModalBusy ? 'Saving...' : 'Save Exam'}
                 </Button>
               </Box>
             </Box>
