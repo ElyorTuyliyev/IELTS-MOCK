@@ -5,6 +5,7 @@ export const FIND_ALL_EXAMS_FOR_QUESTION_QUERY = gql`
     findAllExams {
       _id
       title
+      moduleId
     }
   }
 `

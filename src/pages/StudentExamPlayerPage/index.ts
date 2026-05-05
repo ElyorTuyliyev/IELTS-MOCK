@@ -1,0 +1,1 @@
+export { StudentExamPlayerPage } from './StudentExamPlayerPage'

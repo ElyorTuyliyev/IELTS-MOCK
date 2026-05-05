@@ -13,6 +13,9 @@ const DashboardPage = lazy(() =>
 const HomePage = lazy(() =>
   import('../pages/HomePage').then((m) => ({ default: m.HomePage })),
 )
+const ExamDetailsPage = lazy(() =>
+  import('../pages/ExamDetailsPage').then((m) => ({ default: m.ExamDetailsPage })),
+)
 const PrizeQuizzesPage = lazy(() =>
   import('../pages/PrizeQuizzesPage').then((m) => ({ default: m.PrizeQuizzesPage })),
 )
@@ -55,6 +58,9 @@ const SignupFormsPage = lazy(() =>
 const StudentLeadSignupPage = lazy(() =>
   import('../pages/StudentLeadSignupPage').then((m) => ({ default: m.StudentLeadSignupPage })),
 )
+const StudentExamPlayerPage = lazy(() =>
+  import('../pages/StudentExamPlayerPage').then((m) => ({ default: m.StudentExamPlayerPage })),
+)
 
 type AppRouteConfig = {
   path: string
@@ -65,7 +71,8 @@ type AppRouteConfig = {
 const allRoles = Object.values(USER_ROLES)
 const superAdminOnly = [USER_ROLES.superAdmin]
 const centerRoles = [USER_ROLES.center, USER_ROLES.superAdmin]
-const examRoles = [USER_ROLES.student, USER_ROLES.center, USER_ROLES.superAdmin]
+const examRoles = [USER_ROLES.center, USER_ROLES.superAdmin]
+const studentOnly = [USER_ROLES.student]
 const studentFeatureRoles = [USER_ROLES.center, USER_ROLES.superAdmin]
 
 function ProtectedRoute({
@@ -112,9 +119,19 @@ const appRoutes: AppRouteConfig[] = [
     allowedRoles: examRoles,
   },
   {
+    path: ROUTES_PATH.examDetails,
+    element: <ExamDetailsPage />,
+    allowedRoles: examRoles,
+  },
+  {
     path: ROUTES_PATH.prizeQuizzes,
     element: <PrizeQuizzesPage />,
     allowedRoles: examRoles,
+  },
+  {
+    path: ROUTES_PATH.studentExamPlayer,
+    element: <StudentExamPlayerPage />,
+    allowedRoles: studentOnly,
   },
   {
     path: ROUTES_PATH.center,

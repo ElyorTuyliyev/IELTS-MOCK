@@ -10,6 +10,7 @@ export const FIND_ALL_QUESTIONS_QUERY = gql`
       examId
       partId
       ieltsModule
+      listeningPart
       listeningAudio
       speakingAudio
       supportingImage

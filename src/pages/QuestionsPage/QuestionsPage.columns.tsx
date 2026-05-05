@@ -10,7 +10,15 @@ function getErrorRateSegments(errorRate: number) {
   return Array.from({ length: 4 }, (_, index) => index < activeCount)
 }
 
-export function createQuestionColumns(): GridColDef<QuestionGridRow>[] {
+type CreateQuestionColumnsOptions = {
+  onDelete: (row: QuestionGridRow) => void
+  onEdit: (row: QuestionGridRow) => void
+}
+
+export function createQuestionColumns({
+  onDelete,
+  onEdit,
+}: CreateQuestionColumnsOptions): GridColDef<QuestionGridRow>[] {
   return [
     {
       field: 'title',
@@ -97,17 +105,19 @@ export function createQuestionColumns(): GridColDef<QuestionGridRow>[] {
       filterable: false,
       disableColumnMenu: true,
       headerAlign: 'left',
-      renderCell: () => (
+      renderCell: (params) => (
         <Box className="question-table__action-buttons">
           <IconButton
             className="question-table__icon-button"
             aria-label="Delete question"
+            onClick={() => onDelete(params.row)}
           >
             🗑
           </IconButton>
           <IconButton
             className="question-table__icon-button"
             aria-label="Edit question"
+            onClick={() => onEdit(params.row)}
           >
             ✎
           </IconButton>

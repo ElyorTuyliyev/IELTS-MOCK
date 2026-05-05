@@ -10,6 +10,7 @@ import { useAppSelector } from "../../store/hooks";
 import { AddQuestionPageRoot } from "./AddQuestionPage.style";
 import { CREATE_QUESTION_MUTATION } from "./api/createQuestionMutation";
 import { FIND_ALL_EXAMS_FOR_QUESTION_QUERY } from "./api/findAllExamsForQuestionQuery";
+import { FIND_ALL_PARTS_FOR_QUESTION_QUERY } from "./api/findAllPartsForQuestionQuery";
 import {
   IELTS_MODULE_OPTIONS,
   QUESTION_TEMPLATES,
@@ -20,13 +21,35 @@ import {
 type ExamItem = {
   _id: string;
   title: string;
+  moduleId?: string | null;
 };
 
 type FindAllExamsResponse = {
   findAllExams: ExamItem[];
 };
 
+type PartItem = {
+  _id: string;
+  partNumber: number;
+  title: string;
+  moduleId: string;
+};
+
+type FindAllPartsResponse = {
+  findAllParts: PartItem[];
+};
+
+type CreateQuestionMutationResponse = {
+  createQuestion: {
+    _id: string;
+    listeningPart?: string | null;
+  };
+};
+
 const EMPTY_HTML = "<p></p>";
+const LISTENING_PART_LABELS = ["Part 1", "Part 2", "Part 3", "Part 4"] as const;
+const READING_PART_LABELS = ["Part 1", "Part 2", "Part 3"] as const;
+const WRITING_PART_LABELS = ["Part 1", "Part 2"] as const;
 const uploadEndpoint = `${graphqlUrl.replace(/\/graphql$/, "")}/files/upload`;
 
 function isHtmlEmpty(value: string) {
@@ -37,6 +60,18 @@ function isHtmlEmpty(value: string) {
     .replace(/<[^>]+>/g, "")
     .trim();
   return normalized.length === 0;
+}
+
+function buildListeningPartStem(partLabel: string, html: string) {
+  return `<h3>${partLabel}</h3>${html}`;
+}
+
+function buildPartLabel(part: PartItem) {
+  const title = part.title?.trim();
+  if (title) {
+    return `Part ${part.partNumber}: ${title}`;
+  }
+  return `Part ${part.partNumber}`;
 }
 
 function FileUploadTrayIcon() {
@@ -113,7 +148,10 @@ export function AddQuestionPage() {
   const { data: examsData } = useQuery<FindAllExamsResponse>(
     FIND_ALL_EXAMS_FOR_QUESTION_QUERY,
   );
-  const [createQuestion, { loading: isSaving }] = useMutation(
+  const { data: partsData } = useQuery<FindAllPartsResponse>(
+    FIND_ALL_PARTS_FOR_QUESTION_QUERY,
+  );
+  const [createQuestion, { loading: isSaving }] = useMutation<CreateQuestionMutationResponse>(
     CREATE_QUESTION_MUTATION,
   );
 
@@ -126,6 +164,15 @@ export function AddQuestionPage() {
   const [timeLimit, setTimeLimit] = useState("45");
   const [instruction, setInstruction] = useState(EMPTY_HTML);
   const [stem, setStem] = useState(EMPTY_HTML);
+  const [listeningPartStems, setListeningPartStems] = useState<string[]>(
+    Array.from({ length: LISTENING_PART_LABELS.length }, () => EMPTY_HTML),
+  );
+  const [readingPartStems, setReadingPartStems] = useState<string[]>(
+    Array.from({ length: READING_PART_LABELS.length }, () => EMPTY_HTML),
+  );
+  const [writingPartStems, setWritingPartStems] = useState<string[]>(
+    Array.from({ length: WRITING_PART_LABELS.length }, () => EMPTY_HTML),
+  );
   const [sourceMaterial, setSourceMaterial] = useState(EMPTY_HTML);
   const [explanation, setExplanation] = useState(EMPTY_HTML);
   const [acceptedAnswers, setAcceptedAnswers] = useState("");
@@ -147,6 +194,112 @@ export function AddQuestionPage() {
     [selectedTemplateId],
   );
   const answerMode: AnswerMode = selectedTemplate.answerMode;
+  const selectedExam = useMemo(
+    () => exams.find((examItem) => examItem._id === selectedExamId) ?? null,
+    [exams, selectedExamId],
+  );
+  const selectedModuleId = useMemo(() => {
+    if (!selectedExam) {
+      return null;
+    }
+    return selectedExam.moduleId ?? null;
+  }, [selectedExam, selectedModule]);
+  const selectedModuleParts = useMemo(() => {
+    const moduleId = selectedModuleId;
+    if (!moduleId) {
+      return [];
+    }
+    return (partsData?.findAllParts ?? [])
+      .filter((part) => String(part.moduleId) === String(moduleId))
+      .sort((left, right) => left.partNumber - right.partNumber);
+  }, [partsData?.findAllParts, selectedModuleId]);
+  const listeningPartEntries = useMemo(
+    () =>
+      LISTENING_PART_LABELS.map((fallbackLabel, index) => {
+        const part = selectedModuleParts[index];
+        return {
+          key: part?._id ?? `fallback-part-${index + 1}`,
+          label: part ? buildPartLabel(part) : fallbackLabel,
+          partId: part?._id ?? null,
+          stem: listeningPartStems[index] ?? EMPTY_HTML,
+        };
+      }),
+    [listeningPartStems, selectedModuleParts],
+  );
+  const readingPartEntries = useMemo(
+    () =>
+      READING_PART_LABELS.map((fallbackLabel, index) => {
+        const part = selectedModuleParts[index];
+        return {
+          key: part?._id ?? `reading-fallback-part-${index + 1}`,
+          label: part ? buildPartLabel(part) : fallbackLabel,
+          partId: part?._id ?? null,
+          stem: readingPartStems[index] ?? EMPTY_HTML,
+        };
+      }),
+    [readingPartStems, selectedModuleParts],
+  );
+  const writingPartEntries = useMemo(
+    () =>
+      WRITING_PART_LABELS.map((fallbackLabel, index) => {
+        const part = selectedModuleParts[index];
+        return {
+          key: part?._id ?? `writing-fallback-part-${index + 1}`,
+          label: part ? buildPartLabel(part) : fallbackLabel,
+          partId: part?._id ?? null,
+          stem: writingPartStems[index] ?? EMPTY_HTML,
+        };
+      }),
+    [selectedModuleParts, writingPartStems],
+  );
+
+  useEffect(() => {
+    if (selectedModule !== "Listening") {
+      return;
+    }
+    const expectedCount = LISTENING_PART_LABELS.length;
+    setListeningPartStems((current) => {
+      if (current.length === expectedCount) {
+        return current;
+      }
+      if (current.length > expectedCount) {
+        return current.slice(0, expectedCount);
+      }
+      return [...current, ...Array.from({ length: expectedCount - current.length }, () => EMPTY_HTML)];
+    });
+  }, [selectedModule, selectedModuleParts]);
+
+  useEffect(() => {
+    if (selectedModule !== "Writing") {
+      return;
+    }
+    const expectedCount = WRITING_PART_LABELS.length;
+    setWritingPartStems((current) => {
+      if (current.length === expectedCount) {
+        return current;
+      }
+      if (current.length > expectedCount) {
+        return current.slice(0, expectedCount);
+      }
+      return [...current, ...Array.from({ length: expectedCount - current.length }, () => EMPTY_HTML)];
+    });
+  }, [selectedModule, selectedModuleParts]);
+
+  useEffect(() => {
+    if (selectedModule !== "Reading") {
+      return;
+    }
+    const expectedCount = READING_PART_LABELS.length;
+    setReadingPartStems((current) => {
+      if (current.length === expectedCount) {
+        return current;
+      }
+      if (current.length > expectedCount) {
+        return current.slice(0, expectedCount);
+      }
+      return [...current, ...Array.from({ length: expectedCount - current.length }, () => EMPTY_HTML)];
+    });
+  }, [selectedModule, selectedModuleParts]);
 
   useEffect(() => {
     if (!selectedExamId && exams.length > 0) {
@@ -182,7 +335,30 @@ export function AddQuestionPage() {
     if (!response.ok) {
       throw new Error(`File upload failed (${response.status})`);
     }
-    return (await response.json()) as string;
+
+    const raw = await response.text();
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      throw new Error("File upload returned empty response.");
+    }
+
+    // Backend ba'zan plain text (`/uuid.ext`), ba'zan JSON (`"/uuid.ext"`) qaytaradi.
+    if (trimmed.startsWith("/") || trimmed.startsWith("uploads/")) {
+      return trimmed;
+    }
+
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (typeof parsed === "string") return parsed;
+      if (parsed && typeof parsed === "object" && "path" in parsed) {
+        const pathValue = (parsed as { path?: unknown }).path;
+        if (typeof pathValue === "string") return pathValue;
+      }
+    } catch {
+      // fall through to friendly error below
+    }
+
+    throw new Error("Unexpected upload response format.");
   };
 
   const handleTemplateChange = (templateId: string) => {
@@ -192,35 +368,52 @@ export function AddQuestionPage() {
     setSuccess(null);
   };
 
+  const resolvedStem = selectedModule === "Listening" ? EMPTY_HTML : stem;
+
   const handleCreateQuestion = async () => {
     const nextErrors: string[] = [];
     setSuccess(null);
 
-    if (!selectedExamId) nextErrors.push("IELTS mock test tanlang.");
+    if (!selectedExamId) nextErrors.push("IELTS exam tanlang.");
     if (!title.trim()) nextErrors.push("Question title required.");
-    if (isHtmlEmpty(instruction)) nextErrors.push("Instruction required.");
-    if (isHtmlEmpty(stem)) nextErrors.push("Question stem required.");
-    if (isHtmlEmpty(sourceMaterial)) nextErrors.push("Source material required.");
+    if (selectedModule !== "Listening" && selectedModule !== "Reading" && isHtmlEmpty(instruction)) {
+      nextErrors.push("Instruction required.");
+    }
+    if (selectedModule === "Listening") {
+        const missingParts = listeningPartEntries.filter((entry) => isHtmlEmpty(entry.stem));
+      if (missingParts.length > 0) {
+        nextErrors.push(
+            `Listening part stem required: ${missingParts.map((entry) => entry.label).join(", ")}.`,
+        );
+      }
+    } else if (selectedModule === "Reading") {
+      const missingReadingParts = readingPartEntries.filter((entry) => isHtmlEmpty(entry.stem));
+      if (missingReadingParts.length > 0) {
+        nextErrors.push(
+          `Reading part stem required: ${missingReadingParts.map((entry) => entry.label).join(", ")}.`,
+        );
+      }
+    } else if (selectedModule === "Writing") {
+      const missingWritingParts = writingPartEntries.filter((entry) => isHtmlEmpty(entry.stem));
+      if (missingWritingParts.length > 0) {
+        nextErrors.push(
+          `Writing part stem required: ${missingWritingParts.map((entry) => entry.label).join(", ")}.`,
+        );
+      }
+    } else if (isHtmlEmpty(resolvedStem)) {
+      nextErrors.push("Question stem required.");
+    }
+    if (selectedModule !== "Listening" && selectedModule !== "Reading" && isHtmlEmpty(sourceMaterial)) {
+      nextErrors.push("Source material required.");
+    }
     if (selectedModule === "Listening" && !listeningAudioFile) {
       nextErrors.push("Listening audio required.");
     }
     if (selectedModule === "Speaking" && !speakingAudioFile) {
       nextErrors.push("Speaking audio required.");
     }
-    if (
-      (selectedModule === "Reading" || selectedModule === "Writing") &&
-      !supportingImageFile
-    ) {
-      nextErrors.push("Supporting image required for Reading/Writing.");
-    }
-    if (answerMode === "text") {
-      const variants = acceptedAnswers
-        .split("|")
-        .map((item) => item.trim())
-        .filter(Boolean);
-      if (variants.length === 0) {
-        nextErrors.push("Accepted answers required for text template.");
-      }
+    if (selectedModule === "Reading" && !supportingImageFile) {
+      nextErrors.push("Supporting image required for Reading.");
     }
 
     if (nextErrors.length > 0) {
@@ -236,48 +429,171 @@ export function AddQuestionPage() {
           uploadAsset(supportingImageFile),
         ]);
 
-      const optionsPayload =
-        answerMode === "text"
-          ? acceptedAnswers
-              .split("|")
-              .map((item) => item.trim())
-              .filter(Boolean)
-              .map((item, index) => ({
-                title: item,
-                key: `V${index + 1}`,
-                isCorrectAnswer: true,
-              }))
-          : [];
+      const optionsPayload: Array<{ title: string; key: string; isCorrectAnswer: boolean }> = [];
+      const normalizedPlacement =
+        Number.isFinite(Number(timeLimit)) && Number(timeLimit) > 0
+          ? Number(timeLimit)
+          : null;
 
-      await createQuestion({
-        variables: {
-          input: {
-            examId: selectedExamId,
-            title: title.trim(),
-            instruction,
-            stem,
-            sourceMaterial,
-            explanation,
-            listeningAudio: uploadedListeningAudio,
-            speakingAudio: uploadedSpeakingAudio,
-            supportingImage: uploadedSupportingImage,
-            question: `${title.trim()}\n\n${stem}`,
-            type:
-              answerMode === "multiple"
-                ? "multiselect"
-                : "input",
-            ieltsModule: selectedModule,
-            placementNumber:
-              Number.isFinite(Number(timeLimit)) && Number(timeLimit) > 0
-                ? Number(timeLimit)
-                : null,
-            options: optionsPayload,
+      if (selectedModule === "Listening") {
+        const partResults = await Promise.all(
+          listeningPartEntries.map(({ label, stem: partStem, partId }) =>
+            createQuestion({
+              variables: {
+                input: {
+                  examId: selectedExamId,
+                  title: `${title.trim()} — ${label}`,
+                  instruction: null,
+                  stem: buildListeningPartStem(label, partStem),
+                  sourceMaterial: null,
+                  explanation,
+                  listeningAudio: uploadedListeningAudio,
+                  speakingAudio: null,
+                  supportingImage: null,
+                  question: `${title.trim()} (${label})\n\n${buildListeningPartStem(label, partStem)}`,
+                  type: "input",
+                  ieltsModule: selectedModule,
+                  listeningPart: label,
+                  partId,
+                  placementNumber: normalizedPlacement,
+                  options: optionsPayload,
+                },
+              },
+            }),
+          ),
+        );
+
+        const failedResult = partResults.find(
+          (result) => result.error || !result.data?.createQuestion?._id,
+        );
+        if (failedResult?.error) {
+          throw new Error(failedResult.error.message);
+        }
+        if (failedResult && !failedResult.data?.createQuestion?._id) {
+          throw new Error("Listening part savollaridan biri saqlanmadi.");
+        }
+      } else if (selectedModule === "Reading") {
+        const partResults = await Promise.all(
+          readingPartEntries.map(({ label, stem: partStem, partId }) =>
+            createQuestion({
+              variables: {
+                input: {
+                  examId: selectedExamId,
+                  title: `${title.trim()} — ${label}`,
+                  instruction: null,
+                  stem: buildListeningPartStem(label, partStem),
+                  sourceMaterial: null,
+                  explanation: null,
+                  listeningAudio: null,
+                  speakingAudio: null,
+                  supportingImage: uploadedSupportingImage,
+                  question: `${title.trim()} (${label})\n\n${buildListeningPartStem(label, partStem)}`,
+                  type:
+                    answerMode === "multiple"
+                      ? "multiselect"
+                      : "input",
+                  ieltsModule: selectedModule,
+                  partId,
+                  placementNumber: normalizedPlacement,
+                  options: optionsPayload,
+                },
+              },
+            }),
+          ),
+        );
+
+        const failedResult = partResults.find(
+          (result) => result.error || !result.data?.createQuestion?._id,
+        );
+        if (failedResult?.error) {
+          throw new Error(failedResult.error.message);
+        }
+        if (failedResult && !failedResult.data?.createQuestion?._id) {
+          throw new Error("Reading part savollaridan biri saqlanmadi.");
+        }
+      } else if (selectedModule === "Writing") {
+        const partResults = await Promise.all(
+          writingPartEntries.map(({ label, stem: partStem, partId }) =>
+            createQuestion({
+              variables: {
+                input: {
+                  examId: selectedExamId,
+                  title: `${title.trim()} — ${label}`,
+                  instruction: null,
+                  stem: buildListeningPartStem(label, partStem),
+                  sourceMaterial: null,
+                  explanation: null,
+                  listeningAudio: null,
+                  speakingAudio: null,
+                  supportingImage: null,
+                  question: `${title.trim()} (${label})\n\n${buildListeningPartStem(label, partStem)}`,
+                  type:
+                    answerMode === "multiple"
+                      ? "multiselect"
+                      : "input",
+                  ieltsModule: selectedModule,
+                  partId,
+                  placementNumber: normalizedPlacement,
+                  options: optionsPayload,
+                },
+              },
+            }),
+          ),
+        );
+
+        const failedResult = partResults.find(
+          (result) => result.error || !result.data?.createQuestion?._id,
+        );
+        if (failedResult?.error) {
+          throw new Error(failedResult.error.message);
+        }
+        if (failedResult && !failedResult.data?.createQuestion?._id) {
+          throw new Error("Writing part savollaridan biri saqlanmadi.");
+        }
+      } else {
+        const mutationResult = await createQuestion({
+          variables: {
+            input: {
+              examId: selectedExamId,
+              title: title.trim(),
+              instruction,
+              stem: resolvedStem,
+              sourceMaterial,
+              explanation,
+              listeningAudio: uploadedListeningAudio,
+              speakingAudio: uploadedSpeakingAudio,
+              supportingImage: uploadedSupportingImage,
+              question: `${title.trim()}\n\n${resolvedStem}`,
+              type:
+                answerMode === "multiple"
+                  ? "multiselect"
+                  : "input",
+              ieltsModule: selectedModule,
+              placementNumber: normalizedPlacement,
+              options: optionsPayload,
+            },
           },
-        },
-      });
+        });
+
+        if (mutationResult.error) {
+          throw new Error(mutationResult.error.message);
+        }
+
+        if (!mutationResult.data?.createQuestion?._id) {
+          throw new Error("Create Question so‘rovi muvaffaqiyatsiz tugadi.");
+        }
+      }
 
       setErrors([]);
-      setSuccess("Question muvaffaqiyatli yaratildi.");
+      setSuccess(
+        selectedModule === "Listening"
+          ? `Listening part savollari (${listeningPartEntries.length} ta) muvaffaqiyatli yaratildi.`
+          : selectedModule === "Reading"
+            ? `Reading part savollari (${readingPartEntries.length} ta) muvaffaqiyatli yaratildi.`
+            : selectedModule === "Writing"
+              ? `Writing part savollari (${writingPartEntries.length} ta) muvaffaqiyatli yaratildi.`
+          : "Question muvaffaqiyatli yaratildi.",
+      );
     } catch (error: any) {
       setErrors([error?.message ?? "Question create failed."]);
     }
@@ -294,7 +610,7 @@ export function AddQuestionPage() {
                   IELTS Question Templates
                 </Typography>
                 <Typography component="p" className="add-question-page__rail-copy">
-                  Tozalangan create form: template tanlang va savol yarating.
+                  Template tanlang va savol yarating.
                 </Typography>
               </Box>
               <Box className="add-question-page__module-list">
@@ -324,7 +640,7 @@ export function AddQuestionPage() {
                 <Box className="add-question-card">
                   <Box className="add-question-form__grid">
                     <Box className="add-question-form__field add-question-form__field--span-2">
-                      <label className="add-question-form__label">IELTS mock test</label>
+                      <label className="add-question-form__label">IELTS exam</label>
                       <TextField
                         select
                         fullWidth
@@ -339,7 +655,7 @@ export function AddQuestionPage() {
                       </TextField>
                     </Box>
                     <Box className="add-question-form__field add-question-form__field--span-2">
-                      <label className="add-question-form__label">Question title</label>
+                      <label className="add-question-form__label">Question title / name</label>
                       <TextField
                         fullWidth
                         value={title}
@@ -417,7 +733,7 @@ export function AddQuestionPage() {
                         />
                       </Box>
                     ) : null}
-                    {selectedModule === "Reading" || selectedModule === "Writing" ? (
+                    {selectedModule === "Reading" ? (
                       <Box className="add-question-form__field add-question-form__field--span-2">
                         <label className="add-question-form__label">Supporting image</label>
                         <FileUploadZone
@@ -432,24 +748,104 @@ export function AddQuestionPage() {
                   </Box>
                 </Box>
 
-                <Box className="add-question-card">
-                  <Box className="add-question-form__field add-question-form__field--span-4 add-question-form__textarea">
-                    <label className="add-question-form__label">Instruction</label>
-                    <RichTextEditor value={instruction} onChange={setInstruction} />
+                {selectedModule === "Listening" ? (
+                  <Box className="add-question-card">
+                    <Box className="add-question-form__field add-question-form__field--span-4">
+                      <label className="add-question-form__label">
+                        Question stem ({listeningPartEntries.length} ta part)
+                      </label>
+                      <Box className="add-question-form__grid">
+                        {listeningPartEntries.map((entry, index) => (
+                          <Box
+                            key={entry.key}
+                            className="add-question-form__field add-question-form__field--span-2 add-question-form__textarea"
+                          >
+                            <label className="add-question-form__label">{entry.label}</label>
+                            <RichTextEditor
+                              value={listeningPartStems[index] ?? EMPTY_HTML}
+                              onChange={(nextValue) =>
+                                setListeningPartStems((current) =>
+                                  current.map((item, idx) => (idx === index ? nextValue : item)),
+                                )
+                              }
+                            />
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
                   </Box>
-                  <Box className="add-question-form__field add-question-form__field--span-4 add-question-form__textarea">
-                    <label className="add-question-form__label">Question stem</label>
-                    <RichTextEditor value={stem} onChange={setStem} />
+                ) : selectedModule === "Reading" ? (
+                  <Box className="add-question-card">
+                    <Box className="add-question-form__field add-question-form__field--span-4">
+                      <label className="add-question-form__label">
+                        Question stem ({readingPartEntries.length} ta part)
+                      </label>
+                      <Box className="add-question-form__grid">
+                        {readingPartEntries.map((entry, index) => (
+                          <Box
+                            key={entry.key}
+                            className="add-question-form__field add-question-form__field--span-2 add-question-form__textarea"
+                          >
+                            <label className="add-question-form__label">{entry.label}</label>
+                            <RichTextEditor
+                              value={readingPartStems[index] ?? EMPTY_HTML}
+                              onChange={(nextValue) =>
+                                setReadingPartStems((current) =>
+                                  current.map((item, idx) => (idx === index ? nextValue : item)),
+                                )
+                              }
+                            />
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
                   </Box>
-                  <Box className="add-question-form__field add-question-form__field--span-4 add-question-form__textarea">
-                    <label className="add-question-form__label">Source material</label>
-                    <RichTextEditor value={sourceMaterial} onChange={setSourceMaterial} />
+                ) : selectedModule === "Writing" ? (
+                  <Box className="add-question-card">
+                    <Box className="add-question-form__field add-question-form__field--span-4">
+                      <label className="add-question-form__label">
+                        Question stem ({writingPartEntries.length} ta part)
+                      </label>
+                      <Box className="add-question-form__grid">
+                        {writingPartEntries.map((entry, index) => (
+                          <Box
+                            key={entry.key}
+                            className="add-question-form__field add-question-form__field--span-2 add-question-form__textarea"
+                          >
+                            <label className="add-question-form__label">{entry.label}</label>
+                            <RichTextEditor
+                              value={writingPartStems[index] ?? EMPTY_HTML}
+                              onChange={(nextValue) =>
+                                setWritingPartStems((current) =>
+                                  current.map((item, idx) => (idx === index ? nextValue : item)),
+                                )
+                              }
+                            />
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
                   </Box>
-                  <Box className="add-question-form__field add-question-form__field--span-4 add-question-form__textarea">
-                    <label className="add-question-form__label">Explanation</label>
-                    <RichTextEditor value={explanation} onChange={setExplanation} />
+                ) : (
+                  <Box className="add-question-card">
+                    <Box className="add-question-form__field add-question-form__field--span-4 add-question-form__textarea">
+                      <label className="add-question-form__label">Instruction</label>
+                      <RichTextEditor value={instruction} onChange={setInstruction} />
+                    </Box>
+                    <Box className="add-question-form__field add-question-form__field--span-4 add-question-form__textarea">
+                      <label className="add-question-form__label">Question stem</label>
+                      <RichTextEditor value={stem} onChange={setStem} />
+                    </Box>
+                    <Box className="add-question-form__field add-question-form__field--span-4 add-question-form__textarea">
+                      <label className="add-question-form__label">Source material</label>
+                      <RichTextEditor value={sourceMaterial} onChange={setSourceMaterial} />
+                    </Box>
+                    <Box className="add-question-form__field add-question-form__field--span-4 add-question-form__textarea">
+                      <label className="add-question-form__label">Explanation</label>
+                      <RichTextEditor value={explanation} onChange={setExplanation} />
+                    </Box>
                   </Box>
-                </Box>
+                )}
 
                 {answerMode === "text" ? (
                   <Box className="add-question-card">

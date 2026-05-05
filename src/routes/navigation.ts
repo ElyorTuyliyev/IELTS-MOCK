@@ -31,19 +31,25 @@ export const SIDEBAR_ROUTE_GROUPS: SidebarRouteGroup[] = [
         label: 'Exams',
         icon: 'E',
         path: ROUTES_PATH.allExams,
-        allowedRoles: [USER_ROLES.student, USER_ROLES.center, USER_ROLES.superAdmin],
+        allowedRoles: [USER_ROLES.center, USER_ROLES.superAdmin],
         children: [
           {
             label: 'All Exams',
             path: ROUTES_PATH.allExams,
-            allowedRoles: [USER_ROLES.student, USER_ROLES.center, USER_ROLES.superAdmin],
+            allowedRoles: [USER_ROLES.center, USER_ROLES.superAdmin],
           },
           {
             label: 'Prize Quizzes',
             path: ROUTES_PATH.prizeQuizzes,
-            allowedRoles: [USER_ROLES.student, USER_ROLES.center, USER_ROLES.superAdmin],
+            allowedRoles: [USER_ROLES.center, USER_ROLES.superAdmin],
           },
         ],
+      },
+      {
+        label: 'Student Exam',
+        icon: 'X',
+        path: ROUTES_PATH.studentExamPlayer,
+        allowedRoles: [USER_ROLES.student],
       },
       {
         label: 'LMS',

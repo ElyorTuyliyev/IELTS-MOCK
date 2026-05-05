@@ -1,11 +1,13 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useMutation, useQuery } from '@apollo/client/react'
 import { Alert, Box, Button, MenuItem, TextField, Typography } from '@mui/material'
+import { useNavigate } from 'react-router-dom'
 
 import { Layout } from '../../components/layout'
 import { selectAuthToken, selectUserRole } from '../../store'
 import { useAppSelector } from '../../store/hooks'
 import { USER_ROLES } from '../../store/slices/authSlice'
+import { ROUTES_PATH } from '../../routes/paths'
 import { type ExamCard } from './HomePage.constants'
 import { CREATE_EXAM_MUTATION } from './api/createExamMutation'
 import { FIND_ALL_EXAMS_QUERY } from './api/findAllExamsQuery'
@@ -58,6 +60,7 @@ type FindAllExamsQueryResponse = {
 }
 
 export function HomePage() {
+  const navigate = useNavigate()
   const authToken = useAppSelector(selectAuthToken)
   const userRole = useAppSelector(selectUserRole)
   const [searchTerm, setSearchTerm] = useState('')
@@ -496,7 +499,29 @@ export function HomePage() {
                     </Typography>
 
                     <Box className="exam-card__actions">
-                      <Button className="exam-card__action" variant="outlined" type="button">
+                      <Button
+                        className="exam-card__action"
+                        variant="outlined"
+                        type="button"
+                        onClick={() =>
+                          navigate(ROUTES_PATH.examDetails.replace(':examId', exam.id), {
+                            state: {
+                              exam: {
+                                _id: exam.id,
+                                title: exam.title,
+                                examiner: exam.examiner,
+                                examType: exam.examType,
+                                examDate: exam.examDateIso,
+                                startTime: exam.startTime,
+                                endTime: exam.endTime,
+                                price: exam.price,
+                                isActive: exam.status === 'Active',
+                                isCompleted: exam.status === 'Archived',
+                              },
+                            },
+                          })
+                        }
+                      >
                         View More
                       </Button>
                       {canManageExams ? (

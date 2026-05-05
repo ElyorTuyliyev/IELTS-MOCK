@@ -1,7 +1,10 @@
 import { ApolloClient, createHttpLink, from, InMemoryCache } from '@apollo/client'
+import { onError } from '@apollo/client/link/error'
 import { setContext } from '@apollo/client/link/context'
 
 import { store } from '../store'
+import { clearAuth } from '../store/slices/authSlice'
+import { ROUTES_PATH } from '../routes/paths'
 
 const rawGraphqlUrl = import.meta.env.VITE_GRAPHQL_URL ?? 'http://127.0.0.1:8000/graphql'
 
@@ -57,8 +60,38 @@ const authLink = setContext((operation, { headers }) => {
   }
 })
 
+let isAutoLoggingOut = false
+
+function forceLogoutOnAuthError() {
+  if (isAutoLoggingOut) {
+    return
+  }
+
+  isAutoLoggingOut = true
+  store.dispatch(clearAuth())
+
+  if (typeof window !== 'undefined' && window.location.pathname !== ROUTES_PATH.signIn) {
+    window.location.replace(ROUTES_PATH.signIn)
+    return
+  }
+
+  isAutoLoggingOut = false
+}
+
+const errorLink = onError(({ graphQLErrors, networkError }) => {
+  const hasUnauthenticatedGraphqlError =
+    graphQLErrors?.some((error) => error.extensions?.code === 'UNAUTHENTICATED') ?? false
+  const hasUnauthorizedNetworkError =
+    'statusCode' in (networkError ?? {}) &&
+    (networkError as { statusCode?: number }).statusCode === 401
+
+  if (hasUnauthenticatedGraphqlError || hasUnauthorizedNetworkError) {
+    forceLogoutOnAuthError()
+  }
+})
+
 export const apolloClient = new ApolloClient({
-  link: from([authLink, httpLink]),
+  link: from([errorLink, authLink, httpLink]),
   cache: new InMemoryCache(),
   devtools: {
     enabled: import.meta.env.DEV,

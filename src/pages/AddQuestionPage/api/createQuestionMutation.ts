@@ -16,6 +16,7 @@ export const CREATE_QUESTION_MUTATION = gql`
       question
       type
       ieltsModule
+      listeningPart
       partId
       placementNumber
       options {

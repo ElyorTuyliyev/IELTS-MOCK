@@ -9,6 +9,8 @@ export const ROUTES_PATH = {
   /** Short interest form (name + phone) for Signup Forms inbox. */
   studentLeadJoin: '/join/lead',
   allExams: '/exams',
+  examDetails: '/exams/:examId',
+  studentExamPlayer: '/student/exam-player',
   center: '/centers',
   surveys: '/surveys',
   students: '/students',
