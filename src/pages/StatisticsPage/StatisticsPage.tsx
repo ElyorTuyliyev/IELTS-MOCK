@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Box, Button, Typography } from '@mui/material'
 
 import { Layout } from '../../components/layout'
+import { agentLog } from '../../utils/agentLog'
 import { StatisticsPageRoot } from './StatisticsPage.style'
 
 const topCards = [
@@ -34,28 +35,18 @@ const prizeRows = [
 
 export function StatisticsPage() {
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': '393b5a',
+    agentLog({
+      sessionId: '393b5a',
+      runId: 'post-fix',
+      hypothesisId: 'H26',
+      location: 'StatisticsPage.tsx:useEffect[mount]',
+      message: 'Statistics page rendered',
+      data: {
+        topCardsCount: topCards.length,
+        monthlyBarsCount: monthlyBars.length,
+        prizeRowsCount: prizeRows.length,
       },
-      body: JSON.stringify({
-        sessionId: '393b5a',
-        runId: 'post-fix',
-        hypothesisId: 'H26',
-        location: 'StatisticsPage.tsx:useEffect[mount]',
-        message: 'Statistics page rendered',
-        data: {
-          topCardsCount: topCards.length,
-          monthlyBarsCount: monthlyBars.length,
-          prizeRowsCount: prizeRows.length,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {})
-    // #endregion
+    })
   }, [])
 
   return (

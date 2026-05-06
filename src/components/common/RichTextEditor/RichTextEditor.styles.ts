@@ -6,8 +6,8 @@ export const RichTextEditorRoot = styled.div`
   --rte-violet-soft: #f5f3ff;
   --rte-violet-mid: #ddd6fe;
   --rte-violet-ring: rgba(124, 58, 237, 0.22);
-  --rte-border: #e2e8f0;
-  --rte-border-strong: #cbd5e1;
+  --rte-border: #475569;
+  --rte-border-strong: #334155;
   --rte-surface: #ffffff;
   --rte-surface-muted: #f8fafc;
   --rte-toolbar-bg: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
@@ -298,7 +298,7 @@ export const RichTextEditorRoot = styled.div`
     caret-color: var(--rte-violet);
   }
 
-  .rte-body .tiptap p.is-editor-empty:first-child::before {
+  .rte-body .tiptap p.is-editor-empty:first-of-type::before {
     color: #94a3b8;
     content: attr(data-placeholder);
     float: left;
@@ -504,6 +504,32 @@ export const RichTextEditorRoot = styled.div`
     background: linear-gradient(165deg, #fafbff 0%, #f1f5f9 100%);
     box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
     user-select: none;
+    position: relative;
+  }
+
+  .rte-body .tiptap .rte-drag-drop-fill__close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 30px;
+    height: 30px;
+    border-radius: 10px;
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    background: rgba(255, 255, 255, 0.9);
+    color: #64748b;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  }
+
+  .rte-body .tiptap .rte-drag-drop-fill__close:hover {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.25);
+    color: #b91c1c;
   }
 
   .rte-body .tiptap .rte-drag-drop-fill__badge {
@@ -533,6 +559,28 @@ export const RichTextEditorRoot = styled.div`
     font-size: 12px;
     font-weight: 600;
     color: var(--rte-muted);
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  .rte-body .tiptap .rte-drag-drop-fill__meta-label {
+    margin-bottom: 4px;
+    color: #475569;
+  }
+
+  .rte-body .tiptap .rte-drag-drop-fill__meta-line {
+    font-weight: 600;
+  }
+
+  .rte-body .tiptap .rte-drag-drop-fill__list {
+    margin: 0;
+    padding-left: 18px;
+  }
+
+  .rte-body .tiptap .rte-drag-drop-fill__list li {
+    margin: 0;
+    line-height: 1.45;
   }
 
   .rte-body .tiptap table {
@@ -541,9 +589,17 @@ export const RichTextEditorRoot = styled.div`
     width: 100%;
     margin: 0.65em 0;
     overflow: hidden;
-    border-radius: 12px;
+    border-radius: 0;
     border: 1px solid var(--rte-border);
     box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+    table-layout: fixed;
+  }
+
+  /* TipTap table wrapper (needed for resizing + horizontal scroll) */
+  .rte-body .tiptap .tableWrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    position: relative;
   }
 
   .rte-body .tiptap th,
@@ -551,7 +607,8 @@ export const RichTextEditorRoot = styled.div`
     border: 1px solid var(--rte-border);
     padding: 8px 12px;
     vertical-align: top;
-    min-width: 88px;
+    min-width: 56px;
+    position: relative;
   }
 
   .rte-body .tiptap th {
@@ -563,6 +620,50 @@ export const RichTextEditorRoot = styled.div`
 
   .rte-body .tiptap td {
     background: var(--rte-surface);
+  }
+
+  .rte-body .tiptap .column-resize-handle {
+    position: absolute;
+    right: -5px;
+    top: 0;
+    bottom: -2px;
+    width: 10px;
+    background: transparent;
+    opacity: 0.08;
+    pointer-events: auto;
+    cursor: col-resize;
+    transition: opacity 0.12s ease;
+  }
+
+  .rte-body .tiptap .column-resize-handle::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 2px;
+    transform: translateX(-50%);
+    background: var(--rte-violet);
+    border-radius: 999px;
+    opacity: 0.9;
+  }
+
+  .rte-body .tiptap .selectedCell .column-resize-handle,
+  .rte-body .tiptap th:hover .column-resize-handle,
+  .rte-body .tiptap td:hover .column-resize-handle {
+    opacity: 0.4;
+  }
+
+  .rte-body .tiptap table:hover .column-resize-handle {
+    opacity: 0.16;
+  }
+
+  .rte-body .tiptap.resize-cursor {
+    cursor: col-resize;
+  }
+
+  .rte-body .tiptap.rte-resize-row-cursor {
+    cursor: row-resize;
   }
 
   .rte-body .tiptap .selectedCell:after {

@@ -7,7 +7,6 @@ export const CREATE_QUESTION_MUTATION = gql`
       examId
       title
       instruction
-      stem
       sourceMaterial
       explanation
       listeningAudio

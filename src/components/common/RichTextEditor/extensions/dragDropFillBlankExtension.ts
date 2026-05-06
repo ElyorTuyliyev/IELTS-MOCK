@@ -43,6 +43,34 @@ function parseDistractors(json: string | null | undefined): string[] {
   }
 }
 
+function toJoinedAnswers(gaps: DragDropGap[]): string {
+  const values = gaps
+    .map((gap, index) => {
+      const answer = gap.answer.trim()
+      return answer ? `gap${index + 1}: ${answer}` : ''
+    })
+    .filter(Boolean)
+  return values.length ? values.join(' | ') : '—'
+}
+
+function toJoinedDistractors(distractors: string[]): string {
+  const values = distractors.map((value) => value.trim()).filter(Boolean)
+  return values.length ? values.join(' | ') : '—'
+}
+
+function toAnswerLines(gaps: DragDropGap[]): string[] {
+  return gaps
+    .map((gap, index) => {
+      const answer = gap.answer.trim()
+      return answer ? `gap${index + 1}: ${answer}` : ''
+    })
+    .filter(Boolean)
+}
+
+function toDistractorLines(distractors: string[]): string[] {
+  return distractors.map((value) => value.trim()).filter(Boolean)
+}
+
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     dragDropFillBlank: {
@@ -101,7 +129,11 @@ export const DragDropFillBlank = Node.create({
     const mode = String(node.attrs.mode ?? 'shuffled')
     const gaps = parseGaps(node.attrs.gapsJson as string)
     const distractors = parseDistractors(node.attrs.distractorsJson as string)
-    const excerpt = q.length > 160 ? `${q.slice(0, 160)}…` : q || '—'
+    const excerpt = q || '—'
+    const answersText = toJoinedAnswers(gaps)
+    const distractorsText = toJoinedDistractors(distractors)
+    const answerLines = toAnswerLines(gaps)
+    const distractorLines = toDistractorLines(distractors)
     return [
       'div',
       mergeAttributes(HTMLAttributes, {
@@ -114,6 +146,22 @@ export const DragDropFillBlank = Node.create({
       }),
       ['div', { class: 'rte-drag-drop-fill__badge' }, mode === 'ordered' ? 'Ordered' : 'Shuffled'],
       ['div', { class: 'rte-drag-drop-fill__excerpt' }, excerpt],
+      [
+        'div',
+        { class: 'rte-drag-drop-fill__meta' },
+        ['div', { class: 'rte-drag-drop-fill__meta-label' }, 'Answers:'],
+        answerLines.length
+          ? ['ul', { class: 'rte-drag-drop-fill__list' }, ...answerLines.map((line) => ['li', {}, line])]
+          : ['div', { class: 'rte-drag-drop-fill__meta-line' }, '—'],
+      ],
+      [
+        'div',
+        { class: 'rte-drag-drop-fill__meta' },
+        ['div', { class: 'rte-drag-drop-fill__meta-label' }, 'Distractors:'],
+        distractorLines.length
+          ? ['ul', { class: 'rte-drag-drop-fill__list' }, ...distractorLines.map((line) => ['li', {}, line])]
+          : ['div', { class: 'rte-drag-drop-fill__meta-line' }, '—'],
+      ],
       [
         'div',
         { class: 'rte-drag-drop-fill__meta' },
@@ -141,7 +189,7 @@ export const DragDropFillBlank = Node.create({
   },
 
   addNodeView() {
-    return ({ node }) => {
+    return ({ node, editor, getPos }) => {
       const dom = document.createElement('div')
       dom.className = 'rte-drag-drop-fill'
       dom.setAttribute('data-type', 'drag-drop-fill')
@@ -155,6 +203,10 @@ export const DragDropFillBlank = Node.create({
         const mode = String(current.attrs.mode ?? 'shuffled')
         const gaps = parseGaps(current.attrs.gapsJson as string)
         const distractors = parseDistractors(current.attrs.distractorsJson as string)
+        const answersText = toJoinedAnswers(gaps)
+        const distractorsText = toJoinedDistractors(distractors)
+        const answerLines = toAnswerLines(gaps)
+        const distractorLines = toDistractorLines(distractors)
 
         dom.setAttribute('data-question-text', q)
         dom.setAttribute('data-mode', mode)
@@ -166,10 +218,78 @@ export const DragDropFillBlank = Node.create({
         badge.textContent = mode === 'ordered' ? 'Ordered' : 'Shuffled'
         dom.appendChild(badge)
 
+        const close = document.createElement('button')
+        close.type = 'button'
+        close.className = 'rte-drag-drop-fill__close'
+        close.setAttribute('aria-label', "Remove block")
+        close.textContent = '×'
+        close.onclick = (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          if (!editor || !getPos) return
+          const pos = typeof getPos === 'function' ? getPos() : null
+          if (typeof pos !== 'number') return
+          editor
+            .chain()
+            .focus()
+            .command(({ tr }) => {
+              tr.deleteRange(pos, pos + current.nodeSize)
+              return true
+            })
+            .run()
+        }
+        dom.appendChild(close)
+
         const excerpt = document.createElement('div')
         excerpt.className = 'rte-drag-drop-fill__excerpt'
-        excerpt.textContent = q.length > 220 ? `${q.slice(0, 220)}…` : q || '—'
+        excerpt.textContent = q || '—'
         dom.appendChild(excerpt)
+
+        const answersMeta = document.createElement('div')
+        answersMeta.className = 'rte-drag-drop-fill__meta'
+        const answersLabel = document.createElement('div')
+        answersLabel.className = 'rte-drag-drop-fill__meta-label'
+        answersLabel.textContent = 'Answers:'
+        answersMeta.appendChild(answersLabel)
+        if (answerLines.length > 0) {
+          const list = document.createElement('ul')
+          list.className = 'rte-drag-drop-fill__list'
+          answerLines.forEach((line) => {
+            const item = document.createElement('li')
+            item.textContent = line
+            list.appendChild(item)
+          })
+          answersMeta.appendChild(list)
+        } else {
+          const line = document.createElement('div')
+          line.className = 'rte-drag-drop-fill__meta-line'
+          line.textContent = answersText
+          answersMeta.appendChild(line)
+        }
+        dom.appendChild(answersMeta)
+
+        const distractorsMeta = document.createElement('div')
+        distractorsMeta.className = 'rte-drag-drop-fill__meta'
+        const distractorsLabel = document.createElement('div')
+        distractorsLabel.className = 'rte-drag-drop-fill__meta-label'
+        distractorsLabel.textContent = 'Distractors:'
+        distractorsMeta.appendChild(distractorsLabel)
+        if (distractorLines.length > 0) {
+          const list = document.createElement('ul')
+          list.className = 'rte-drag-drop-fill__list'
+          distractorLines.forEach((line) => {
+            const item = document.createElement('li')
+            item.textContent = line
+            list.appendChild(item)
+          })
+          distractorsMeta.appendChild(list)
+        } else {
+          const line = document.createElement('div')
+          line.className = 'rte-drag-drop-fill__meta-line'
+          line.textContent = distractorsText
+          distractorsMeta.appendChild(line)
+        }
+        dom.appendChild(distractorsMeta)
 
         const meta = document.createElement('div')
         meta.className = 'rte-drag-drop-fill__meta'

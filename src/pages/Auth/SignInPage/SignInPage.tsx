@@ -16,6 +16,7 @@ import {
 import { ROUTES_PATH } from "../../../routes";
 import { useAppDispatch } from "../../../store/hooks";
 import { setAuthSession, USER_ROLES, type UserRole } from "../../../store/slices/authSlice";
+import { agentLog } from "../../../utils/agentLog";
 import { LOGIN_MUTATION } from "./api/loginMutation";
 import { SignInPageRoot } from "./SignInPage.style";
 
@@ -162,29 +163,19 @@ export function SignInPage() {
   const onSubmit: SubmitHandler<SignInFormValues> = async (values) => {
     const normalizedEmail = values.email.trim().toLowerCase();
 
-    // #region agent log
-    fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "24497a",
+    agentLog({
+      sessionId: "24497a",
+      runId: "pre-fix",
+      hypothesisId: "H1",
+      location: "SignInPage.tsx:handleSubmit",
+      message: "Sign in submit snapshot",
+      data: {
+        emailTrimmedLength: normalizedEmail.length,
+        passwordLength: values.password.length,
+        rememberAccount: values.rememberAccount,
+        source: "react-hook-form",
       },
-      body: JSON.stringify({
-        sessionId: "24497a",
-        runId: "pre-fix",
-        hypothesisId: "H1",
-        location: "SignInPage.tsx:handleSubmit",
-        message: "Sign in submit snapshot",
-        data: {
-          emailTrimmedLength: normalizedEmail.length,
-          passwordLength: values.password.length,
-          rememberAccount: values.rememberAccount,
-          source: "react-hook-form",
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
+    });
 
     try {
       const result = await loginMutation({
@@ -198,30 +189,20 @@ export function SignInPage() {
       const loginData = result.data?.login ?? null;
       const apolloErrorMessage = result.error?.message ?? null;
 
-      // #region agent log
-      fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Debug-Session-Id": "24497a",
+      agentLog({
+        sessionId: "24497a",
+        runId: "pre-fix",
+        hypothesisId: "H2",
+        location: "SignInPage.tsx:handleSubmit",
+        message: "Login mutation result snapshot",
+        data: {
+          hasLoginData: Boolean(loginData),
+          hasToken: Boolean(loginData?.token),
+          role: loginData?.role ?? null,
+          hasApolloError: Boolean(result.error),
+          apolloErrorMessage,
         },
-        body: JSON.stringify({
-          sessionId: "24497a",
-          runId: "pre-fix",
-          hypothesisId: "H2",
-          location: "SignInPage.tsx:handleSubmit",
-          message: "Login mutation result snapshot",
-          data: {
-            hasLoginData: Boolean(loginData),
-            hasToken: Boolean(loginData?.token),
-            role: loginData?.role ?? null,
-            hasApolloError: Boolean(result.error),
-            apolloErrorMessage,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
+      });
 
       if (!loginData?.token) {
         setLoginError(apolloErrorMessage ?? "Email yoki parol noto'g'ri.");
@@ -238,51 +219,31 @@ export function SignInPage() {
         }),
       );
 
-      // #region agent log
-      fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Debug-Session-Id": "24497a",
+      agentLog({
+        sessionId: "24497a",
+        runId: "pre-fix",
+        hypothesisId: "H3",
+        location: "SignInPage.tsx:handleSubmit",
+        message: "Auth session persisted from login",
+        data: {
+          tokenLength: loginData.token.length,
+          roleAfterNormalization: normalizedRole,
         },
-        body: JSON.stringify({
-          sessionId: "24497a",
-          runId: "pre-fix",
-          hypothesisId: "H3",
-          location: "SignInPage.tsx:handleSubmit",
-          message: "Auth session persisted from login",
-          data: {
-            tokenLength: loginData.token.length,
-            roleAfterNormalization: normalizedRole,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
+      });
 
       navigate(ROUTES_PATH.dashboard);
     } catch (error) {
       setLoginError(error instanceof Error ? error.message : "Login request failed.");
-      // #region agent log
-      fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Debug-Session-Id": "24497a",
+      agentLog({
+        sessionId: "24497a",
+        runId: "pre-fix",
+        hypothesisId: "H4",
+        location: "SignInPage.tsx:handleSubmit",
+        message: "Login mutation threw exception",
+        data: {
+          errorMessage: error instanceof Error ? error.message : "unknown-error",
         },
-        body: JSON.stringify({
-          sessionId: "24497a",
-          runId: "pre-fix",
-          hypothesisId: "H4",
-          location: "SignInPage.tsx:handleSubmit",
-          message: "Login mutation threw exception",
-          data: {
-            errorMessage: error instanceof Error ? error.message : "unknown-error",
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
+      });
     }
   };
 
@@ -530,27 +491,17 @@ export function SignInPage() {
                 {...register("email", {
                   onChange: (event) => {
                     const nextEmail = event.target.value;
-                    // #region agent log
-                    fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
-                      method: "POST",
-                      headers: {
-                        "Content-Type": "application/json",
-                        "X-Debug-Session-Id": "24497a",
+                    agentLog({
+                      sessionId: "24497a",
+                      runId: "pre-fix",
+                      hypothesisId: "H1",
+                      location: "SignInPage.tsx:emailOnChange",
+                      message: "Email field changed",
+                      data: {
+                        hasAtSymbol: nextEmail.includes("@"),
+                        length: nextEmail.length,
                       },
-                      body: JSON.stringify({
-                        sessionId: "24497a",
-                        runId: "pre-fix",
-                        hypothesisId: "H1",
-                        location: "SignInPage.tsx:emailOnChange",
-                        message: "Email field changed",
-                        data: {
-                          hasAtSymbol: nextEmail.includes("@"),
-                          length: nextEmail.length,
-                        },
-                        timestamp: Date.now(),
-                      }),
-                    }).catch(() => {});
-                    // #endregion
+                    });
                   },
                 })}
                 slotProps={{
@@ -607,27 +558,17 @@ export function SignInPage() {
                         checked={field.value}
                         onChange={(event) => {
                           const checked = event.target.checked;
-                          // #region agent log
-                          fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
-                            method: "POST",
-                            headers: {
-                              "Content-Type": "application/json",
-                              "X-Debug-Session-Id": "24497a",
+                          agentLog({
+                            sessionId: "24497a",
+                            runId: "pre-fix",
+                            hypothesisId: "H1",
+                            location: "SignInPage.tsx:rememberCheckbox",
+                            message: "Remember account toggled",
+                            data: {
+                              checked,
+                              previousValue: field.value,
                             },
-                            body: JSON.stringify({
-                              sessionId: "24497a",
-                              runId: "pre-fix",
-                              hypothesisId: "H1",
-                              location: "SignInPage.tsx:rememberCheckbox",
-                              message: "Remember account toggled",
-                              data: {
-                                checked,
-                                previousValue: field.value,
-                              },
-                              timestamp: Date.now(),
-                            }),
-                          }).catch(() => {});
-                          // #endregion
+                          });
                           field.onChange(checked);
                         }}
                       />

@@ -15,6 +15,7 @@ import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 import { selectAuthToken, selectUserRole } from "../../../store";
 import { clearAuth, hasRequiredRole } from "../../../store/slices/authSlice";
 import { ROUTES_PATH, SIDEBAR_ROUTE_GROUPS } from "../../../routes";
+import { agentLog } from "../../../utils/agentLog";
 import { SidebarRoot } from "./Sidebar.style";
 
 const SIDEBAR_ACCORDION_STORAGE_KEY = "sidebar-expanded-items";
@@ -136,36 +137,26 @@ export function Sidebar() {
   };
 
   useEffect(() => {
-    // #region agent log
-    fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "24497a",
+    agentLog({
+      sessionId: "24497a",
+      runId: "pre-fix",
+      hypothesisId: "H8",
+      location: "Sidebar.tsx:visibleGroups/useEffect",
+      message: "Sidebar visible items snapshot by role",
+      data: {
+        role,
+        groupTitles: visibleGroups.map((group) => group.title),
+        visibleItemLabels: visibleGroups.flatMap((group) =>
+          group.items.map((item) => item.label),
+        ),
+        hasCentersItem: visibleGroups.some((group) =>
+          group.items.some((item) => item.label === "Centers"),
+        ),
+        hasPaymentsItem: visibleGroups.some((group) =>
+          group.items.some((item) => item.label === "Payments"),
+        ),
       },
-      body: JSON.stringify({
-        sessionId: "24497a",
-        runId: "pre-fix",
-        hypothesisId: "H8",
-        location: "Sidebar.tsx:visibleGroups/useEffect",
-        message: "Sidebar visible items snapshot by role",
-        data: {
-          role,
-          groupTitles: visibleGroups.map((group) => group.title),
-          visibleItemLabels: visibleGroups.flatMap((group) =>
-            group.items.map((item) => item.label),
-          ),
-          hasCentersItem: visibleGroups.some((group) =>
-            group.items.some((item) => item.label === "Centers"),
-          ),
-          hasPaymentsItem: visibleGroups.some((group) =>
-            group.items.some((item) => item.label === "Payments"),
-          ),
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
+    });
   }, [role, visibleGroups]);
 
   const isItemActive = (path?: string, children?: Array<{ path?: string }>) => {
@@ -190,27 +181,17 @@ export function Sidebar() {
   };
 
   const handleLogout = () => {
-    // #region agent log
-    fetch("http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "393b5a",
+    agentLog({
+      sessionId: "393b5a",
+      runId: "post-fix",
+      hypothesisId: "H25",
+      location: "Sidebar.tsx:handleLogout",
+      message: "Sidebar logout clicked",
+      data: {
+        fromPath: location.pathname,
+        toPath: ROUTES_PATH.signIn,
       },
-      body: JSON.stringify({
-        sessionId: "393b5a",
-        runId: "post-fix",
-        hypothesisId: "H25",
-        location: "Sidebar.tsx:handleLogout",
-        message: "Sidebar logout clicked",
-        data: {
-          fromPath: location.pathname,
-          toPath: ROUTES_PATH.signIn,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
+    });
     dispatch(clearAuth());
     navigate(ROUTES_PATH.signIn, { replace: true });
   };

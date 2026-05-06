@@ -16,6 +16,7 @@ import {
 import { DataGrid, type GridColDef } from '@mui/x-data-grid'
 
 import { Layout } from '../../components/layout'
+import { agentLog } from '../../utils/agentLog'
 import { CREATE_ADMIN_MUTATION } from './api/createAdminMutation'
 import { FIND_ALL_USERS_QUERY } from './api/findAllUsersQuery'
 import { AdminPageRoot, adminModalGlobalStyles } from './AdminPage.style'
@@ -159,27 +160,17 @@ export function AdminPage() {
   )
 
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': '24497a',
+    agentLog({
+      sessionId: '24497a',
+      runId: 'pre-fix',
+      hypothesisId: 'H5',
+      location: 'AdminPage.tsx:useEffect',
+      message: 'Admin page initial dataset snapshot',
+      data: {
+        initialAdminsCount: admins.length,
+        initialAdminEmails: admins.slice(0, 3).map((admin) => admin.email),
       },
-      body: JSON.stringify({
-        sessionId: '24497a',
-        runId: 'pre-fix',
-        hypothesisId: 'H5',
-        location: 'AdminPage.tsx:useEffect',
-        message: 'Admin page initial dataset snapshot',
-        data: {
-          initialAdminsCount: admins.length,
-          initialAdminEmails: admins.slice(0, 3).map((admin) => admin.email),
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {})
-    // #endregion
+    })
   }, [])
 
   useEffect(() => {
@@ -199,29 +190,19 @@ export function AdminPage() {
     }))
     setAdmins(mappedAdmins)
 
-    // #region agent log
-    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': '24497a',
+    agentLog({
+      sessionId: '24497a',
+      runId: 'pre-fix',
+      hypothesisId: 'H6',
+      location: 'AdminPage.tsx:usersDataEffect',
+      message: 'Hydrated admins from backend query',
+      data: {
+        serverUsersCount: serverUsers.length,
+        adminUsersCount: adminUsers.length,
+        mappedAdminsCount: mappedAdmins.length,
+        firstRoles: serverUsers.slice(0, 5).map((user) => user.role ?? null),
       },
-      body: JSON.stringify({
-        sessionId: '24497a',
-        runId: 'pre-fix',
-        hypothesisId: 'H6',
-        location: 'AdminPage.tsx:usersDataEffect',
-        message: 'Hydrated admins from backend query',
-        data: {
-          serverUsersCount: serverUsers.length,
-          adminUsersCount: adminUsers.length,
-          mappedAdminsCount: mappedAdmins.length,
-          firstRoles: serverUsers.slice(0, 5).map((user) => user.role ?? null),
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {})
-    // #endregion
+    })
   }, [usersData])
 
   const adminCountLabel = useMemo(() => String(admins.length).padStart(2, '0'), [admins.length])
@@ -291,32 +272,22 @@ export function AdminPage() {
     const firstName = firstNameRaw?.trim() || trimmedName
     const lastName = lastNameParts.join(' ').trim() || '-'
 
-    // #region agent log
-    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': '24497a',
+    agentLog({
+      sessionId: '24497a',
+      runId: 'pre-fix',
+      hypothesisId: 'H1',
+      location: 'AdminPage.tsx:handleAddAdmin',
+      message: 'Create admin submit payload snapshot',
+      data: {
+        fullNameLength: trimmedName.length,
+        emailLength: normalizedEmail.length,
+        phoneLength: normalizedPhone.length,
+        centerNameLength: normalizedCenterName.length,
+        centerAddressLength: normalizedCenterAddress.length,
+        centerPhoneLength: normalizedCenterPhone.length,
+        passwordLength: trimmedPassword.length,
       },
-      body: JSON.stringify({
-        sessionId: '24497a',
-        runId: 'pre-fix',
-        hypothesisId: 'H1',
-        location: 'AdminPage.tsx:handleAddAdmin',
-        message: 'Create admin submit payload snapshot',
-        data: {
-          fullNameLength: trimmedName.length,
-          emailLength: normalizedEmail.length,
-          phoneLength: normalizedPhone.length,
-          centerNameLength: normalizedCenterName.length,
-          centerAddressLength: normalizedCenterAddress.length,
-          centerPhoneLength: normalizedCenterPhone.length,
-          passwordLength: trimmedPassword.length,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {})
-    // #endregion
+    })
 
     try {
       const result = await createAdmin({
@@ -339,30 +310,20 @@ export function AdminPage() {
       const createdAdmin = result.data?.createAdmin ?? null
       const apolloErrorMessage = result.error?.message ?? null
 
-      // #region agent log
-      fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Debug-Session-Id': '24497a',
+      agentLog({
+        sessionId: '24497a',
+        runId: 'pre-fix',
+        hypothesisId: 'H2',
+        location: 'AdminPage.tsx:handleAddAdmin',
+        message: 'Create admin mutation result snapshot',
+        data: {
+          hasCreateUserData: Boolean(createdAdmin),
+          createdAdminId: createdAdmin?._id ?? null,
+          linkedCenterId: createdAdmin?.centerId ?? null,
+          hasApolloError: Boolean(result.error),
+          apolloErrorMessage,
         },
-        body: JSON.stringify({
-          sessionId: '24497a',
-          runId: 'pre-fix',
-          hypothesisId: 'H2',
-          location: 'AdminPage.tsx:handleAddAdmin',
-          message: 'Create admin mutation result snapshot',
-          data: {
-            hasCreateUserData: Boolean(createdAdmin),
-            createdAdminId: createdAdmin?._id ?? null,
-            linkedCenterId: createdAdmin?.centerId ?? null,
-            hasApolloError: Boolean(result.error),
-            apolloErrorMessage,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {})
-      // #endregion
+      })
 
       if (!createdAdmin?._id) {
         setFormError(apolloErrorMessage ?? "Admin yaratishda xatolik bo'ldi.")
@@ -371,50 +332,30 @@ export function AdminPage() {
 
       await refetchUsers()
 
-      // #region agent log
-      fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Debug-Session-Id': '24497a',
+      agentLog({
+        sessionId: '24497a',
+        runId: 'pre-fix',
+        hypothesisId: 'H3',
+        location: 'AdminPage.tsx:handleAddAdmin',
+        message: 'Admin created and inserted into local grid',
+        data: {
+          localAdminsCountAfterInsert: admins.length,
         },
-        body: JSON.stringify({
-          sessionId: '24497a',
-          runId: 'pre-fix',
-          hypothesisId: 'H3',
-          location: 'AdminPage.tsx:handleAddAdmin',
-          message: 'Admin created and inserted into local grid',
-          data: {
-            localAdminsCountAfterInsert: admins.length,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {})
-      // #endregion
+      })
 
       closeAddAdminModal()
     } catch (error) {
       setFormError(error instanceof Error ? error.message : "Admin yaratishda kutilmagan xatolik.")
-      // #region agent log
-      fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Debug-Session-Id': '24497a',
+      agentLog({
+        sessionId: '24497a',
+        runId: 'pre-fix',
+        hypothesisId: 'H4',
+        location: 'AdminPage.tsx:handleAddAdmin',
+        message: 'Create admin mutation threw exception',
+        data: {
+          errorMessage: error instanceof Error ? error.message : 'unknown-error',
         },
-        body: JSON.stringify({
-          sessionId: '24497a',
-          runId: 'pre-fix',
-          hypothesisId: 'H4',
-          location: 'AdminPage.tsx:handleAddAdmin',
-          message: 'Create admin mutation threw exception',
-          data: {
-            errorMessage: error instanceof Error ? error.message : 'unknown-error',
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {})
-      // #endregion
+      })
     }
   }
 

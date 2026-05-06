@@ -34,18 +34,25 @@ export type TableInsertDialogProps = {
 export function TableInsertDialog({ open, onClose, onInsert }: TableInsertDialogProps) {
   const titleId = useId()
   const descId = useId()
-  const [hoverRow, setHoverRow] = useState(DEFAULT_ROWS)
-  const [hoverCol, setHoverCol] = useState(DEFAULT_COLS)
+  const [selectedRow, setSelectedRow] = useState(DEFAULT_ROWS)
+  const [selectedCol, setSelectedCol] = useState(DEFAULT_COLS)
+  const [hoveredRow, setHoveredRow] = useState<number | null>(null)
+  const [hoveredCol, setHoveredCol] = useState<number | null>(null)
 
   useEffect(() => {
     if (!open) return
-    setHoverRow(DEFAULT_ROWS)
-    setHoverCol(DEFAULT_COLS)
+    setSelectedRow(DEFAULT_ROWS)
+    setSelectedCol(DEFAULT_COLS)
+    setHoveredRow(null)
+    setHoveredCol(null)
   }, [open])
 
   const handleInsert = useCallback(() => {
-    onInsert(hoverRow, hoverCol)
-  }, [hoverRow, hoverCol, onInsert])
+    onInsert(selectedRow, selectedCol)
+  }, [onInsert, selectedCol, selectedRow])
+
+  const displayRow = hoveredRow ?? selectedRow
+  const displayCol = hoveredCol ?? selectedCol
 
   return (
     <Dialog
@@ -164,13 +171,13 @@ export function TableInsertDialog({ open, onClose, onInsert }: TableInsertDialog
             }}
           >
             <Typography component="span" sx={{ fontWeight: 800, fontSize: '1.05rem', color: '#0f172a' }}>
-              {hoverRow}
+              {displayRow}
             </Typography>
             <Typography component="span" sx={{ fontWeight: 500, color: palette.lineStrong, fontSize: '0.95rem' }}>
               ×
             </Typography>
             <Typography component="span" sx={{ fontWeight: 800, fontSize: '1.05rem', color: '#0f172a' }}>
-              {hoverCol}
+              {displayCol}
             </Typography>
           </Box>
           <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 500 }}>
@@ -182,6 +189,10 @@ export function TableInsertDialog({ open, onClose, onInsert }: TableInsertDialog
           component="div"
           role="grid"
           aria-label="Jadval o‘lchami"
+          onPointerLeave={() => {
+            setHoveredRow(null)
+            setHoveredCol(null)
+          }}
           sx={{
             display: 'grid',
             gridTemplateColumns: `repeat(${MAX_DIM}, 1fr)`,
@@ -199,20 +210,20 @@ export function TableInsertDialog({ open, onClose, onInsert }: TableInsertDialog
             Array.from({ length: MAX_DIM }, (_, ci) => {
               const r = ri + 1
               const c = ci + 1
-              const selected = r <= hoverRow && c <= hoverCol
+              const selected = r <= selectedRow && c <= selectedCol
               return (
                 <Box
                   key={`${r}-${c}`}
                   component="button"
                   type="button"
                   aria-label={`${r} qator, ${c} ustun`}
-                  onMouseEnter={() => {
-                    setHoverRow(r)
-                    setHoverCol(c)
+                  onPointerEnter={() => {
+                    setHoveredRow(r)
+                    setHoveredCol(c)
                   }}
                   onClick={() => {
-                    setHoverRow(r)
-                    setHoverCol(c)
+                    setSelectedRow(r)
+                    setSelectedCol(c)
                   }}
                   sx={{
                     width: 20,
@@ -222,7 +233,7 @@ export function TableInsertDialog({ open, onClose, onInsert }: TableInsertDialog
                     borderRadius: '4px',
                     cursor: 'pointer',
                     bgcolor: selected ? palette.selected : '#fff',
-                    boxShadow: selected ? `0 0 0 1px ${palette.selectedBorder} inset` : 'none',
+                    boxShadow: selected ? `0 0 0 1px ${palette.accent} inset` : 'none',
                     transition: 'background-color 0.1s ease, border-color 0.1s ease, box-shadow 0.1s ease',
                     '&:hover': {
                       bgcolor: selected ? palette.selectedHover : palette.surface,

@@ -9,6 +9,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from 'react'
+import { createPortal } from 'react-dom'
 import { Box } from '@mui/material'
 import { Color } from '@tiptap/extension-color'
 import { Highlight } from '@tiptap/extension-highlight'
@@ -185,6 +186,116 @@ function IconTable() {
     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
       <path d="M3 3v18h18V3H3zm8 16H5v-6h6v6zm0-8H5V5h6v6zm8 8h-6v-6h6v6zm0-8h-6V5h6v6z" />
     </svg>
+  )
+}
+
+function TableDeleteCorner({ editor }: { editor: Editor }) {
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+  const activeTableRef = useRef<HTMLTableElement | null>(null)
+  const rafRef = useRef<number | null>(null)
+  const keepOpenRef = useRef(false)
+  const buttonRef = useRef<HTMLButtonElement | null>(null)
+
+  useEffect(() => {
+    const root = editor.view.dom as HTMLElement | null
+    if (!root) return
+
+    const setFromTable = (table: HTMLTableElement | null) => {
+      activeTableRef.current = table
+      if (!table) {
+        setPos(null)
+        return
+      }
+      const rect = table.getBoundingClientRect()
+      setPos({ top: rect.top + 8, left: rect.right + 8 })
+    }
+
+    const scheduleReposition = () => {
+      if (rafRef.current != null) return
+      rafRef.current = window.requestAnimationFrame(() => {
+        rafRef.current = null
+        const table = activeTableRef.current
+        if (!table) return
+        const rect = table.getBoundingClientRect()
+        setPos({ top: rect.top + 8, left: rect.right + 8 })
+      })
+    }
+
+    const onPointerMove = (e: PointerEvent) => {
+      const el = e.target
+      if (!(el instanceof Element)) {
+        if (activeTableRef.current) setFromTable(null)
+        return
+      }
+      // If we're hovering the delete button, keep it visible.
+      if (buttonRef.current && (el === buttonRef.current || buttonRef.current.contains(el))) {
+        keepOpenRef.current = true
+        return
+      }
+      keepOpenRef.current = false
+      const table = el.closest('table') as HTMLTableElement | null
+      if (table === activeTableRef.current) return
+      setFromTable(table)
+    }
+
+    const onScrollResize = () => {
+      if (activeTableRef.current) scheduleReposition()
+    }
+
+    // Listen on window so moving outside editor doesn't hide button.
+    window.addEventListener('pointermove', onPointerMove, { passive: true, capture: true })
+    window.addEventListener('scroll', onScrollResize, true)
+    window.addEventListener('resize', onScrollResize)
+
+    return () => {
+      window.removeEventListener('pointermove', onPointerMove, true)
+      window.removeEventListener('scroll', onScrollResize, true)
+      window.removeEventListener('resize', onScrollResize)
+      if (rafRef.current != null) {
+        cancelAnimationFrame(rafRef.current)
+        rafRef.current = null
+      }
+    }
+  }, [editor])
+
+  if (!pos) return null
+
+  return createPortal(
+    <button
+      ref={(node) => {
+        buttonRef.current = node
+      }}
+      type="button"
+      aria-label="Delete table"
+      title="Delete table"
+      onMouseDown={(e) => {
+        // keep selection stable
+        e.preventDefault()
+      }}
+      onClick={() => {
+        editor.chain().focus().deleteTable().run()
+      }}
+      style={{
+        position: 'fixed',
+        top: pos.top,
+        left: pos.left,
+        zIndex: 2000,
+        width: 30,
+        height: 30,
+        borderRadius: 999,
+        border: '1px solid rgba(15, 23, 42, 0.18)',
+        background: 'rgba(255,255,255,0.95)',
+        color: '#b91c1c',
+        fontSize: 18,
+        lineHeight: 1,
+        fontWeight: 700,
+        cursor: 'pointer',
+        boxShadow: '0 10px 22px rgba(15, 23, 42, 0.12)',
+      }}
+    >
+      ×
+    </button>,
+    document.body,
   )
 }
 
@@ -390,6 +501,7 @@ function RichTextToolbar({
   const blockValue = blockTypeValue(editor)
   const canSink = editor.can().sinkListItem('listItem')
   const canLift = editor.can().liftListItem('listItem')
+  const isInTable = editor.isActive('table')
 
   const setBlockType = (value: string) => {
     if (value === 'paragraph') {
@@ -616,6 +728,14 @@ function RichTextToolbar({
         <ToolbarButton title="Jadval qo‘shish" onClick={onOpenTableModal}>
           <IconTable />
         </ToolbarButton>
+        {isInTable ? (
+          <ToolbarButton
+            title="Jadvalni o‘chirish"
+            onClick={() => editor.chain().focus().deleteTable().run()}
+          >
+            🗑
+          </ToolbarButton>
+        ) : null}
         <ToolbarButton
           title="Radio variantlar"
           active={editor.isActive('radioGroup')}
@@ -687,6 +807,9 @@ export function RichTextEditor({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
+        // We add custom Link/Underline extensions below; disable in StarterKit to avoid duplicates.
+        link: false,
+        underline: false,
         heading: { levels: [1, 2, 3] },
         bulletList: { HTMLAttributes: { class: 'rte-bullet-list' } },
         orderedList: { HTMLAttributes: { class: 'rte-ordered-list' } },
@@ -699,7 +822,13 @@ export function RichTextEditor({
       Highlight.configure({ multicolor: true }),
       TextAlign.configure({ types: ['heading', 'paragraph', 'blockquote'] }),
       Image.configure({ inline: false, allowBase64: true, HTMLAttributes: { class: 'rte-img' } }),
-      Table.configure({ resizable: false, HTMLAttributes: { class: 'rte-table-wrap' } }),
+      Table.configure({
+        resizable: true,
+        handleWidth: 6,
+        cellMinWidth: 40,
+        lastColumnResizable: true,
+        HTMLAttributes: { class: 'rte-table-wrap' },
+      }),
       TableRow,
       TableHeader,
       TableCell,
@@ -742,6 +871,123 @@ export function RichTextEditor({
       editor.commands.setContent(next, { emitUpdate: false })
     }
   }, [editor, value])
+
+  // Row height resize for tables (drag near bottom border)
+  useEffect(() => {
+    if (!editor) return
+
+    const root = editor.view.dom as HTMLElement
+    let dragging = false
+    let startY = 0
+    let startHeight = 0
+    let activeRow: HTMLTableRowElement | null = null
+    let activeCell: HTMLElement | null = null
+    let activePointerId: number | null = null
+
+    const EDGE_PX = 7
+    const MIN_ROW_HEIGHT = 24
+
+    const isNearBottomEdge = (cell: HTMLElement, clientY: number) => {
+      const rect = cell.getBoundingClientRect()
+      return rect.bottom - clientY >= 0 && rect.bottom - clientY <= EDGE_PX
+    }
+
+    const setRowHeight = (row: HTMLTableRowElement, px: number) => {
+      const safe = Math.max(MIN_ROW_HEIGHT, Math.round(px))
+      Array.from(row.cells).forEach((cell) => {
+        ;(cell as HTMLElement).style.height = `${safe}px`
+        ;(cell as HTMLElement).style.minHeight = `${safe}px`
+      })
+    }
+
+    const clearRowHeight = (row: HTMLTableRowElement) => {
+      Array.from(row.cells).forEach((cell) => {
+        ;(cell as HTMLElement).style.removeProperty('height')
+        ;(cell as HTMLElement).style.removeProperty('min-height')
+      })
+    }
+
+    const cellAtPointer = (clientX: number, clientY: number) => {
+      const el = document.elementFromPoint(clientX, clientY)
+      if (!(el instanceof HTMLElement)) return null
+      return el.closest('td,th') as HTMLElement | null
+    }
+
+    const onDragMove = (e: PointerEvent) => {
+      if (!dragging || !activeRow) return
+      if (activePointerId != null && e.pointerId !== activePointerId) return
+      e.preventDefault()
+      const next = startHeight + (e.clientY - startY)
+      setRowHeight(activeRow, next)
+    }
+
+    const stopDrag = () => {
+      dragging = false
+      startY = 0
+      startHeight = 0
+      activeRow = null
+      activeCell = null
+      activePointerId = null
+      root.classList.remove('rte-resize-row-cursor')
+      window.removeEventListener('pointermove', onDragMove, true)
+      window.removeEventListener('pointerup', stopDrag, true)
+      window.removeEventListener('pointercancel', stopDrag, true)
+    }
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (dragging && activeRow) {
+        onDragMove(e)
+        return
+      }
+
+      const cell = cellAtPointer(e.clientX, e.clientY)
+      if (!cell) {
+        root.classList.remove('rte-resize-row-cursor')
+        return
+      }
+      if (isNearBottomEdge(cell, e.clientY)) {
+        root.classList.add('rte-resize-row-cursor')
+      } else {
+        root.classList.remove('rte-resize-row-cursor')
+      }
+    }
+
+    const onPointerDown = (e: PointerEvent) => {
+      const cell = cellAtPointer(e.clientX, e.clientY)
+      if (!cell) return
+      if (!isNearBottomEdge(cell, e.clientY)) return
+
+      const row = cell.parentElement
+      if (!(row instanceof HTMLTableRowElement)) return
+
+      dragging = true
+      activeRow = row
+      activeCell = cell
+      activePointerId = e.pointerId
+      startY = e.clientY
+
+      const rect = cell.getBoundingClientRect()
+      startHeight = rect.height
+
+      // Prevent editor selection changes during resize
+      e.preventDefault()
+      cell.setPointerCapture?.(e.pointerId)
+      root.classList.add('rte-resize-row-cursor')
+
+      window.addEventListener('pointermove', onDragMove, { passive: false, capture: true })
+      window.addEventListener('pointerup', stopDrag, { passive: true, capture: true })
+      window.addEventListener('pointercancel', stopDrag, { passive: true, capture: true })
+    }
+
+    root.addEventListener('pointermove', onPointerMove, { passive: false, capture: true })
+    root.addEventListener('pointerdown', onPointerDown, { passive: false, capture: true })
+
+    return () => {
+      root.removeEventListener('pointermove', onPointerMove, true)
+      root.removeEventListener('pointerdown', onPointerDown, true)
+      stopDrag()
+    }
+  }, [editor])
 
   useEffect(() => {
     if (!expanded) return
@@ -874,6 +1120,7 @@ export function RichTextEditor({
             onToggleExpand={() => setExpanded((v) => !v)}
           />
         ) : null}
+        {!readOnly ? <TableDeleteCorner editor={editor} /> : null}
         <Box className="rte-body">
           <EditorContent editor={editor} />
         </Box>

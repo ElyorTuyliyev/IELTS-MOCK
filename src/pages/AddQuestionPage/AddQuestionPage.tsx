@@ -62,7 +62,7 @@ function isHtmlEmpty(value: string) {
   return normalized.length === 0;
 }
 
-function buildListeningPartStem(partLabel: string, html: string) {
+function buildPartContentBlock(partLabel: string, html: string) {
   return `<h3>${partLabel}</h3>${html}`;
 }
 
@@ -163,14 +163,13 @@ export function AddQuestionPage() {
   const [title, setTitle] = useState("");
   const [timeLimit, setTimeLimit] = useState("45");
   const [instruction, setInstruction] = useState(EMPTY_HTML);
-  const [stem, setStem] = useState(EMPTY_HTML);
-  const [listeningPartStems, setListeningPartStems] = useState<string[]>(
+  const [listeningPartContents, setListeningPartContents] = useState<string[]>(
     Array.from({ length: LISTENING_PART_LABELS.length }, () => EMPTY_HTML),
   );
-  const [readingPartStems, setReadingPartStems] = useState<string[]>(
+  const [readingPartContents, setReadingPartContents] = useState<string[]>(
     Array.from({ length: READING_PART_LABELS.length }, () => EMPTY_HTML),
   );
-  const [writingPartStems, setWritingPartStems] = useState<string[]>(
+  const [writingPartContents, setWritingPartContents] = useState<string[]>(
     Array.from({ length: WRITING_PART_LABELS.length }, () => EMPTY_HTML),
   );
   const [sourceMaterial, setSourceMaterial] = useState(EMPTY_HTML);
@@ -221,10 +220,10 @@ export function AddQuestionPage() {
           key: part?._id ?? `fallback-part-${index + 1}`,
           label: part ? buildPartLabel(part) : fallbackLabel,
           partId: part?._id ?? null,
-          stem: listeningPartStems[index] ?? EMPTY_HTML,
+          content: listeningPartContents[index] ?? EMPTY_HTML,
         };
       }),
-    [listeningPartStems, selectedModuleParts],
+    [listeningPartContents, selectedModuleParts],
   );
   const readingPartEntries = useMemo(
     () =>
@@ -234,10 +233,10 @@ export function AddQuestionPage() {
           key: part?._id ?? `reading-fallback-part-${index + 1}`,
           label: part ? buildPartLabel(part) : fallbackLabel,
           partId: part?._id ?? null,
-          stem: readingPartStems[index] ?? EMPTY_HTML,
+          content: readingPartContents[index] ?? EMPTY_HTML,
         };
       }),
-    [readingPartStems, selectedModuleParts],
+    [readingPartContents, selectedModuleParts],
   );
   const writingPartEntries = useMemo(
     () =>
@@ -247,10 +246,10 @@ export function AddQuestionPage() {
           key: part?._id ?? `writing-fallback-part-${index + 1}`,
           label: part ? buildPartLabel(part) : fallbackLabel,
           partId: part?._id ?? null,
-          stem: writingPartStems[index] ?? EMPTY_HTML,
+          content: writingPartContents[index] ?? EMPTY_HTML,
         };
       }),
-    [selectedModuleParts, writingPartStems],
+    [selectedModuleParts, writingPartContents],
   );
 
   useEffect(() => {
@@ -258,7 +257,7 @@ export function AddQuestionPage() {
       return;
     }
     const expectedCount = LISTENING_PART_LABELS.length;
-    setListeningPartStems((current) => {
+    setListeningPartContents((current) => {
       if (current.length === expectedCount) {
         return current;
       }
@@ -274,7 +273,7 @@ export function AddQuestionPage() {
       return;
     }
     const expectedCount = WRITING_PART_LABELS.length;
-    setWritingPartStems((current) => {
+    setWritingPartContents((current) => {
       if (current.length === expectedCount) {
         return current;
       }
@@ -290,7 +289,7 @@ export function AddQuestionPage() {
       return;
     }
     const expectedCount = READING_PART_LABELS.length;
-    setReadingPartStems((current) => {
+    setReadingPartContents((current) => {
       if (current.length === expectedCount) {
         return current;
       }
@@ -368,8 +367,6 @@ export function AddQuestionPage() {
     setSuccess(null);
   };
 
-  const resolvedStem = selectedModule === "Listening" ? EMPTY_HTML : stem;
-
   const handleCreateQuestion = async () => {
     const nextErrors: string[] = [];
     setSuccess(null);
@@ -380,28 +377,26 @@ export function AddQuestionPage() {
       nextErrors.push("Instruction required.");
     }
     if (selectedModule === "Listening") {
-        const missingParts = listeningPartEntries.filter((entry) => isHtmlEmpty(entry.stem));
+      const missingParts = listeningPartEntries.filter((entry) => isHtmlEmpty(entry.content));
       if (missingParts.length > 0) {
         nextErrors.push(
-            `Listening part stem required: ${missingParts.map((entry) => entry.label).join(", ")}.`,
+          `Listening part content required: ${missingParts.map((entry) => entry.label).join(", ")}.`,
         );
       }
     } else if (selectedModule === "Reading") {
-      const missingReadingParts = readingPartEntries.filter((entry) => isHtmlEmpty(entry.stem));
+      const missingReadingParts = readingPartEntries.filter((entry) => isHtmlEmpty(entry.content));
       if (missingReadingParts.length > 0) {
         nextErrors.push(
-          `Reading part stem required: ${missingReadingParts.map((entry) => entry.label).join(", ")}.`,
+          `Reading part content required: ${missingReadingParts.map((entry) => entry.label).join(", ")}.`,
         );
       }
     } else if (selectedModule === "Writing") {
-      const missingWritingParts = writingPartEntries.filter((entry) => isHtmlEmpty(entry.stem));
+      const missingWritingParts = writingPartEntries.filter((entry) => isHtmlEmpty(entry.content));
       if (missingWritingParts.length > 0) {
         nextErrors.push(
-          `Writing part stem required: ${missingWritingParts.map((entry) => entry.label).join(", ")}.`,
+          `Writing part content required: ${missingWritingParts.map((entry) => entry.label).join(", ")}.`,
         );
       }
-    } else if (isHtmlEmpty(resolvedStem)) {
-      nextErrors.push("Question stem required.");
     }
     if (selectedModule !== "Listening" && selectedModule !== "Reading" && isHtmlEmpty(sourceMaterial)) {
       nextErrors.push("Source material required.");
@@ -437,23 +432,22 @@ export function AddQuestionPage() {
 
       if (selectedModule === "Listening") {
         const partResults = await Promise.all(
-          listeningPartEntries.map(({ label, stem: partStem, partId }) =>
+          listeningPartEntries.map(({ label, content: partContent, partId }, index) =>
             createQuestion({
               variables: {
                 input: {
                   examId: selectedExamId,
                   title: `${title.trim()} — ${label}`,
                   instruction: null,
-                  stem: buildListeningPartStem(label, partStem),
-                  sourceMaterial: null,
-                  explanation,
+                  sourceMaterial: buildPartContentBlock(label, partContent),
+                  explanation: null,
                   listeningAudio: uploadedListeningAudio,
                   speakingAudio: null,
                   supportingImage: null,
-                  question: `${title.trim()} (${label})\n\n${buildListeningPartStem(label, partStem)}`,
+                  question: `${title.trim()} (${label})`,
                   type: "input",
                   ieltsModule: selectedModule,
-                  listeningPart: label,
+                  listeningPart: String(index + 1),
                   partId,
                   placementNumber: normalizedPlacement,
                   options: optionsPayload,
@@ -474,20 +468,19 @@ export function AddQuestionPage() {
         }
       } else if (selectedModule === "Reading") {
         const partResults = await Promise.all(
-          readingPartEntries.map(({ label, stem: partStem, partId }) =>
+          readingPartEntries.map(({ label, content: partContent, partId }) =>
             createQuestion({
               variables: {
                 input: {
                   examId: selectedExamId,
                   title: `${title.trim()} — ${label}`,
                   instruction: null,
-                  stem: buildListeningPartStem(label, partStem),
-                  sourceMaterial: null,
+                  sourceMaterial: buildPartContentBlock(label, partContent),
                   explanation: null,
                   listeningAudio: null,
                   speakingAudio: null,
                   supportingImage: uploadedSupportingImage,
-                  question: `${title.trim()} (${label})\n\n${buildListeningPartStem(label, partStem)}`,
+                  question: `${title.trim()} (${label})`,
                   type:
                     answerMode === "multiple"
                       ? "multiselect"
@@ -513,20 +506,19 @@ export function AddQuestionPage() {
         }
       } else if (selectedModule === "Writing") {
         const partResults = await Promise.all(
-          writingPartEntries.map(({ label, stem: partStem, partId }) =>
+          writingPartEntries.map(({ label, content: partContent, partId }) =>
             createQuestion({
               variables: {
                 input: {
                   examId: selectedExamId,
                   title: `${title.trim()} — ${label}`,
                   instruction: null,
-                  stem: buildListeningPartStem(label, partStem),
-                  sourceMaterial: null,
+                  sourceMaterial: buildPartContentBlock(label, partContent),
                   explanation: null,
                   listeningAudio: null,
                   speakingAudio: null,
                   supportingImage: null,
-                  question: `${title.trim()} (${label})\n\n${buildListeningPartStem(label, partStem)}`,
+                  question: `${title.trim()} (${label})`,
                   type:
                     answerMode === "multiple"
                       ? "multiselect"
@@ -557,13 +549,12 @@ export function AddQuestionPage() {
               examId: selectedExamId,
               title: title.trim(),
               instruction,
-              stem: resolvedStem,
               sourceMaterial,
               explanation,
               listeningAudio: uploadedListeningAudio,
               speakingAudio: uploadedSpeakingAudio,
               supportingImage: uploadedSupportingImage,
-              question: `${title.trim()}\n\n${resolvedStem}`,
+              question: title.trim(),
               type:
                 answerMode === "multiple"
                   ? "multiselect"
@@ -587,7 +578,7 @@ export function AddQuestionPage() {
       setErrors([]);
       setSuccess(
         selectedModule === "Listening"
-          ? `Listening part savollari (${listeningPartEntries.length} ta) muvaffaqiyatli yaratildi.`
+          ? "Listening question muvaffaqiyatli yaratildi."
           : selectedModule === "Reading"
             ? `Reading part savollari (${readingPartEntries.length} ta) muvaffaqiyatli yaratildi.`
             : selectedModule === "Writing"
@@ -752,7 +743,7 @@ export function AddQuestionPage() {
                   <Box className="add-question-card">
                     <Box className="add-question-form__field add-question-form__field--span-4">
                       <label className="add-question-form__label">
-                        Question stem ({listeningPartEntries.length} ta part)
+                        Question content ({listeningPartEntries.length} ta part)
                       </label>
                       <Box className="add-question-form__grid">
                         {listeningPartEntries.map((entry, index) => (
@@ -762,9 +753,9 @@ export function AddQuestionPage() {
                           >
                             <label className="add-question-form__label">{entry.label}</label>
                             <RichTextEditor
-                              value={listeningPartStems[index] ?? EMPTY_HTML}
+                              value={listeningPartContents[index] ?? EMPTY_HTML}
                               onChange={(nextValue) =>
-                                setListeningPartStems((current) =>
+                                setListeningPartContents((current) =>
                                   current.map((item, idx) => (idx === index ? nextValue : item)),
                                 )
                               }
@@ -778,7 +769,7 @@ export function AddQuestionPage() {
                   <Box className="add-question-card">
                     <Box className="add-question-form__field add-question-form__field--span-4">
                       <label className="add-question-form__label">
-                        Question stem ({readingPartEntries.length} ta part)
+                        Question content ({readingPartEntries.length} ta part)
                       </label>
                       <Box className="add-question-form__grid">
                         {readingPartEntries.map((entry, index) => (
@@ -788,9 +779,9 @@ export function AddQuestionPage() {
                           >
                             <label className="add-question-form__label">{entry.label}</label>
                             <RichTextEditor
-                              value={readingPartStems[index] ?? EMPTY_HTML}
+                              value={readingPartContents[index] ?? EMPTY_HTML}
                               onChange={(nextValue) =>
-                                setReadingPartStems((current) =>
+                                setReadingPartContents((current) =>
                                   current.map((item, idx) => (idx === index ? nextValue : item)),
                                 )
                               }
@@ -804,7 +795,7 @@ export function AddQuestionPage() {
                   <Box className="add-question-card">
                     <Box className="add-question-form__field add-question-form__field--span-4">
                       <label className="add-question-form__label">
-                        Question stem ({writingPartEntries.length} ta part)
+                        Question content ({writingPartEntries.length} ta part)
                       </label>
                       <Box className="add-question-form__grid">
                         {writingPartEntries.map((entry, index) => (
@@ -814,9 +805,9 @@ export function AddQuestionPage() {
                           >
                             <label className="add-question-form__label">{entry.label}</label>
                             <RichTextEditor
-                              value={writingPartStems[index] ?? EMPTY_HTML}
+                              value={writingPartContents[index] ?? EMPTY_HTML}
                               onChange={(nextValue) =>
-                                setWritingPartStems((current) =>
+                                setWritingPartContents((current) =>
                                   current.map((item, idx) => (idx === index ? nextValue : item)),
                                 )
                               }
@@ -831,10 +822,6 @@ export function AddQuestionPage() {
                     <Box className="add-question-form__field add-question-form__field--span-4 add-question-form__textarea">
                       <label className="add-question-form__label">Instruction</label>
                       <RichTextEditor value={instruction} onChange={setInstruction} />
-                    </Box>
-                    <Box className="add-question-form__field add-question-form__field--span-4 add-question-form__textarea">
-                      <label className="add-question-form__label">Question stem</label>
-                      <RichTextEditor value={stem} onChange={setStem} />
                     </Box>
                     <Box className="add-question-form__field add-question-form__field--span-4 add-question-form__textarea">
                       <label className="add-question-form__label">Source material</label>

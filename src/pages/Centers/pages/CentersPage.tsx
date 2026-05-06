@@ -21,6 +21,7 @@ import { ROUTES_PATH } from '../../../routes'
 import { selectUserRole } from '../../../store'
 import { useAppSelector } from '../../../store/hooks'
 import { USER_ROLES } from '../../../store/slices/authSlice'
+import { agentLog } from '../../../utils/agentLog'
 import { CENTER_PAGE_SIZE, CENTERS, CENTER_STATS } from '../api/centersData'
 import { CREATE_CENTER_MUTATION } from '../../AddCenter/api/createCenterMutation'
 import { REMOVE_CENTER_MUTATION } from '../api/deleteCenterMutation'
@@ -301,80 +302,50 @@ export function CentersPage() {
       return
     }
 
-    // #region agent log
-    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': '24497a',
+    agentLog({
+      sessionId: '24497a',
+      runId: 'pre-fix',
+      hypothesisId: 'H12',
+      location: 'CentersPage.tsx:handleDeleteCenter',
+      message: 'Delete center submit snapshot',
+      data: {
+        centerId: id,
+        canDeleteCenter,
       },
-      body: JSON.stringify({
-        sessionId: '24497a',
-        runId: 'pre-fix',
-        hypothesisId: 'H12',
-        location: 'CentersPage.tsx:handleDeleteCenter',
-        message: 'Delete center submit snapshot',
-        data: {
-          centerId: id,
-          canDeleteCenter,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {})
-    // #endregion
+    })
 
     try {
       const result = await deleteCenter({
         variables: { _id: id },
       })
 
-      // #region agent log
-      fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Debug-Session-Id': '24497a',
+      agentLog({
+        sessionId: '24497a',
+        runId: 'pre-fix',
+        hypothesisId: 'H13',
+        location: 'CentersPage.tsx:handleDeleteCenter',
+        message: 'Delete center mutation result snapshot',
+        data: {
+          hasDeleteCenterData: Boolean(result.data?.removeCenter),
+          removeCenterResult: result.data?.removeCenter ?? null,
+          deletedCenterId: id,
+          hasApolloError: Boolean(result.error),
+          apolloErrorMessage: result.error?.message ?? null,
         },
-        body: JSON.stringify({
-          sessionId: '24497a',
-          runId: 'pre-fix',
-          hypothesisId: 'H13',
-          location: 'CentersPage.tsx:handleDeleteCenter',
-          message: 'Delete center mutation result snapshot',
-          data: {
-            hasDeleteCenterData: Boolean(result.data?.removeCenter),
-            removeCenterResult: result.data?.removeCenter ?? null,
-            deletedCenterId: id,
-            hasApolloError: Boolean(result.error),
-            apolloErrorMessage: result.error?.message ?? null,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {})
-      // #endregion
+      })
 
       await refetchCenters()
     } catch (error) {
-      // #region agent log
-      fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Debug-Session-Id': '24497a',
+      agentLog({
+        sessionId: '24497a',
+        runId: 'pre-fix',
+        hypothesisId: 'H14',
+        location: 'CentersPage.tsx:handleDeleteCenter',
+        message: 'Delete center mutation threw exception',
+        data: {
+          errorMessage: error instanceof Error ? error.message : 'unknown-error',
         },
-        body: JSON.stringify({
-          sessionId: '24497a',
-          runId: 'pre-fix',
-          hypothesisId: 'H14',
-          location: 'CentersPage.tsx:handleDeleteCenter',
-          message: 'Delete center mutation threw exception',
-          data: {
-            errorMessage: error instanceof Error ? error.message : 'unknown-error',
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {})
-      // #endregion
+      })
     }
   }
 
@@ -382,28 +353,18 @@ export function CentersPage() {
     if (!canEditCenter || !row.id) {
       return
     }
-    // #region agent log
-    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': '24497a',
+    agentLog({
+      sessionId: '24497a',
+      runId: 'pre-fix',
+      hypothesisId: 'H-update-nav',
+      location: 'CentersPage.tsx:handleOpenEditCenter',
+      message: 'Edit center navigation payload snapshot',
+      data: {
+        centerId: row.id,
+        hasManager: Boolean(row.manager?.trim()),
+        canEditCenter,
       },
-      body: JSON.stringify({
-        sessionId: '24497a',
-        runId: 'pre-fix',
-        hypothesisId: 'H-update-nav',
-        location: 'CentersPage.tsx:handleOpenEditCenter',
-        message: 'Edit center navigation payload snapshot',
-        data: {
-          centerId: row.id,
-          hasManager: Boolean(row.manager?.trim()),
-          canEditCenter,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {})
-    // #endregion
+    })
     navigate(ROUTES_PATH.addCenter, {
       state: {
         mode: 'edit',
@@ -616,19 +577,7 @@ export function CentersPage() {
       runId?: string
     }) => {
       const { runId = 'pre-fix', ...rest } = payload
-      fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Debug-Session-Id': '24497a',
-        },
-        body: JSON.stringify({
-          sessionId: '24497a',
-          runId,
-          timestamp: Date.now(),
-          ...rest,
-        }),
-      }).catch(() => {})
+      agentLog({ sessionId: '24497a', runId, ...rest })
     }
 
     requestAnimationFrame(() => {

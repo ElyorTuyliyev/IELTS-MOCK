@@ -16,6 +16,7 @@ import {
 import { DataGrid, type GridPaginationModel } from '@mui/x-data-grid'
 
 import { Layout } from '../../components/layout'
+import { agentLog } from '../../utils/agentLog'
 import { selectAuthToken, selectUserRole } from '../../store'
 import { useAppSelector } from '../../store/hooks'
 import { USER_ROLES } from '../../store/slices/authSlice'
@@ -280,37 +281,27 @@ export function AllStudentsPage() {
 
     setFormError('')
 
-    // #region agent log
-    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': '24497a',
+    agentLog({
+      sessionId: '24497a',
+      runId: 'pre-fix',
+      hypothesisId: 'H1',
+      location: 'AllStudentsPage.tsx:handleSaveStudent',
+      message: editingStudentId
+        ? 'Update student submit payload snapshot'
+        : 'Create student submit payload snapshot',
+      data: {
+        firstNameLength: trimmedFirstName.length,
+        lastNameLength: trimmedLastName.length,
+        emailLength: normalizedEmail.length,
+        birthdayLength: normalizedBirthday.length,
+        hasGender: Boolean(normalizedGender),
+        phoneLength: normalizedPhone.length,
+        passwordLength: trimmedPassword.length,
+        centerIdFromToken: centerIdFromToken ?? null,
+        hasValidCenterId: Boolean(normalizedCenterId),
+        currentRole,
       },
-      body: JSON.stringify({
-        sessionId: '24497a',
-        runId: 'pre-fix',
-        hypothesisId: 'H1',
-        location: 'AllStudentsPage.tsx:handleSaveStudent',
-        message: editingStudentId
-          ? 'Update student submit payload snapshot'
-          : 'Create student submit payload snapshot',
-        data: {
-          firstNameLength: trimmedFirstName.length,
-          lastNameLength: trimmedLastName.length,
-          emailLength: normalizedEmail.length,
-          birthdayLength: normalizedBirthday.length,
-          hasGender: Boolean(normalizedGender),
-          phoneLength: normalizedPhone.length,
-          passwordLength: trimmedPassword.length,
-          centerIdFromToken: centerIdFromToken ?? null,
-          hasValidCenterId: Boolean(normalizedCenterId),
-          currentRole,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {})
-    // #endregion
+    })
 
     try {
       const result = editingStudentId
@@ -346,33 +337,23 @@ export function AllStudentsPage() {
         : (result.data as CreateStudentMutationResponse | null)?.createUser ?? null
       const apolloErrorMessage = result.error?.message ?? null
 
-      // #region agent log
-      fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Debug-Session-Id': '24497a',
+      agentLog({
+        sessionId: '24497a',
+        runId: 'pre-fix',
+        hypothesisId: 'H2',
+        location: 'AllStudentsPage.tsx:handleSaveStudent',
+        message: editingStudentId
+          ? 'Update student mutation result snapshot'
+          : 'Create student mutation result snapshot',
+        data: {
+          hasCreateUserData: Boolean(createdStudent),
+          createdStudentId: createdStudent?._id ?? null,
+          returnedRole: createdStudent?.role ?? 'student',
+          hasApolloError: Boolean(result.error),
+          apolloErrorMessage,
+          mode: editingStudentId ? 'update' : 'create',
         },
-        body: JSON.stringify({
-          sessionId: '24497a',
-          runId: 'pre-fix',
-          hypothesisId: 'H2',
-          location: 'AllStudentsPage.tsx:handleSaveStudent',
-          message: editingStudentId
-            ? 'Update student mutation result snapshot'
-            : 'Create student mutation result snapshot',
-          data: {
-            hasCreateUserData: Boolean(createdStudent),
-            createdStudentId: createdStudent?._id ?? null,
-            returnedRole: createdStudent?.role ?? 'student',
-            hasApolloError: Boolean(result.error),
-            apolloErrorMessage,
-            mode: editingStudentId ? 'update' : 'create',
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {})
-      // #endregion
+      })
 
       if (!createdStudent?._id) {
         setFormError(
@@ -394,28 +375,18 @@ export function AllStudentsPage() {
             ? 'Student yangilashda kutilmagan xatolik.'
             : 'Student yaratishda kutilmagan xatolik.',
       )
-      // #region agent log
-      fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Debug-Session-Id': '24497a',
+      agentLog({
+        sessionId: '24497a',
+        runId: 'pre-fix',
+        hypothesisId: 'H4',
+        location: 'AllStudentsPage.tsx:handleSaveStudent',
+        message: editingStudentId
+          ? 'Update student mutation threw exception'
+          : 'Create student mutation threw exception',
+        data: {
+          errorMessage: error instanceof Error ? error.message : 'unknown-error',
         },
-        body: JSON.stringify({
-          sessionId: '24497a',
-          runId: 'pre-fix',
-          hypothesisId: 'H4',
-          location: 'AllStudentsPage.tsx:handleSaveStudent',
-          message: editingStudentId
-            ? 'Update student mutation threw exception'
-            : 'Create student mutation threw exception',
-          data: {
-            errorMessage: error instanceof Error ? error.message : 'unknown-error',
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {})
-      // #endregion
+      })
     }
   }
 
@@ -442,29 +413,19 @@ export function AllStudentsPage() {
     })
     setStudentRows(mappedStudents)
 
-    // #region agent log
-    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': '24497a',
+    agentLog({
+      sessionId: '24497a',
+      runId: 'pre-fix',
+      hypothesisId: 'H3',
+      location: 'AllStudentsPage.tsx:usersDataEffect',
+      message: 'Hydrated students from backend query',
+      data: {
+        serverUsersCount: serverUsers.length,
+        studentUsersCount: studentUsers.length,
+        mappedStudentsCount: mappedStudents.length,
+        mappedStudentsWithEmailCount: mappedStudents.filter((student) => student.email !== '-').length,
       },
-      body: JSON.stringify({
-        sessionId: '24497a',
-        runId: 'pre-fix',
-        hypothesisId: 'H3',
-        location: 'AllStudentsPage.tsx:usersDataEffect',
-        message: 'Hydrated students from backend query',
-        data: {
-          serverUsersCount: serverUsers.length,
-          studentUsersCount: studentUsers.length,
-          mappedStudentsCount: mappedStudents.length,
-          mappedStudentsWithEmailCount: mappedStudents.filter((student) => student.email !== '-').length,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {})
-    // #endregion
+    })
   }, [usersData])
 
   const filteredStudents = useMemo(() => {

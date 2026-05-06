@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   Box,
   Button,
@@ -113,6 +113,7 @@ const primaryButtonSx = {
 export function DragDropFillBlankDialog({ open, onClose, onInsert }: DragDropFillBlankDialogProps) {
   const titleId = useId()
   const descId = useId()
+  const questionInputRef = useRef<HTMLTextAreaElement | null>(null)
   const [questionText, setQuestionText] = useState('')
   const [mode, setMode] = useState<'shuffled' | 'ordered'>('shuffled')
   const [gapAnswers, setGapAnswers] = useState<string[]>([])
@@ -135,11 +136,28 @@ export function DragDropFillBlankDialog({ open, onClose, onInsert }: DragDropFil
   const gapCount = useMemo(() => countGaps(questionText), [questionText])
 
   const handleAppendGap = useCallback(() => {
-    setQuestionText((prev) => {
-      const t = prev.trimEnd()
-      return t ? `${t} ${DRAG_DROP_GAP_TOKEN}` : DRAG_DROP_GAP_TOKEN
+    const textarea = questionInputRef.current
+    if (!textarea) {
+      setQuestionText((prev) => {
+        const t = prev.trimEnd()
+        return t ? `${t} ${DRAG_DROP_GAP_TOKEN}` : DRAG_DROP_GAP_TOKEN
+      })
+      return
+    }
+
+    const start = textarea.selectionStart ?? questionText.length
+    const end = textarea.selectionEnd ?? questionText.length
+    const before = questionText.slice(0, start)
+    const after = questionText.slice(end)
+    const next = `${before}${DRAG_DROP_GAP_TOKEN}${after}`
+    setQuestionText(next)
+
+    const cursor = start + DRAG_DROP_GAP_TOKEN.length
+    requestAnimationFrame(() => {
+      textarea.focus()
+      textarea.setSelectionRange(cursor, cursor)
     })
-  }, [])
+  }, [questionInputRef, questionText])
 
   const handleGapAnswer = useCallback((index: number, value: string) => {
     setGapAnswers((current) => current.map((a, i) => (i === index ? value : a)))
@@ -355,6 +373,9 @@ export function DragDropFillBlankDialog({ open, onClose, onInsert }: DragDropFil
             placeholder={`Enter your question with ${DRAG_DROP_GAP_TOKEN} for blanks`}
             value={questionText}
             onChange={(e) => setQuestionText(e.target.value)}
+            inputRef={(node: HTMLTextAreaElement | null) => {
+              questionInputRef.current = node
+            }}
             sx={{ ...textFieldSx, mb: 1 }}
           />
           <Typography variant="body2" sx={{ color: palette.muted, fontWeight: 600, fontSize: '0.8rem' }}>
@@ -392,6 +413,10 @@ export function DragDropFillBlankDialog({ open, onClose, onInsert }: DragDropFil
                   type="button"
                   size="small"
                   aria-label="Clear answer"
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                  }}
                   onClick={() => handleClearGapAnswer(index)}
                   disabled={!value}
                   sx={{ color: 'error.main', flexShrink: 0, opacity: value ? 1 : 0.35 }}
@@ -433,6 +458,10 @@ export function DragDropFillBlankDialog({ open, onClose, onInsert }: DragDropFil
                 type="button"
                 size="small"
                 aria-label="Remove distractor"
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                }}
                 onClick={() => handleRemoveDistractor(row.id)}
                 sx={{ color: 'error.main', flexShrink: 0 }}
               >

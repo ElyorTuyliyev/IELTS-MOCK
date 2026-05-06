@@ -5,6 +5,7 @@ import { Box, Button, TextField, Typography } from '@mui/material'
 
 import { Layout } from '../../../components/layout'
 import { ROUTES_PATH } from '../../../routes'
+import { agentLog } from '../../../utils/agentLog'
 import { CREATE_CENTER_MUTATION } from '../api/createCenterMutation'
 import { UPDATE_CENTER_MUTATION } from '../api/updateCenterMutation'
 import { AddCenterPageRoot } from './AddCenterPage.style'
@@ -97,19 +98,11 @@ export function AddCenterPage() {
       message: string
       data: Record<string, unknown>
     }) => {
-      fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Debug-Session-Id': '24497a',
-        },
-        body: JSON.stringify({
-          sessionId: '24497a',
-          runId: 'pre-fix',
-          timestamp: Date.now(),
-          ...payload,
-        }),
-      }).catch(() => {})
+      agentLog({
+        sessionId: '24497a',
+        runId: 'pre-fix',
+        ...payload,
+      })
     }
 
     const form = document.querySelector('.add-center-form') as HTMLElement | null
@@ -188,33 +181,23 @@ export function AddCenterPage() {
 
   useEffect(() => {
     const saveButton = document.querySelector('.add-center-form__submit') as HTMLButtonElement | null
-    // #region agent log
-    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': '24497a',
+    agentLog({
+      sessionId: '24497a',
+      runId: 'pre-fix',
+      hypothesisId: 'H-btn-state',
+      location: 'AddCenterPage.tsx:saveButton/useEffect',
+      message: 'Save button state snapshot',
+      data: {
+        isViewMode,
+        isEditMode,
+        isCreatingCenter,
+        isUpdatingCenter,
+        submitError: submitError || null,
+        buttonExists: Boolean(saveButton),
+        buttonDisabled: saveButton?.disabled ?? null,
+        buttonText: saveButton?.textContent?.trim() ?? null,
       },
-      body: JSON.stringify({
-        sessionId: '24497a',
-        runId: 'pre-fix',
-        hypothesisId: 'H-btn-state',
-        location: 'AddCenterPage.tsx:saveButton/useEffect',
-        message: 'Save button state snapshot',
-        data: {
-          isViewMode,
-          isEditMode,
-          isCreatingCenter,
-          isUpdatingCenter,
-          submitError: submitError || null,
-          buttonExists: Boolean(saveButton),
-          buttonDisabled: saveButton?.disabled ?? null,
-          buttonText: saveButton?.textContent?.trim() ?? null,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {})
-    // #endregion
+    })
   }, [isViewMode, isEditMode, isCreatingCenter, isUpdatingCenter, submitError])
 
   useEffect(() => {
@@ -222,28 +205,18 @@ export function AddCenterPage() {
       return
     }
 
-    // #region agent log
-    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': '24497a',
+    agentLog({
+      sessionId: '24497a',
+      runId: 'pre-fix',
+      hypothesisId: 'H-update-prefill',
+      location: 'AddCenterPage.tsx:prefill/useEffect',
+      message: 'Edit/View prefill state snapshot',
+      data: {
+        mode: isEditMode ? 'edit' : 'view',
+        centerId: routeState.center.id,
+        hasManager: Boolean(routeState.center.manager?.trim()),
       },
-      body: JSON.stringify({
-        sessionId: '24497a',
-        runId: 'pre-fix',
-        hypothesisId: 'H-update-prefill',
-        location: 'AddCenterPage.tsx:prefill/useEffect',
-        message: 'Edit/View prefill state snapshot',
-        data: {
-          mode: isEditMode ? 'edit' : 'view',
-          centerId: routeState.center.id,
-          hasManager: Boolean(routeState.center.manager?.trim()),
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {})
-    // #endregion
+    })
 
     setCenterName(routeState.center.name ?? '')
     setManagerName(routeState.center.manager ?? '')
@@ -280,29 +253,19 @@ export function AddCenterPage() {
       setHasNewLogoUpload(true)
       setSubmitError('')
 
-      // #region agent log
-      fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Debug-Session-Id': '24497a',
+      agentLog({
+        sessionId: '24497a',
+        runId: 'pre-fix',
+        hypothesisId: 'H11',
+        location: 'AddCenterPage.tsx:handleLogoFileChange',
+        message: 'Logo file converted to base64',
+        data: {
+          fileName: selectedFile.name,
+          fileType: selectedFile.type,
+          fileSize: selectedFile.size,
+          hasBase64: Boolean(result),
         },
-        body: JSON.stringify({
-          sessionId: '24497a',
-          runId: 'pre-fix',
-          hypothesisId: 'H11',
-          location: 'AddCenterPage.tsx:handleLogoFileChange',
-          message: 'Logo file converted to base64',
-          data: {
-            fileName: selectedFile.name,
-            fileType: selectedFile.type,
-            fileSize: selectedFile.size,
-            hasBase64: Boolean(result),
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {})
-      // #endregion
+      })
     }
     reader.readAsDataURL(selectedFile)
   }
@@ -322,31 +285,21 @@ export function AddCenterPage() {
 
     if (!normalizedName || !normalizedManager || !normalizedAddress || !normalizedPhone || !normalizedEmail) {
       setSubmitError("Center saqlash uchun center name, manager name, address, phone number va gmail majburiy.")
-      // #region agent log
-      fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Debug-Session-Id': '24497a',
+      agentLog({
+        sessionId: '24497a',
+        runId: 'pre-fix',
+        hypothesisId: 'H18',
+        location: 'AddCenterPage.tsx:handleCreateCenter',
+        message: 'Validation blocked save: core required fields',
+        data: {
+          mode: isEditMode ? 'edit' : 'create',
+          hasName: Boolean(normalizedName),
+          hasAddress: Boolean(normalizedAddress),
+          hasManager: Boolean(normalizedManager),
+          hasPhone: Boolean(normalizedPhone),
+          hasEmail: Boolean(normalizedEmail),
         },
-        body: JSON.stringify({
-          sessionId: '24497a',
-          runId: 'pre-fix',
-          hypothesisId: 'H18',
-          location: 'AddCenterPage.tsx:handleCreateCenter',
-          message: 'Validation blocked save: core required fields',
-          data: {
-            mode: isEditMode ? 'edit' : 'create',
-            hasName: Boolean(normalizedName),
-            hasAddress: Boolean(normalizedAddress),
-            hasManager: Boolean(normalizedManager),
-            hasPhone: Boolean(normalizedPhone),
-            hasEmail: Boolean(normalizedEmail),
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {})
-      // #endregion
+      })
       return
     }
 
@@ -372,39 +325,29 @@ export function AddCenterPage() {
 
     setSubmitError('')
 
-    // #region agent log
-    fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': '24497a',
+    agentLog({
+      sessionId: '24497a',
+      runId: 'pre-fix',
+      hypothesisId: 'H6',
+      location: 'AddCenterPage.tsx:handleCreateCenter',
+      message: 'Create center submit payload snapshot',
+      data: {
+        graphqlEndpoint,
+        hasName: Boolean(normalizedName),
+        hasAddress: Boolean(normalizedAddress),
+        hasLogo: Boolean(logoDataUrl),
+        hasNewLogoUpload,
+        logoBase64Length: logoDataUrl.length,
+        logoApproxBytes: logoDataUrl ? Math.ceil((logoDataUrl.length * 3) / 4) : 0,
+        logoFileName: logoFileName || null,
+        hasPhone: Boolean(normalizedPhone),
+        hasEmail: Boolean(normalizedEmail),
+        hasPassword: Boolean(trimmedPassword),
+        passwordLength: trimmedPassword.length,
+        managerLength: normalizedManager.length,
+        mode: isEditMode ? 'edit' : 'create',
       },
-      body: JSON.stringify({
-        sessionId: '24497a',
-        runId: 'pre-fix',
-        hypothesisId: 'H6',
-        location: 'AddCenterPage.tsx:handleCreateCenter',
-        message: 'Create center submit payload snapshot',
-        data: {
-          graphqlEndpoint,
-          hasName: Boolean(normalizedName),
-          hasAddress: Boolean(normalizedAddress),
-          hasLogo: Boolean(logoDataUrl),
-          hasNewLogoUpload,
-          logoBase64Length: logoDataUrl.length,
-          logoApproxBytes: logoDataUrl ? Math.ceil((logoDataUrl.length * 3) / 4) : 0,
-          logoFileName: logoFileName || null,
-          hasPhone: Boolean(normalizedPhone),
-          hasEmail: Boolean(normalizedEmail),
-          hasPassword: Boolean(trimmedPassword),
-          passwordLength: trimmedPassword.length,
-          managerLength: normalizedManager.length,
-          mode: isEditMode ? 'edit' : 'create',
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {})
-    // #endregion
+    })
 
     try {
       let mutationCenter: { _id: string; name: string } | null = null
@@ -456,39 +399,29 @@ export function AddCenterPage() {
         apolloErrorDetails = result.error as typeof apolloErrorDetails
       }
 
-      // #region agent log
-      fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Debug-Session-Id': '24497a',
+      agentLog({
+        sessionId: '24497a',
+        runId: 'pre-fix',
+        hypothesisId: isEditMode ? 'H19' : 'H7',
+        location: 'AddCenterPage.tsx:handleCreateCenter',
+        message: isEditMode
+          ? 'Update center mutation result snapshot'
+          : 'Create center mutation result snapshot',
+        data: {
+          hasCenterMutationData: Boolean(mutationCenter),
+          centerMutationId: mutationCenter?._id ?? null,
+          mode: isEditMode ? 'edit' : 'create',
+          hasApolloError,
+          apolloErrorMessage,
+          hasNewLogoUpload,
+          apolloErrorName: apolloErrorDetails?.name ?? null,
+          graphQLErrorMessages: apolloErrorDetails?.graphQLErrors?.map((item) => item.message ?? '') ?? [],
+          networkErrorMessage: apolloErrorDetails?.networkError?.message ?? null,
+          networkErrorName: apolloErrorDetails?.networkError?.name ?? null,
+          networkErrorStatusCode: apolloErrorDetails?.networkError?.statusCode ?? null,
+          browserOnline: typeof navigator !== 'undefined' ? navigator.onLine : null,
         },
-        body: JSON.stringify({
-          sessionId: '24497a',
-          runId: 'pre-fix',
-          hypothesisId: isEditMode ? 'H19' : 'H7',
-          location: 'AddCenterPage.tsx:handleCreateCenter',
-          message: isEditMode
-            ? 'Update center mutation result snapshot'
-            : 'Create center mutation result snapshot',
-          data: {
-            hasCenterMutationData: Boolean(mutationCenter),
-            centerMutationId: mutationCenter?._id ?? null,
-            mode: isEditMode ? 'edit' : 'create',
-            hasApolloError,
-            apolloErrorMessage,
-            hasNewLogoUpload,
-            apolloErrorName: apolloErrorDetails?.name ?? null,
-            graphQLErrorMessages: apolloErrorDetails?.graphQLErrors?.map((item) => item.message ?? '') ?? [],
-            networkErrorMessage: apolloErrorDetails?.networkError?.message ?? null,
-            networkErrorName: apolloErrorDetails?.networkError?.name ?? null,
-            networkErrorStatusCode: apolloErrorDetails?.networkError?.statusCode ?? null,
-            browserOnline: typeof navigator !== 'undefined' ? navigator.onLine : null,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {})
-      // #endregion
+      })
 
       if (!mutationCenter?._id) {
         setSubmitError(apolloErrorMessage ?? "Center saqlashda xatolik bo'ldi.")
@@ -498,26 +431,16 @@ export function AddCenterPage() {
       navigate(ROUTES_PATH.center)
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Center yaratishda kutilmagan xatolik.")
-      // #region agent log
-      fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Debug-Session-Id': '24497a',
+      agentLog({
+        sessionId: '24497a',
+        runId: 'pre-fix',
+        hypothesisId: 'H8',
+        location: 'AddCenterPage.tsx:handleCreateCenter',
+        message: 'Create center mutation threw exception',
+        data: {
+          errorMessage: error instanceof Error ? error.message : 'unknown-error',
         },
-        body: JSON.stringify({
-          sessionId: '24497a',
-          runId: 'pre-fix',
-          hypothesisId: 'H8',
-          location: 'AddCenterPage.tsx:handleCreateCenter',
-          message: 'Create center mutation threw exception',
-          data: {
-            errorMessage: error instanceof Error ? error.message : 'unknown-error',
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {})
-      // #endregion
+      })
     }
   }
 
@@ -690,29 +613,19 @@ export function AddCenterPage() {
                     className="add-center-form__submit"
                     variant="contained"
                     onClick={() => {
-                      // #region agent log
-                      fetch('http://127.0.0.1:7673/ingest/f17e7d22-6b3c-499a-a010-5ead1efa8471', {
-                        method: 'POST',
-                        headers: {
-                          'Content-Type': 'application/json',
-                          'X-Debug-Session-Id': '24497a',
+                      agentLog({
+                        sessionId: '24497a',
+                        runId: 'pre-fix',
+                        hypothesisId: 'H-btn-click',
+                        location: 'AddCenterPage.tsx:saveButton/onClick',
+                        message: 'Save button clicked',
+                        data: {
+                          isViewMode,
+                          isEditMode,
+                          isCreatingCenter,
+                          isUpdatingCenter,
                         },
-                        body: JSON.stringify({
-                          sessionId: '24497a',
-                          runId: 'pre-fix',
-                          hypothesisId: 'H-btn-click',
-                          location: 'AddCenterPage.tsx:saveButton/onClick',
-                          message: 'Save button clicked',
-                          data: {
-                            isViewMode,
-                            isEditMode,
-                            isCreatingCenter,
-                            isUpdatingCenter,
-                          },
-                          timestamp: Date.now(),
-                        }),
-                      }).catch(() => {})
-                      // #endregion
+                      })
                       handleCreateCenter()
                     }}
                     disabled={isCreatingCenter || isUpdatingCenter}
