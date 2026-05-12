@@ -14,7 +14,15 @@ import {
   MODULE_PART_COUNTS,
   type ModuleName,
 } from './constants'
-import { ListeningStartOverlay, StudentExamFinishModal, StudentExamPlayerHeader } from './components'
+import {
+  ListeningModuleContent,
+  ListeningStartOverlay,
+  ReadingModuleContent,
+  StudentExamFinishModal,
+  StudentExamFooter,
+  StudentExamPlayerHeader,
+  WritingModuleContent,
+} from './components'
 
 type BackendQuestion = {
   _id: string
@@ -149,13 +157,18 @@ function formatListeningHtmlForExam(
   keyPrefix: string,
 ): string {
   const escapeAttr = (value: string) => value.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+  const toFieldIdentity = (storageKey: string) => {
+    const safe = storageKey.replace(/[^a-zA-Z0-9_-]+/g, '_')
+    return `listening_${safe}`
+  }
   /** Stable keys: same source HTML + keyPrefix must always yield the same data-blank-key (see blankValues sync). */
   const toBlankInput = (label: string, storageKey: string) => {
     const cleanLabel = (label || '').trim() || 'Answer'
     const questionNumber = cleanLabel.match(/\d+/)?.[0] ?? cleanLabel
     const safeLabel = escapeAttr(questionNumber)
     const safeKey = escapeAttr(storageKey)
-    return `<span class="ielts-blank-inline"><input class="ielts-blank-input" data-blank-key="${safeKey}" type="text" placeholder="${safeLabel}" aria-label="Question ${safeLabel} answer" /></span>`
+    const identity = escapeAttr(toFieldIdentity(storageKey))
+    return `<span class="ielts-blank-inline"><input class="ielts-blank-input" data-blank-key="${safeKey}" id="${identity}" name="${identity}" type="text" placeholder="${safeLabel}" aria-label="Question ${safeLabel} answer" /></span>`
   }
 
   if (typeof window !== 'undefined') {
@@ -187,6 +200,16 @@ function formatListeningHtmlForExam(
         const existingKey = asInput.getAttribute('data-blank-key')?.trim()
         if (!isChoiceInput && !existingKey) {
           asInput.setAttribute('data-blank-key', `${keyPrefix}:dom:${index}`)
+        }
+        const fieldKey = asInput.getAttribute('data-blank-key')?.trim()
+        if (!isChoiceInput && fieldKey) {
+          const identity = toFieldIdentity(fieldKey)
+          if (!asInput.id) {
+            asInput.id = identity
+          }
+          if (!asInput.name) {
+            asInput.name = identity
+          }
         }
 
         const rawLabel =
@@ -543,9 +566,13 @@ export function StudentExamPlayerPage() {
       input.disabled = false
       input.readOnly = false
       input.style.pointerEvents = 'auto'
+      input.autocomplete = 'off'
 
       const savedValue = blankValuesRef.current[key] ?? ''
-      input.value = savedValue
+      const isFocused = document.activeElement === input
+      if (!isFocused && input.value !== savedValue) {
+        input.value = savedValue
+      }
 
       const handleInput = () => {
         const value = input.value
@@ -723,108 +750,34 @@ export function StudentExamPlayerPage() {
             <Typography className="student-exam-player__empty-sub">Bu exam uchun savollar topilmadi.</Typography>
           </Box>
         ) : activeModule === 'listening' ? (
-          listeningHtml ? (
-            <Box
-              ref={listeningContentRef}
-              className="student-exam-player__prose student-exam-player__prose--listening"
-              dangerouslySetInnerHTML={{ __html: listeningHtml }}
-            />
-          ) : (
-            <Typography className="student-exam-player__muted">Listening part content mavjud emas.</Typography>
-          )
+          <ListeningModuleContent listeningHtml={listeningHtml} listeningContentRef={listeningContentRef} />
         ) : activeModule === 'reading' ? (
-          <Box ref={splitContainerRef} className="student-exam-player__split">
-            <Box
-              className="student-exam-player__split-pane student-exam-player__split-pane--passage student-exam-player__prose"
-              style={{ width: `${splitLeftWidth}%` }}
-            >
-              {currentPartPassage ? (
-                <Box dangerouslySetInnerHTML={{ __html: currentPartPassage }} />
-              ) : (
-                <Typography className="student-exam-player__passage-muted">Passage content mavjud emas.</Typography>
-              )}
-            </Box>
-            <Box
-              role="separator"
-              aria-orientation="vertical"
-              className="student-exam-player__resize-handle"
-              onPointerDown={(event) => {
-                event.preventDefault()
-                isResizingRef.current = true
-              }}
-            >
-              <Box className="student-exam-player__resize-knob">↔</Box>
-            </Box>
-            <Box
-              ref={moduleContentRef}
-              className="student-exam-player__split-pane student-exam-player__split-pane--side"
-              style={{ width: `${100 - splitLeftWidth}%` }}
-            >
-              {currentPartQuestions.map((question) => (
-                <Box key={question.id} className="student-exam-player__question-row">
-                  <Typography className="student-exam-player__question-num">{question.id}.</Typography>
-                  <Box className="student-exam-player__question-body">
-                    {question.html ? (
-                      <Box
-                        className="student-exam-player__prose student-exam-player__prose--question"
-                        dangerouslySetInnerHTML={{ __html: question.html }}
-                      />
-                    ) : (
-                      <Typography className="student-exam-player__question-text">{question.text}</Typography>
-                    )}
-                  </Box>
-                </Box>
-              ))}
-            </Box>
-          </Box>
+          <ReadingModuleContent
+            splitContainerRef={splitContainerRef}
+            moduleContentRef={moduleContentRef}
+            splitLeftWidth={splitLeftWidth}
+            currentPartPassage={currentPartPassage}
+            currentPartQuestions={currentPartQuestions}
+            onStartResize={() => {
+              isResizingRef.current = true
+            }}
+          />
         ) : activeModule === 'writing' ? (
-          <Box ref={splitContainerRef} className="student-exam-player__split">
-            <Box
-              className="student-exam-player__split-pane student-exam-player__split-pane--passage student-exam-player__prose"
-              style={{ width: `${splitLeftWidth}%` }}
-            >
-              {currentPartPassage ? (
-                <Box dangerouslySetInnerHTML={{ __html: currentPartPassage }} />
-              ) : (
-                <Typography className="student-exam-player__passage-muted">Passage content mavjud emas.</Typography>
-              )}
-            </Box>
-            <Box
-              role="separator"
-              aria-orientation="vertical"
-              className="student-exam-player__resize-handle"
-              onPointerDown={(event) => {
-                event.preventDefault()
-                isResizingRef.current = true
-              }}
-            >
-              <Box className="student-exam-player__resize-knob">↔</Box>
-            </Box>
-
-            <Box
-              className="student-exam-player__split-pane student-exam-player__split-pane--side"
-              style={{ width: `${100 - splitLeftWidth}%` }}
-            >
-              <Box className="student-exam-player__writing-head">
-                <Typography className="student-exam-player__writing-title">Your answer</Typography>
-                <Typography className="student-exam-player__writing-count">
-                  Words: {currentWritingWordCount}
-                </Typography>
-              </Box>
-              <Box
-                component="textarea"
-                className="student-exam-player__writing-textarea"
-                value={currentWritingAnswer}
-                onChange={(event) => {
-                  const value = event.target.value
-                  setWritingAnswers((prev) =>
-                    prev[currentWritingKey] === value ? prev : { ...prev, [currentWritingKey]: value },
-                  )
-                }}
-                placeholder="Yozing..."
-              />
-            </Box>
-          </Box>
+          <WritingModuleContent
+            splitContainerRef={splitContainerRef}
+            splitLeftWidth={splitLeftWidth}
+            currentPartPassage={currentPartPassage}
+            currentWritingWordCount={currentWritingWordCount}
+            currentWritingAnswer={currentWritingAnswer}
+            onStartResize={() => {
+              isResizingRef.current = true
+            }}
+            onChangeWritingAnswer={(value) => {
+              setWritingAnswers((prev) =>
+                prev[currentWritingKey] === value ? prev : { ...prev, [currentWritingKey]: value },
+              )
+            }}
+          />
         ) : (
           <Box ref={moduleContentRef} className="student-exam-player__module-stack">
             {currentPartQuestions.map((question) => (
@@ -872,71 +825,21 @@ export function StudentExamPlayerPage() {
         ) : null}
       </Box>
 
-      <Box className="student-exam-player__footer">
-        {visibleParts.map((partItem) => {
-          const isCurrent = partItem.partNumber === part
-          const isCompletionPart =
-            (activeModule === 'listening' && partItem.partNumber === 4) ||
-            (activeModule === 'reading' && partItem.partNumber === 3) ||
-            (activeModule === 'writing' && partItem.partNumber === 2)
-          return (
-            <Box
-              key={partItem.partNumber}
-              className={`student-exam-player__part-tab${isCurrent ? ' student-exam-player__part-tab--current' : ''}`}
-              onClick={() => {
-                if (isCurrent) return
-                setPart(partItem.partNumber)
-                setActiveQuestion(partItem.questions[0]?.id ?? '1')
-              }}
-            >
-              {isCurrent ? (
-                <>
-                  <Typography className="student-exam-player__part-tab-title">Part {partItem.partNumber}</Typography>
-                  <Box className="student-exam-player__part-tab-row">
-                    <Box className="student-exam-player__part-tab-chips">
-                      {partItem.questions.map((question) => (
-                        <Box
-                          key={`${partItem.partNumber}-${question.id}`}
-                          className={`student-exam-player__q-chip${
-                            question.id === activeQuestion ? ' student-exam-player__q-chip--active' : ''
-                          }`}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setActiveQuestion(question.id)
-                          }}
-                        >
-                          {question.id}
-                        </Box>
-                      ))}
-                    </Box>
-                  </Box>
-                </>
-              ) : (
-                <Typography className="student-exam-player__part-tab-idle">
-                  Part {partItem.partNumber} &nbsp;&nbsp;0 of {partItem.questions.length}
-                </Typography>
-              )}
-              {isCompletionPart ? (
-                <Box className="student-exam-player__complete-cell">
-                  <IconButton
-                    size="small"
-                    className="student-exam-player__complete-btn"
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      handleCompleteModule()
-                    }}
-                    disabled={
-                      activeModule === 'writing' && partItem.partNumber === 2 ? false : !canGoToNextModule
-                    }
-                  >
-                    <Typography className="student-exam-player__complete-check">✓</Typography>
-                  </IconButton>
-                </Box>
-              ) : null}
-            </Box>
-          )
-        })}
-      </Box>
+      <StudentExamFooter
+        visibleParts={visibleParts}
+        activeModule={activeModule}
+        activePart={part}
+        activeQuestion={activeQuestion}
+        canGoToNextModule={canGoToNextModule}
+        onSelectPart={(partNumber, firstQuestionId) => {
+          setPart(partNumber)
+          setActiveQuestion(firstQuestionId)
+        }}
+        onSelectQuestion={(questionId) => {
+          setActiveQuestion(questionId)
+        }}
+        onCompleteModule={handleCompleteModule}
+      />
 
       <StudentExamFinishModal
         open={finishModalOpen}
