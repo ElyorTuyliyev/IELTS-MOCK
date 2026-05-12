@@ -30,32 +30,48 @@ function initialRows(): Row[] {
 
 export type RadioOptionsDialogProps = {
   open: boolean
+  defaultQuestionNumber?: number
   onClose: () => void
   /** `correctValue` — tanlangan variantning `value` si (editor ichida checked). */
-  onInsert: (options: RadioOption[], correctValue: string) => void
+  onInsert: (questionNumber: number, questionText: string, options: RadioOption[], correctValue: string) => void
 }
 
-export function RadioOptionsDialog({ open, onClose, onInsert }: RadioOptionsDialogProps) {
+export function RadioOptionsDialog({
+  open,
+  defaultQuestionNumber = 1,
+  onClose,
+  onInsert,
+}: RadioOptionsDialogProps) {
   const titleId = useId()
   const descId = useId()
+  const [questionText, setQuestionText] = useState('')
+  const [questionNumber, setQuestionNumber] = useState<number>(Math.max(1, Math.floor(defaultQuestionNumber)))
   const [rows, setRows] = useState<Row[]>(initialRows)
   const [correctId, setCorrectId] = useState<string>(() => initialRows()[0]?.id ?? '')
   const [error, setError] = useState<string | null>(null)
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!open) return
     const next = initialRows()
+    // Reset form state each time modal opens.
+    setQuestionText('')
+    setQuestionNumber(Math.max(1, Math.floor(defaultQuestionNumber)))
     setRows(next)
     setCorrectId(next[0]?.id ?? '')
     setError(null)
-  }, [open])
+  }, [open, defaultQuestionNumber])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (rows.length === 0) return
     if (!rows.some((row) => row.id === correctId)) {
+      // Keep selected answer valid after option delete.
       setCorrectId(rows[0].id)
     }
   }, [rows, correctId])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleAdd = useCallback(() => {
     setRows((current) => [...current, createRow()])
@@ -73,6 +89,11 @@ export function RadioOptionsDialog({ open, onClose, onInsert }: RadioOptionsDial
   }, [])
 
   const handleInsert = useCallback(() => {
+    const trimmedQuestion = questionText.trim()
+    if (!trimmedQuestion) {
+      setError('Savol matnini kiriting.')
+      return
+    }
     const trimmed = rows.map((row) => row.text.trim())
     if (trimmed.some((text) => text.length === 0)) {
       setError('Barcha variantlar uchun matn kiriting.')
@@ -86,9 +107,11 @@ export function RadioOptionsDialog({ open, onClose, onInsert }: RadioOptionsDial
       label: row.text.trim(),
       value: row.id,
     }))
-    onInsert(options, correctId)
+    const safeQuestionNumber =
+      Number.isFinite(questionNumber) && questionNumber > 0 ? Math.floor(questionNumber) : 1
+    onInsert(safeQuestionNumber, trimmedQuestion, options, correctId)
     setError(null)
-  }, [rows, correctId, onInsert])
+  }, [questionText, questionNumber, rows, correctId, onInsert])
 
   const textFieldSx = {
     flex: 1,
@@ -156,6 +179,24 @@ export function RadioOptionsDialog({ open, onClose, onInsert }: RadioOptionsDial
             {error}
           </Typography>
         ) : null}
+        <TextField
+          type="number"
+          size="small"
+          label="Q number"
+          value={questionNumber}
+          onChange={(e) => setQuestionNumber(Math.max(1, Number(e.target.value || 1)))}
+          sx={{ mb: 1.25, maxWidth: 140 }}
+          slotProps={{ htmlInput: { min: 1 } }}
+        />
+        <TextField
+          size="small"
+          fullWidth
+          label="Question"
+          placeholder="Savol matni"
+          value={questionText}
+          onChange={(e) => setQuestionText(e.target.value)}
+          sx={{ mb: 2 }}
+        />
 
         <RadioGroup
           value={correctId}

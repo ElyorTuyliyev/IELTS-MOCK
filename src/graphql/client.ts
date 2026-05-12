@@ -78,12 +78,26 @@ function forceLogoutOnAuthError() {
   isAutoLoggingOut = false
 }
 
-const errorLink = onError(({ graphQLErrors, networkError }) => {
+const errorLink = onError((errorContext) => {
+  const legacyContext = errorContext as {
+    graphQLErrors?: Array<{ extensions?: { code?: string } }>
+    networkError?: unknown
+  }
+  const graphQLErrors =
+    legacyContext.graphQLErrors ??
+    ((errorContext as { error?: { errors?: Array<{ extensions?: { code?: string } }> } }).error
+      ?.errors ?? [])
+  const networkError =
+    legacyContext.networkError ??
+    (errorContext as { error?: { networkError?: unknown } }).error?.networkError
   const hasUnauthenticatedGraphqlError =
-    graphQLErrors?.some((error) => error.extensions?.code === 'UNAUTHENTICATED') ?? false
+    graphQLErrors.some((error: { extensions?: { code?: string } }) => error.extensions?.code === 'UNAUTHENTICATED')
+  const networkErrorObject =
+    typeof networkError === 'object' && networkError !== null
+      ? (networkError as { statusCode?: number })
+      : null
   const hasUnauthorizedNetworkError =
-    'statusCode' in (networkError ?? {}) &&
-    (networkError as { statusCode?: number }).statusCode === 401
+    Boolean(networkErrorObject && 'statusCode' in networkErrorObject && networkErrorObject.statusCode === 401)
 
   if (hasUnauthenticatedGraphqlError || hasUnauthorizedNetworkError) {
     forceLogoutOnAuthError()

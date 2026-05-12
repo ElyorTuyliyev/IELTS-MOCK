@@ -23,6 +23,7 @@ export const ROUTES_PATH = {
   certificates: '/certificates',
   addCenter: '/centers/new',
   addQuestion: '/questions/new',
+  editQuestion: '/questions/:questionId/edit',
   allStudents: '/students/all',
   allQuestions: '/questions/all',
   prizeQuizzes: '/exams/prize-quizzes',

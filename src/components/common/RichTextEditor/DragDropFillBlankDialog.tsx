@@ -116,22 +116,30 @@ export function DragDropFillBlankDialog({ open, onClose, onInsert }: DragDropFil
   const questionInputRef = useRef<HTMLTextAreaElement | null>(null)
   const [questionText, setQuestionText] = useState('')
   const [mode, setMode] = useState<'shuffled' | 'ordered'>('shuffled')
+  const [startNumber, setStartNumber] = useState('1')
   const [gapAnswers, setGapAnswers] = useState<string[]>([])
   const [distractors, setDistractors] = useState<DistractorRow[]>([])
   const [error, setError] = useState<string | null>(null)
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!open) return
+    // Reset dialog inputs on each open.
     setQuestionText('')
     setMode('shuffled')
+    setStartNumber('1')
     setGapAnswers([])
     setDistractors([])
     setError(null)
   }, [open])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
+    // Keep answer inputs in sync with number of blanks in question text.
     setGapAnswers((prev) => syncGapAnswers(questionText, prev))
   }, [questionText])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const gapCount = useMemo(() => countGaps(questionText), [questionText])
 
@@ -199,8 +207,10 @@ export function DragDropFillBlankDialog({ open, onClose, onInsert }: DragDropFil
       setError('Each gap should have a different correct answer.')
       return
     }
+    const parsedStart = Number(startNumber)
+    const start = Number.isFinite(parsedStart) && parsedStart > 0 ? Math.floor(parsedStart) : 1
     const gaps: DragDropGap[] = trimmedGaps.map((answer, i) => ({
-      id: `gap${i + 1}`,
+      id: `Q${start + i}`,
       answer,
     }))
     const distractorStrings = distractors
@@ -214,7 +224,7 @@ export function DragDropFillBlankDialog({ open, onClose, onInsert }: DragDropFil
       distractors: distractorStrings,
     })
     setError(null)
-  }, [questionText, mode, gapAnswers, distractors, onInsert])
+  }, [questionText, mode, gapAnswers, distractors, onInsert, startNumber])
 
   const textFieldSx = {
     '& .MuiOutlinedInput-root': { borderRadius: '10px' },
@@ -366,6 +376,15 @@ export function DragDropFillBlankDialog({ open, onClose, onInsert }: DragDropFil
         </Panel>
 
         <Panel title="Question text">
+          <TextField
+            fullWidth
+            label="Start question number"
+            value={startNumber}
+            onChange={(e) => setStartNumber(e.target.value)}
+            inputMode="numeric"
+            placeholder="1"
+            sx={{ ...textFieldSx, mb: 1 }}
+          />
           <TextField
             fullWidth
             multiline

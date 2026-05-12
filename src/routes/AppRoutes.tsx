@@ -180,6 +180,11 @@ const appRoutes: AppRouteConfig[] = [
     allowedRoles: centerRoles,
   },
   {
+    path: ROUTES_PATH.editQuestion,
+    element: <AddQuestionPage />,
+    allowedRoles: centerRoles,
+  },
+  {
     path: ROUTES_PATH.batchImport,
     element: (
       <FeaturePage

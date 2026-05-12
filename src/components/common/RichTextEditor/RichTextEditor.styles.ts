@@ -399,6 +399,61 @@ export const RichTextEditorRoot = styled.div`
     border: 1px solid var(--rte-border);
   }
 
+  .rte-body .tiptap .rte-image-wrap {
+    position: relative;
+    display: inline-flex;
+    max-width: 100%;
+    margin: 0.5em 0;
+    line-height: 0;
+    border: 1px dashed rgba(100, 116, 139, 0.5);
+    border-radius: 12px;
+    padding: 2px;
+  }
+
+  .rte-body .tiptap .rte-image-wrap .rte-img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+
+  .rte-body .tiptap .rte-image-wrap .rte-image-resize-handle {
+    position: absolute;
+    right: 2px;
+    bottom: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    background: rgba(37, 99, 235, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.95);
+    cursor: nwse-resize;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+    touch-action: none;
+  }
+
+  .rte-body .tiptap .rte-image-wrap .rte-image-resize-handle::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border-right: 2px solid rgba(255, 255, 255, 0.95);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.95);
+  }
+
+  .rte-body .tiptap .rte-image-wrap .rte-image-size-badge {
+    position: absolute;
+    left: 6px;
+    bottom: 6px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: rgba(15, 23, 42, 0.82);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.2;
+    pointer-events: none;
+    user-select: none;
+    letter-spacing: 0.01em;
+  }
+
   .rte-body .tiptap a {
     color: var(--rte-violet);
     font-weight: 600;
@@ -552,6 +607,96 @@ export const RichTextEditorRoot = styled.div`
     color: var(--rte-text);
     white-space: pre-wrap;
     word-break: break-word;
+  }
+
+  .rte-body .tiptap .rte-drag-drop-fill__question {
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--rte-text);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .rte-body .tiptap .rte-drag-drop-fill__blank {
+    display: inline-block;
+    width: 110px;
+    height: 30px;
+    margin: 0 6px;
+    padding: 4px 8px;
+    border-radius: 8px;
+    border: 1px solid rgba(100, 116, 139, 0.6);
+    background: rgba(255, 255, 255, 0.92);
+    font-size: 13px;
+    color: #0f172a;
+    vertical-align: baseline;
+  }
+
+  .rte-body .tiptap .rte-drag-drop-fill__blank::placeholder {
+    color: #94a3b8;
+    font-weight: 600;
+  }
+
+  .rte-body .tiptap .rte-drag-drop-fill__pool {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(148, 163, 184, 0.55);
+  }
+
+  .rte-body .tiptap .rte-drag-drop-fill__pool-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+    margin-bottom: 8px;
+  }
+
+  .rte-body .tiptap .rte-drag-drop-fill__pool-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .rte-body .tiptap .rte-drag-drop-fill__chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(226, 232, 240, 0.95);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+    font-size: 12px;
+    font-weight: 650;
+    color: #334155;
+  }
+
+  .rte-body .tiptap .rte-blank-answer {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px;
+    border-radius: 10px;
+    border: 1px solid rgba(148, 163, 184, 0.85);
+    background: rgba(255, 255, 255, 0.92);
+    vertical-align: baseline;
+    user-select: none;
+  }
+
+  .rte-body .tiptap .rte-blank-answer__id {
+    font-size: 11px;
+    font-weight: 800;
+    color: #334155;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: rgba(219, 234, 254, 0.9);
+    border: 1px solid rgba(191, 219, 254, 0.95);
+  }
+
+  .rte-body .tiptap .rte-blank-answer__line {
+    display: inline-block;
+    min-width: 88px;
+    border-bottom: 2px solid rgba(71, 85, 105, 0.8);
+    transform: translateY(-1px);
+    color: transparent;
   }
 
   .rte-body .tiptap .rte-drag-drop-fill__meta {

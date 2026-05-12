@@ -8,6 +8,8 @@ export const CREATE_QUESTION_MUTATION = gql`
       title
       instruction
       sourceMaterial
+      passageHtml
+      questionsHtml
       explanation
       listeningAudio
       speakingAudio
@@ -18,6 +20,7 @@ export const CREATE_QUESTION_MUTATION = gql`
       listeningPart
       partId
       placementNumber
+      answerKey
       options {
         title
         isCorrectAnswer

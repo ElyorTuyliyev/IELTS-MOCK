@@ -1,14 +1,10 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery } from '@apollo/client/react'
 import {
   Alert,
   Box,
   Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   InputAdornment,
   MenuItem,
   TextField,
@@ -21,7 +17,6 @@ import { ROUTES_PATH } from '../../routes'
 import { createQuestionColumns } from './QuestionsPage.columns'
 import { FIND_ALL_QUESTIONS_QUERY } from './api/findAllQuestionsQuery'
 import { REMOVE_QUESTION_MUTATION } from './api/removeQuestionMutation'
-import { UPDATE_QUESTION_MUTATION } from './api/updateQuestionMutation'
 import {
   QUESTION_PAGE_SIZE,
   type QuestionModuleFilter,
@@ -33,6 +28,7 @@ import { QuestionsPageRoot } from './QuestionsPage.style'
 const PAGE_SIZE_OPTIONS = [8, 16, 24, 50] as const
 
 export function QuestionsPage() {
+  const navigate = useNavigate()
   const { data: questionsData } = useQuery<{
     findAllQuestions: Array<{
       _id: string
@@ -52,13 +48,9 @@ export function QuestionsPage() {
     }>
   }>(FIND_ALL_QUESTIONS_QUERY)
   const [removeQuestion] = useMutation(REMOVE_QUESTION_MUTATION)
-  const [updateQuestion, { loading: isUpdating }] = useMutation(UPDATE_QUESTION_MUTATION)
   const [searchTerm, setSearchTerm] = useState('')
   const [typeFilter, setTypeFilter] = useState<QuestionModuleFilter>('All IELTS modules')
   const [actionError, setActionError] = useState<string | null>(null)
-  const [editingRow, setEditingRow] = useState<QuestionGridRow | null>(null)
-  const [editingTitle, setEditingTitle] = useState('')
-  const [editingModule, setEditingModule] = useState<QuestionType>('Listening')
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
     page: 0,
     pageSize: QUESTION_PAGE_SIZE,
@@ -154,57 +146,21 @@ export function QuestionsPage() {
     [removeQuestion],
   )
 
-  const handleOpenEditQuestion = useCallback((row: QuestionGridRow) => {
-    setActionError(null)
-    setEditingRow(row)
-    setEditingTitle(row.title)
-    setEditingModule(row.questionType)
-  }, [])
-
-  const handleCloseEditQuestion = useCallback(() => {
-    setEditingRow(null)
-    setEditingTitle('')
-  }, [])
-
-  const handleSaveEditQuestion = useCallback(async () => {
-    if (!editingRow) {
-      return
-    }
-    const normalizedTitle = editingTitle.trim()
-    if (!normalizedTitle) {
-      setActionError('Title required.')
-      return
-    }
-    setActionError(null)
-    try {
-      const res = await updateQuestion({
-        variables: {
-          input: {
-            _id: editingRow.id,
-            title: normalizedTitle,
-            ieltsModule: editingModule,
-          },
-        },
-        refetchQueries: [{ query: FIND_ALL_QUESTIONS_QUERY }],
-        awaitRefetchQueries: true,
-      })
-      if (res.error) {
-        setActionError(res.error.message ?? 'Update failed.')
-        return
-      }
-      handleCloseEditQuestion()
-    } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Update failed.')
-    }
-  }, [editingModule, editingRow, editingTitle, handleCloseEditQuestion, updateQuestion])
+  const handleEditQuestion = useCallback(
+    (row: QuestionGridRow) => {
+      setActionError(null)
+      navigate(ROUTES_PATH.editQuestion.replace(':questionId', row.id))
+    },
+    [navigate],
+  )
 
   const columns = useMemo(
     () =>
       createQuestionColumns({
         onDelete: (row) => void handleDeleteQuestion(row),
-        onEdit: handleOpenEditQuestion,
+        onEdit: handleEditQuestion,
       }),
-    [handleDeleteQuestion, handleOpenEditQuestion],
+    [handleDeleteQuestion, handleEditQuestion],
   )
   const totalPages = Math.max(1, Math.ceil(rows.length / paginationModel.pageSize))
 
@@ -357,35 +313,6 @@ export function QuestionsPage() {
             </Box>
           </Box>
         </Box>
-        <Dialog open={Boolean(editingRow)} onClose={handleCloseEditQuestion} maxWidth="sm" fullWidth>
-          <DialogTitle>Edit question</DialogTitle>
-          <DialogContent sx={{ display: 'grid', gap: 2, pt: '10px !important' }}>
-            <TextField
-              label="Question title"
-              value={editingTitle}
-              onChange={(event) => setEditingTitle(event.target.value)}
-              fullWidth
-            />
-            <TextField
-              select
-              label="IELTS module"
-              value={editingModule}
-              onChange={(event) => setEditingModule(event.target.value as QuestionType)}
-              fullWidth
-            >
-              <MenuItem value="Listening">Listening</MenuItem>
-              <MenuItem value="Reading">Reading</MenuItem>
-              <MenuItem value="Writing">Writing</MenuItem>
-              <MenuItem value="Speaking">Speaking</MenuItem>
-            </TextField>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseEditQuestion}>Cancel</Button>
-            <Button onClick={() => void handleSaveEditQuestion()} disabled={isUpdating} variant="contained">
-              {isUpdating ? 'Saving...' : 'Save'}
-            </Button>
-          </DialogActions>
-        </Dialog>
       </QuestionsPageRoot>
     </Layout>
   )

@@ -381,7 +381,6 @@ export function ExamDetailsPage() {
                       borderRadius: 2,
                       textTransform: 'none',
                       fontWeight: 700,
-                      background: 'linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)',
                     }}
                   >
                     {creatingStudentExam ? 'Adding...' : 'Add to exam'}

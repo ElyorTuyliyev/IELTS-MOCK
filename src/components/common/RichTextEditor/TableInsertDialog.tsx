@@ -39,13 +39,16 @@ export function TableInsertDialog({ open, onClose, onInsert }: TableInsertDialog
   const [hoveredRow, setHoveredRow] = useState<number | null>(null)
   const [hoveredCol, setHoveredCol] = useState<number | null>(null)
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!open) return
+    // Reset picker defaults when dialog is opened again.
     setSelectedRow(DEFAULT_ROWS)
     setSelectedCol(DEFAULT_COLS)
     setHoveredRow(null)
     setHoveredCol(null)
   }, [open])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleInsert = useCallback(() => {
     onInsert(selectedRow, selectedCol)

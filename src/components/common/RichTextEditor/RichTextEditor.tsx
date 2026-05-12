@@ -2,7 +2,6 @@ import {
   useCallback,
   useEffect,
   useId,
-  useReducer,
   useRef,
   useState,
   type ChangeEvent,
@@ -28,10 +27,10 @@ import Placeholder from '@tiptap/extension-placeholder'
 import StarterKit from '@tiptap/starter-kit'
 
 import { RichTextEditorExpandBackdrop, RichTextEditorRoot } from './RichTextEditor.styles'
-import { CheckboxGroup } from './extensions/checkboxGroupExtension'
+import { BlankAnswerDialog } from './BlankAnswerDialog'
+import { BlankAnswer } from './extensions/blankAnswerExtension'
 import { DragDropFillBlank } from './extensions/dragDropFillBlankExtension'
 import { RadioGroup } from './extensions/radioGroupExtension'
-import { CheckboxOptionsDialog } from './CheckboxOptionsDialog'
 import { DragDropFillBlankDialog } from './DragDropFillBlankDialog'
 import { RadioOptionsDialog } from './RadioOptionsDialog'
 import { TableInsertDialog } from './TableInsertDialog'
@@ -193,8 +192,6 @@ function TableDeleteCorner({ editor }: { editor: Editor }) {
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
   const activeTableRef = useRef<HTMLTableElement | null>(null)
   const rafRef = useRef<number | null>(null)
-  const keepOpenRef = useRef(false)
-  const buttonRef = useRef<HTMLButtonElement | null>(null)
 
   useEffect(() => {
     const root = editor.view.dom as HTMLElement | null
@@ -222,35 +219,30 @@ function TableDeleteCorner({ editor }: { editor: Editor }) {
     }
 
     const onPointerMove = (e: PointerEvent) => {
-      const el = e.target
-      if (!(el instanceof Element)) {
-        if (activeTableRef.current) setFromTable(null)
+      const target = e.target as EventTarget | null
+      if (!(target instanceof Node)) {
+        setFromTable(null)
         return
       }
-      // If we're hovering the delete button, keep it visible.
-      if (buttonRef.current && (el === buttonRef.current || buttonRef.current.contains(el))) {
-        keepOpenRef.current = true
+      if (!root.contains(target)) {
+        setFromTable(null)
         return
       }
-      keepOpenRef.current = false
+      const el = target as Element
       const table = el.closest('table') as HTMLTableElement | null
       if (table === activeTableRef.current) return
       setFromTable(table)
     }
+    const onPointerLeave = () => setFromTable(null)
 
-    const onScrollResize = () => {
-      if (activeTableRef.current) scheduleReposition()
-    }
-
-    // Listen on window so moving outside editor doesn't hide button.
-    window.addEventListener('pointermove', onPointerMove, { passive: true, capture: true })
-    window.addEventListener('scroll', onScrollResize, true)
-    window.addEventListener('resize', onScrollResize)
+    root.addEventListener('pointermove', onPointerMove, { passive: true, capture: true })
+    root.addEventListener('pointerleave', onPointerLeave, { passive: true, capture: true })
+    root.addEventListener('scroll', scheduleReposition, { passive: true, capture: true })
 
     return () => {
-      window.removeEventListener('pointermove', onPointerMove, true)
-      window.removeEventListener('scroll', onScrollResize, true)
-      window.removeEventListener('resize', onScrollResize)
+      root.removeEventListener('pointermove', onPointerMove, true)
+      root.removeEventListener('pointerleave', onPointerLeave, true)
+      root.removeEventListener('scroll', scheduleReposition, true)
       if (rafRef.current != null) {
         cancelAnimationFrame(rafRef.current)
         rafRef.current = null
@@ -262,9 +254,6 @@ function TableDeleteCorner({ editor }: { editor: Editor }) {
 
   return createPortal(
     <button
-      ref={(node) => {
-        buttonRef.current = node
-      }}
       type="button"
       aria-label="Delete table"
       title="Delete table"
@@ -333,26 +322,184 @@ function IconDragDropFill() {
   )
 }
 
-function IconCheckbox() {
+function IconBlank() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden>
-      <path
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        d="M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"
-      />
-      <path
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M8 12.5l2.5 2.5L16 9"
-      />
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <rect x="4" y="8" width="16" height="8" rx="2" strokeWidth="2" />
+      <path d="M8 12h8" strokeWidth="2" strokeLinecap="round" />
     </svg>
   )
 }
+
+function nextQuestionNumber(editor: Editor): number {
+  const text = editor.getText() ?? ''
+  const html = editor.getHTML() ?? ''
+  let max = 0
+  for (const m of text.matchAll(/\[(\d{1,3})\]/g)) {
+    const n = Number(m[1])
+    if (Number.isFinite(n)) max = Math.max(max, n)
+  }
+  for (const m of text.matchAll(/\bQ(\d{1,3})\b/gi)) {
+    const n = Number(m[1])
+    if (Number.isFinite(n)) max = Math.max(max, n)
+  }
+  for (const m of html.matchAll(/data-id="Q(\d{1,4})"/gi)) {
+    const n = Number(m[1])
+    if (Number.isFinite(n)) max = Math.max(max, n)
+  }
+  for (const m of html.matchAll(/\bQ(\d{1,4})\b/gi)) {
+    const n = Number(m[1])
+    if (Number.isFinite(n)) max = Math.max(max, n)
+  }
+  return Math.max(1, max + 1)
+}
+
+const ResizableImage = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      width: {
+        default: null,
+        parseHTML: (element) =>
+          element.getAttribute('data-width') ??
+          element.getAttribute('width') ??
+          element.style.width?.replace('px', '') ??
+          null,
+        renderHTML: (attributes) => {
+          if (!attributes.width) return {}
+          const n = Number(attributes.width)
+          if (!Number.isFinite(n) || n <= 0) return {}
+          return {
+            width: String(Math.round(n)),
+            'data-width': String(Math.round(n)),
+            style: `width:${Math.round(n)}px;max-width:100%;height:auto;`,
+          }
+        },
+      },
+    }
+  },
+
+  addNodeView() {
+    return ({ node, editor, getPos }) => {
+      const dom = document.createElement('span')
+      dom.className = 'rte-image-wrap'
+      dom.setAttribute('contenteditable', 'false')
+
+      const img = document.createElement('img')
+      img.className = 'rte-img'
+      img.draggable = false
+
+      const handle = document.createElement('span')
+      handle.className = 'rte-image-resize-handle'
+      handle.setAttribute('aria-hidden', 'true')
+      const sizeBadge = document.createElement('span')
+      sizeBadge.className = 'rte-image-size-badge'
+      sizeBadge.setAttribute('aria-hidden', 'true')
+
+      const updateSizeBadge = () => {
+        const width = Math.round(img.getBoundingClientRect().width || img.clientWidth || 0)
+        const height = Math.round(img.getBoundingClientRect().height || img.clientHeight || 0)
+        if (!width || !height) {
+          sizeBadge.textContent = ''
+          return
+        }
+        sizeBadge.textContent = `${width} × ${height}`
+      }
+
+      const applyFromNode = (current: typeof node) => {
+        const src = String(current.attrs.src ?? '')
+        const alt = String(current.attrs.alt ?? '')
+        const title = String(current.attrs.title ?? '')
+        const widthRaw = current.attrs.width
+        const widthNum = Number(widthRaw)
+
+        img.src = src
+        img.alt = alt
+        img.title = title
+        if (Number.isFinite(widthNum) && widthNum > 0) {
+          img.style.width = `${Math.round(widthNum)}px`
+        } else {
+          img.style.width = ''
+        }
+        requestAnimationFrame(updateSizeBadge)
+      }
+
+      const commitWidth = (nextWidth: number) => {
+        const pos = typeof getPos === 'function' ? getPos() : null
+        if (typeof pos !== 'number') return
+        const width = Math.max(80, Math.round(nextWidth))
+        editor.commands.command(({ tr, state, dispatch }) => {
+          const current = state.doc.nodeAt(pos)
+          if (!current) return false
+          tr.setNodeMarkup(pos, undefined, {
+            ...current.attrs,
+            width,
+          })
+          if (dispatch) dispatch(tr)
+          return true
+        })
+      }
+
+      handle.addEventListener('pointerdown', (event: PointerEvent) => {
+        event.preventDefault()
+        event.stopPropagation()
+        handle.setPointerCapture?.(event.pointerId)
+        const startX = event.clientX
+        const rect = img.getBoundingClientRect()
+        const startWidth = rect.width || img.clientWidth || 320
+        const editorWidth = (editor.view.dom as HTMLElement).getBoundingClientRect().width || 1200
+        const minWidth = 80
+        const maxWidth = Math.max(minWidth, editorWidth - 24)
+
+        const onMove = (moveEvent: PointerEvent) => {
+          moveEvent.preventDefault()
+          const delta = moveEvent.clientX - startX
+          const next = Math.min(maxWidth, Math.max(minWidth, startWidth + delta))
+          img.style.width = `${Math.round(next)}px`
+          updateSizeBadge()
+        }
+
+        const onUp = (upEvent: PointerEvent) => {
+          upEvent.preventDefault()
+          const delta = upEvent.clientX - startX
+          const next = Math.min(maxWidth, Math.max(minWidth, startWidth + delta))
+          commitWidth(next)
+          handle.releasePointerCapture?.(event.pointerId)
+          window.removeEventListener('pointermove', onMove, true)
+          window.removeEventListener('pointerup', onUp, true)
+          window.removeEventListener('pointercancel', onUp, true)
+        }
+
+        window.addEventListener('pointermove', onMove, { capture: true, passive: false })
+        window.addEventListener('pointerup', onUp, { capture: true, passive: false })
+        window.addEventListener('pointercancel', onUp, { capture: true, passive: false })
+      })
+
+      dom.appendChild(img)
+      dom.appendChild(sizeBadge)
+      dom.appendChild(handle)
+      applyFromNode(node)
+      img.addEventListener('load', updateSizeBadge)
+
+      return {
+        dom,
+        update: (updatedNode) => {
+          if (updatedNode.type.name !== this.name) return false
+          applyFromNode(updatedNode)
+          return true
+        },
+        stopEvent: (event) => {
+          const target = event.target as HTMLElement | null
+          return Boolean(target && (target === handle || handle.contains(target)))
+        },
+        ignoreMutation: () => true,
+        destroy: () => {
+          img.removeEventListener('load', updateSizeBadge)
+        },
+      }
+    }
+  },
+})
 
 function ToolbarButton({
   onClick,
@@ -478,9 +625,9 @@ function RichTextToolbar({
   onHighlightPick,
   onImageFile,
   onOpenRadioModal,
-  onOpenCheckboxModal,
   onOpenTableModal,
   onOpenDragDropFillModal,
+  onInsertBlank,
   expanded,
   onToggleExpand,
 }: {
@@ -492,9 +639,9 @@ function RichTextToolbar({
   onHighlightPick: (e: ChangeEvent<HTMLInputElement>) => void
   onImageFile: (e: ChangeEvent<HTMLInputElement>) => void
   onOpenRadioModal: () => void
-  onOpenCheckboxModal: () => void
   onOpenTableModal: () => void
   onOpenDragDropFillModal: () => void
+  onInsertBlank: () => void
   expanded: boolean
   onToggleExpand: () => void
 }) {
@@ -744,18 +891,14 @@ function RichTextToolbar({
           <IconRadio />
         </ToolbarButton>
         <ToolbarButton
-          title="Checkbox (multi select)"
-          active={editor.isActive('checkboxGroup')}
-          onClick={onOpenCheckboxModal}
-        >
-          <IconCheckbox />
-        </ToolbarButton>
-        <ToolbarButton
           title="Drag & drop fill-in-the-blank"
           active={editor.isActive('dragDropFillBlank')}
           onClick={onOpenDragDropFillModal}
         >
           <IconDragDropFill />
+        </ToolbarButton>
+        <ToolbarButton title="Blank (____)" onClick={onInsertBlank}>
+          <IconBlank />
         </ToolbarButton>
       </div>
 
@@ -793,16 +936,26 @@ export function RichTextEditor({
   minHeight = 200,
   readOnly = false,
 }: RichTextEditorProps) {
-  const [, forceToolbar] = useReducer((n: number) => n + 1, 0)
+  const [, setToolbarTick] = useState(0)
+  const toolbarRafRef = useRef<number | null>(null)
   const [expanded, setExpanded] = useState(false)
   const [radioModalOpen, setRadioModalOpen] = useState(false)
-  const [checkboxModalOpen, setCheckboxModalOpen] = useState(false)
+  const [radioDefaultQuestionNumber, setRadioDefaultQuestionNumber] = useState(1)
   const [tableModalOpen, setTableModalOpen] = useState(false)
   const [dragDropFillModalOpen, setDragDropFillModalOpen] = useState(false)
+  const [blankAnswerOpen, setBlankAnswerOpen] = useState(false)
+  const [blankDefaultId, setBlankDefaultId] = useState('Q1')
   const textColorRef = useRef<HTMLInputElement>(null)
   const highlightRef = useRef<HTMLInputElement>(null)
   const imageRef = useRef<HTMLInputElement>(null)
   const instanceId = useId()
+  const scheduleToolbarRefresh = useCallback(() => {
+    if (toolbarRafRef.current != null) return
+    toolbarRafRef.current = window.requestAnimationFrame(() => {
+      toolbarRafRef.current = null
+      setToolbarTick((n) => n + 1)
+    })
+  }, [])
 
   const editor = useEditor({
     extensions: [
@@ -821,7 +974,7 @@ export function RichTextEditor({
       FontSize,
       Highlight.configure({ multicolor: true }),
       TextAlign.configure({ types: ['heading', 'paragraph', 'blockquote'] }),
-      Image.configure({ inline: false, allowBase64: true, HTMLAttributes: { class: 'rte-img' } }),
+      ResizableImage.configure({ inline: false, allowBase64: true, HTMLAttributes: { class: 'rte-img' } }),
       Table.configure({
         resizable: true,
         handleWidth: 6,
@@ -834,8 +987,8 @@ export function RichTextEditor({
       TableCell,
       Typography,
       RadioGroup,
-      CheckboxGroup,
       DragDropFillBlank,
+      BlankAnswer,
       Placeholder.configure({
         placeholder,
         emptyEditorClass: 'is-editor-empty',
@@ -843,13 +996,14 @@ export function RichTextEditor({
     ],
     content: value || '<p></p>',
     immediatelyRender: false,
+    shouldRerenderOnTransaction: false,
     editable: !readOnly,
     onUpdate: ({ editor: ed }) => {
       onChange(ed.getHTML())
-      forceToolbar()
+      scheduleToolbarRefresh()
     },
     onSelectionUpdate: () => {
-      forceToolbar()
+      scheduleToolbarRefresh()
     },
     editorProps: {
       attributes: {
@@ -863,6 +1017,15 @@ export function RichTextEditor({
     if (!editor) return
     editor.setEditable(!readOnly)
   }, [editor, readOnly])
+
+  useEffect(() => {
+    return () => {
+      if (toolbarRafRef.current != null) {
+        cancelAnimationFrame(toolbarRafRef.current)
+        toolbarRafRef.current = null
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (!editor) return
@@ -881,7 +1044,6 @@ export function RichTextEditor({
     let startY = 0
     let startHeight = 0
     let activeRow: HTMLTableRowElement | null = null
-    let activeCell: HTMLElement | null = null
     let activePointerId: number | null = null
 
     const EDGE_PX = 7
@@ -897,13 +1059,6 @@ export function RichTextEditor({
       Array.from(row.cells).forEach((cell) => {
         ;(cell as HTMLElement).style.height = `${safe}px`
         ;(cell as HTMLElement).style.minHeight = `${safe}px`
-      })
-    }
-
-    const clearRowHeight = (row: HTMLTableRowElement) => {
-      Array.from(row.cells).forEach((cell) => {
-        ;(cell as HTMLElement).style.removeProperty('height')
-        ;(cell as HTMLElement).style.removeProperty('min-height')
       })
     }
 
@@ -926,7 +1081,6 @@ export function RichTextEditor({
       startY = 0
       startHeight = 0
       activeRow = null
-      activeCell = null
       activePointerId = null
       root.classList.remove('rte-resize-row-cursor')
       window.removeEventListener('pointermove', onDragMove, true)
@@ -962,7 +1116,6 @@ export function RichTextEditor({
 
       dragging = true
       activeRow = row
-      activeCell = cell
       activePointerId = e.pointerId
       startY = e.clientY
 
@@ -1056,42 +1209,60 @@ export function RichTextEditor({
       ) : null}
       {!readOnly ? (
         <>
-          <RadioOptionsDialog
-            open={radioModalOpen}
-            onClose={() => setRadioModalOpen(false)}
-            onInsert={(options, correctValue) => {
-              editor.chain().focus().insertRadioGroup(options, correctValue).run()
-              setRadioModalOpen(false)
-            }}
-          />
-          <CheckboxOptionsDialog
-            open={checkboxModalOpen}
-            onClose={() => setCheckboxModalOpen(false)}
-            onInsert={(options, checkedValues) => {
-              editor.chain().focus().insertCheckboxGroup(options, checkedValues).run()
-              setCheckboxModalOpen(false)
-            }}
-          />
-          <TableInsertDialog
-            open={tableModalOpen}
-            onClose={() => setTableModalOpen(false)}
-            onInsert={(rows, cols) => {
-              editor
-                .chain()
-                .focus()
-                .insertTable({ rows, cols, withHeaderRow: rows >= 2 })
-                .run()
-              setTableModalOpen(false)
-            }}
-          />
-          <DragDropFillBlankDialog
-            open={dragDropFillModalOpen}
-            onClose={() => setDragDropFillModalOpen(false)}
-            onInsert={(payload) => {
-              editor.chain().focus().insertDragDropFillBlank(payload).run()
-              setDragDropFillModalOpen(false)
-            }}
-          />
+          {radioModalOpen ? (
+            <RadioOptionsDialog
+              open={radioModalOpen}
+              defaultQuestionNumber={radioDefaultQuestionNumber}
+              onClose={() => setRadioModalOpen(false)}
+              onInsert={(questionNumber, questionText, options, correctValue) => {
+                editor
+                  .chain()
+                  .focus()
+                  .insertContent({
+                    type: 'paragraph',
+                    content: [{ type: 'text', text: `Q${questionNumber} ${questionText}` }],
+                  })
+                  .insertRadioGroup(options, correctValue)
+                  .run()
+                setRadioModalOpen(false)
+              }}
+            />
+          ) : null}
+          {tableModalOpen ? (
+            <TableInsertDialog
+              open={tableModalOpen}
+              onClose={() => setTableModalOpen(false)}
+              onInsert={(rows, cols) => {
+                editor
+                  .chain()
+                  .focus()
+                  .insertTable({ rows, cols, withHeaderRow: rows >= 2 })
+                  .run()
+                setTableModalOpen(false)
+              }}
+            />
+          ) : null}
+          {dragDropFillModalOpen ? (
+            <DragDropFillBlankDialog
+              open={dragDropFillModalOpen}
+              onClose={() => setDragDropFillModalOpen(false)}
+              onInsert={(payload) => {
+                editor.chain().focus().insertDragDropFillBlank(payload).run()
+                setDragDropFillModalOpen(false)
+              }}
+            />
+          ) : null}
+          {blankAnswerOpen ? (
+            <BlankAnswerDialog
+              open={blankAnswerOpen}
+              defaultId={blankDefaultId}
+              onClose={() => setBlankAnswerOpen(false)}
+              onInsert={(payload) => {
+                editor.chain().focus().insertBlankAnswer(payload).insertContent(' ').run()
+                setBlankAnswerOpen(false)
+              }}
+            />
+          ) : null}
         </>
       ) : null}
       <RichTextEditorRoot
@@ -1112,10 +1283,17 @@ export function RichTextEditor({
             onTextColorPick={onTextColor}
             onHighlightPick={onHighlight}
             onImageFile={onImageFile}
-            onOpenRadioModal={() => setRadioModalOpen(true)}
-            onOpenCheckboxModal={() => setCheckboxModalOpen(true)}
+            onOpenRadioModal={() => {
+              setRadioDefaultQuestionNumber(nextQuestionNumber(editor))
+              setRadioModalOpen(true)
+            }}
             onOpenTableModal={() => setTableModalOpen(true)}
             onOpenDragDropFillModal={() => setDragDropFillModalOpen(true)}
+            onInsertBlank={() => {
+              const n = nextQuestionNumber(editor)
+              setBlankDefaultId(`Q${n}`)
+              setBlankAnswerOpen(true)
+            }}
             expanded={expanded}
             onToggleExpand={() => setExpanded((v) => !v)}
           />

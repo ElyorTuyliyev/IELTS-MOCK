@@ -1,8 +1,8 @@
 import { gql } from "@apollo/client";
 
-export const FIND_ALL_QUESTIONS_QUERY = gql`
-  query FindAllQuestions {
-    findAllQuestions {
+export const FIND_ONE_QUESTION_QUERY = gql`
+  query FindOneQuestion($_id: ID!) {
+    findOneQuestion(_id: $_id) {
       _id
       title
       instruction
@@ -24,6 +24,7 @@ export const FIND_ALL_QUESTIONS_QUERY = gql`
       options {
         title
         isCorrectAnswer
+        key
       }
     }
   }
