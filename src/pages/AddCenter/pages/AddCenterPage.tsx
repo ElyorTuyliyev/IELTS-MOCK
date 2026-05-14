@@ -1,11 +1,17 @@
 import { useEffect, useState, type ChangeEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useMutation } from '@apollo/client/react'
-import { Box, Button, TextField, Typography } from '@mui/material'
+import { Box, TextField, Typography } from '@mui/material'
+import { Button } from '../../../components/common/Button'
 
+import { c } from '../../../theme'
 import { Layout } from '../../../components/layout'
+import { PasswordTextField } from '../../../components/common/PasswordTextField'
+import { PhoneInput, normalizeUzPhoneDigits } from '../../../components/common/PhoneInput'
+import { useToast } from '../../../components/common/Toast'
 import { ROUTES_PATH } from '../../../routes'
-import { agentLog } from '../../../utils/agentLog'
+import { normalizeEmail, validateGmailField } from '../../../utils/emailValidation'
+import { validatePasswordField } from '../../../utils/passwordValidation'
 import { CREATE_CENTER_MUTATION } from '../api/createCenterMutation'
 import { UPDATE_CENTER_MUTATION } from '../api/updateCenterMutation'
 import { AddCenterPageRoot } from './AddCenterPage.style'
@@ -62,6 +68,7 @@ type AddCenterLocationState = {
 }
 
 export function AddCenterPage() {
+  const toast = useToast()
   const location = useLocation()
   const navigate = useNavigate()
   const routeState = (location.state as AddCenterLocationState | null) ?? null
@@ -77,7 +84,6 @@ export function AddCenterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [submitError, setSubmitError] = useState('')
   const [createCenter, { loading: isCreatingCenter }] = useMutation<
     CreateCenterMutationResponse,
     CreateCenterMutationVariables
@@ -86,137 +92,11 @@ export function AddCenterPage() {
     UpdateCenterMutationResponse,
     UpdateCenterMutationVariables
   >(UPDATE_CENTER_MUTATION)
-  const rawGraphqlEndpoint = import.meta.env.VITE_GRAPHQL_URL ?? 'http://127.0.0.1:8000/graphql'
-  const graphqlEndpoint = rawGraphqlEndpoint.includes('://localhost')
-    ? rawGraphqlEndpoint.replace('://localhost', '://127.0.0.1')
-    : rawGraphqlEndpoint
-
-  useEffect(() => {
-    const sendDebugLog = (payload: {
-      hypothesisId: string
-      location: string
-      message: string
-      data: Record<string, unknown>
-    }) => {
-      agentLog({
-        sessionId: '24497a',
-        runId: 'pre-fix',
-        ...payload,
-      })
-    }
-
-    const form = document.querySelector('.add-center-form') as HTMLElement | null
-    const firstInput = document.querySelector(
-      '.add-center-form__grid .MuiFormControl-root',
-    ) as HTMLElement | null
-    const actions = document.querySelector('.add-center-form__actions') as HTMLElement | null
-    const summary = document.querySelector('.add-center-form__summary') as HTMLElement | null
-
-    // #region agent log
-    sendDebugLog({
-      hypothesisId: 'H1',
-      location: 'AddCenterPage.tsx:summary/useEffect',
-      message: 'Form container sizing snapshot',
-      data: {
-        viewportWidth: window.innerWidth,
-        formWidth: form?.getBoundingClientRect().width ?? null,
-        formDisplay: form ? window.getComputedStyle(form).display : null,
-      },
-    })
-    // #endregion
-
-    // #region agent log
-    sendDebugLog({
-      hypothesisId: 'H2',
-      location: 'AddCenterPage.tsx:summary/useEffect',
-      message: 'First field sizing snapshot',
-      data: {
-        fieldWidth: firstInput?.getBoundingClientRect().width ?? null,
-        fieldClasses: firstInput?.className ?? null,
-      },
-    })
-    // #endregion
-
-    // #region agent log
-    sendDebugLog({
-      hypothesisId: 'H3',
-      location: 'AddCenterPage.tsx:summary/useEffect',
-      message: 'Actions layout snapshot',
-      data: {
-        actionsWidth: actions?.getBoundingClientRect().width ?? null,
-        actionsDirection: actions ? window.getComputedStyle(actions).flexDirection : null,
-        actionsJustify: actions ? window.getComputedStyle(actions).justifyContent : null,
-      },
-    })
-    // #endregion
-
-    // #region agent log
-    sendDebugLog({
-      hypothesisId: 'H4',
-      location: 'AddCenterPage.tsx:summary/useEffect',
-      message: 'Actions structural context',
-      data: {
-        actionsParentClass: actions?.parentElement?.className ?? null,
-        previousSiblingClass: actions?.previousElementSibling?.className ?? null,
-      },
-    })
-    // #endregion
-
-    // #region agent log
-    sendDebugLog({
-      hypothesisId: 'H5',
-      location: 'AddCenterPage.tsx:summary/useEffect',
-      message: 'Summary and actions spacing snapshot',
-      data: {
-        summaryBottom: summary?.getBoundingClientRect().bottom ?? null,
-        actionsTop: actions?.getBoundingClientRect().top ?? null,
-        actionsGapFromSummary:
-          summary && actions
-            ? Number((actions.getBoundingClientRect().top - summary.getBoundingClientRect().bottom).toFixed(2))
-            : null,
-      },
-    })
-    // #endregion
-  }, [])
-
-  useEffect(() => {
-    const saveButton = document.querySelector('.add-center-form__submit') as HTMLButtonElement | null
-    agentLog({
-      sessionId: '24497a',
-      runId: 'pre-fix',
-      hypothesisId: 'H-btn-state',
-      location: 'AddCenterPage.tsx:saveButton/useEffect',
-      message: 'Save button state snapshot',
-      data: {
-        isViewMode,
-        isEditMode,
-        isCreatingCenter,
-        isUpdatingCenter,
-        submitError: submitError || null,
-        buttonExists: Boolean(saveButton),
-        buttonDisabled: saveButton?.disabled ?? null,
-        buttonText: saveButton?.textContent?.trim() ?? null,
-      },
-    })
-  }, [isViewMode, isEditMode, isCreatingCenter, isUpdatingCenter, submitError])
 
   useEffect(() => {
     if ((!isEditMode && !isViewMode) || !routeState?.center) {
       return
     }
-
-    agentLog({
-      sessionId: '24497a',
-      runId: 'pre-fix',
-      hypothesisId: 'H-update-prefill',
-      location: 'AddCenterPage.tsx:prefill/useEffect',
-      message: 'Edit/View prefill state snapshot',
-      data: {
-        mode: isEditMode ? 'edit' : 'view',
-        centerId: routeState.center.id,
-        hasManager: Boolean(routeState.center.manager?.trim()),
-      },
-    })
 
     setCenterName(routeState.center.name ?? '')
     setManagerName(routeState.center.manager ?? '')
@@ -238,7 +118,7 @@ export function AddCenterPage() {
     }
 
     if (!selectedFile.type.startsWith('image/')) {
-      setSubmitError('Logo uchun rasm fayl tanlang (png, jpg, webp...).')
+      toast.error('Select an image file for the logo (png, jpg, webp...).')
       setLogoDataUrl('')
       setLogoFileName('')
       setHasNewLogoUpload(false)
@@ -251,21 +131,6 @@ export function AddCenterPage() {
       setLogoDataUrl(result)
       setLogoFileName(selectedFile.name)
       setHasNewLogoUpload(true)
-      setSubmitError('')
-
-      agentLog({
-        sessionId: '24497a',
-        runId: 'pre-fix',
-        hypothesisId: 'H11',
-        location: 'AddCenterPage.tsx:handleLogoFileChange',
-        message: 'Logo file converted to base64',
-        data: {
-          fileName: selectedFile.name,
-          fileType: selectedFile.type,
-          fileSize: selectedFile.size,
-          hasBase64: Boolean(result),
-        },
-      })
     }
     reader.readAsDataURL(selectedFile)
   }
@@ -278,89 +143,48 @@ export function AddCenterPage() {
     const normalizedName = centerName.trim()
     const normalizedAddress = address.trim()
     const normalizedManager = managerName.trim()
-    const normalizedPhone = phone.trim()
-    const normalizedEmail = email.trim().toLowerCase()
+    const normalizedPhone = normalizeUzPhoneDigits(phone)
+    const normalizedEmail = normalizeEmail(email)
     const trimmedPassword = password.trim()
     const trimmedConfirmPassword = confirmPassword.trim()
 
     if (!normalizedName || !normalizedManager || !normalizedAddress || !normalizedPhone || !normalizedEmail) {
-      setSubmitError("Center saqlash uchun center name, manager name, address, phone number va gmail majburiy.")
-      agentLog({
-        sessionId: '24497a',
-        runId: 'pre-fix',
-        hypothesisId: 'H18',
-        location: 'AddCenterPage.tsx:handleCreateCenter',
-        message: 'Validation blocked save: core required fields',
-        data: {
-          mode: isEditMode ? 'edit' : 'create',
-          hasName: Boolean(normalizedName),
-          hasAddress: Boolean(normalizedAddress),
-          hasManager: Boolean(normalizedManager),
-          hasPhone: Boolean(normalizedPhone),
-          hasEmail: Boolean(normalizedEmail),
-        },
-      })
+      toast.error('Center name, manager name, address, phone number, and Gmail are required to save.')
+      return
+    }
+
+    const gmailValidation = validateGmailField(email)
+    if (gmailValidation !== true) {
+      toast.error(gmailValidation)
       return
     }
 
     if (!isEditMode && !logoDataUrl) {
-      setSubmitError("Create uchun logo file majburiy.")
+      toast.error('Logo file is required for create.')
       return
     }
 
     if (!isEditMode && !trimmedPassword) {
-      setSubmitError("Create uchun password majburiy.")
+      toast.error('Password is required for create.')
       return
     }
 
-    if (trimmedPassword && trimmedPassword.length < 6) {
-      setSubmitError("Password kamida 6 ta belgidan iborat bo'lishi kerak.")
-      return
+    if (trimmedPassword) {
+      const passwordValidation = validatePasswordField(trimmedPassword)
+      if (passwordValidation !== true) {
+        toast.error(passwordValidation)
+        return
+      }
     }
 
     if (trimmedPassword && trimmedPassword !== trimmedConfirmPassword) {
-      setSubmitError('Password va confirm password bir xil emas.')
+      toast.error('Password and confirm password do not match.')
       return
     }
-
-    setSubmitError('')
-
-    agentLog({
-      sessionId: '24497a',
-      runId: 'pre-fix',
-      hypothesisId: 'H6',
-      location: 'AddCenterPage.tsx:handleCreateCenter',
-      message: 'Create center submit payload snapshot',
-      data: {
-        graphqlEndpoint,
-        hasName: Boolean(normalizedName),
-        hasAddress: Boolean(normalizedAddress),
-        hasLogo: Boolean(logoDataUrl),
-        hasNewLogoUpload,
-        logoBase64Length: logoDataUrl.length,
-        logoApproxBytes: logoDataUrl ? Math.ceil((logoDataUrl.length * 3) / 4) : 0,
-        logoFileName: logoFileName || null,
-        hasPhone: Boolean(normalizedPhone),
-        hasEmail: Boolean(normalizedEmail),
-        hasPassword: Boolean(trimmedPassword),
-        passwordLength: trimmedPassword.length,
-        managerLength: normalizedManager.length,
-        mode: isEditMode ? 'edit' : 'create',
-      },
-    })
 
     try {
       let mutationCenter: { _id: string; name: string } | null = null
       let apolloErrorMessage: string | null = null
-      let hasApolloError = false
-      let apolloErrorDetails:
-        | {
-            name?: string
-            message?: string
-            graphQLErrors?: Array<{ message?: string }>
-            networkError?: { message?: string; name?: string; statusCode?: number }
-          }
-        | undefined
 
       if (isEditMode) {
         const result = await updateCenter({
@@ -378,8 +202,6 @@ export function AddCenterPage() {
         })
         mutationCenter = result.data?.updateCenter ?? null
         apolloErrorMessage = result.error?.message ?? null
-        hasApolloError = Boolean(result.error)
-        apolloErrorDetails = result.error as typeof apolloErrorDetails
       } else {
         const result = await createCenter({
           variables: {
@@ -395,52 +217,17 @@ export function AddCenterPage() {
         })
         mutationCenter = result.data?.createCenter ?? null
         apolloErrorMessage = result.error?.message ?? null
-        hasApolloError = Boolean(result.error)
-        apolloErrorDetails = result.error as typeof apolloErrorDetails
       }
 
-      agentLog({
-        sessionId: '24497a',
-        runId: 'pre-fix',
-        hypothesisId: isEditMode ? 'H19' : 'H7',
-        location: 'AddCenterPage.tsx:handleCreateCenter',
-        message: isEditMode
-          ? 'Update center mutation result snapshot'
-          : 'Create center mutation result snapshot',
-        data: {
-          hasCenterMutationData: Boolean(mutationCenter),
-          centerMutationId: mutationCenter?._id ?? null,
-          mode: isEditMode ? 'edit' : 'create',
-          hasApolloError,
-          apolloErrorMessage,
-          hasNewLogoUpload,
-          apolloErrorName: apolloErrorDetails?.name ?? null,
-          graphQLErrorMessages: apolloErrorDetails?.graphQLErrors?.map((item) => item.message ?? '') ?? [],
-          networkErrorMessage: apolloErrorDetails?.networkError?.message ?? null,
-          networkErrorName: apolloErrorDetails?.networkError?.name ?? null,
-          networkErrorStatusCode: apolloErrorDetails?.networkError?.statusCode ?? null,
-          browserOnline: typeof navigator !== 'undefined' ? navigator.onLine : null,
-        },
-      })
-
       if (!mutationCenter?._id) {
-        setSubmitError(apolloErrorMessage ?? "Center saqlashda xatolik bo'ldi.")
+        toast.error(apolloErrorMessage ?? 'Failed to save center.')
         return
       }
 
+      toast.success(isEditMode ? 'Center updated successfully.' : 'Center created successfully.')
       navigate(ROUTES_PATH.center)
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Center yaratishda kutilmagan xatolik.")
-      agentLog({
-        sessionId: '24497a',
-        runId: 'pre-fix',
-        hypothesisId: 'H8',
-        location: 'AddCenterPage.tsx:handleCreateCenter',
-        message: 'Create center mutation threw exception',
-        data: {
-          errorMessage: error instanceof Error ? error.message : 'unknown-error',
-        },
-      })
+      toast.error(error instanceof Error ? error.message : 'Unexpected error while creating center.')
     }
   }
 
@@ -458,8 +245,7 @@ export function AddCenterPage() {
               </Typography>
               <Typography component="p" className="add-center-page__description">
                 Create a new branch profile with its core contact details,
-                manager ownership, and starting capacity. You can connect this
-                form to your GraphQL mutation later without changing the layout.
+                manager ownership, and starting capacity.
               </Typography>
             </Box>
 
@@ -467,7 +253,7 @@ export function AddCenterPage() {
               component={Link}
               to={ROUTES_PATH.center}
               className="add-center-page__back"
-              variant="outlined"
+              variant="secondary"
             >
               Back to centers
             </Button>
@@ -515,7 +301,7 @@ export function AddCenterPage() {
                 />
                 {logoFileName ? (
                   <Typography component="p" className="add-center-form__section-text">
-                    Tanlangan fayl: {logoFileName}
+                    Selected file: {logoFileName}
                   </Typography>
                 ) : null}
                 {logoDataUrl ? (
@@ -532,7 +318,7 @@ export function AddCenterPage() {
                         height: 120,
                         objectFit: 'cover',
                         borderRadius: '12px',
-                        border: '1px solid #dbe2f1',
+                        border: `1px solid ${c.border.medium}`,
                         mt: 1,
                       }}
                     />
@@ -558,7 +344,7 @@ export function AddCenterPage() {
                   onChange={(event) => setManagerName(event.target.value)}
                   disabled={isViewMode}
                 />
-                <TextField
+                <PhoneInput
                   label="Phone number"
                   value={phone}
                   onChange={(event) => setPhone(event.target.value)}
@@ -571,16 +357,14 @@ export function AddCenterPage() {
                   onChange={(event) => setEmail(event.target.value)}
                   disabled={isViewMode}
                 />
-                <TextField
+                <PasswordTextField
                   label="Password"
-                  type="password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   disabled={isViewMode}
                 />
-                <TextField
+                <PasswordTextField
                   label="Confirm password"
-                  type="password"
                   value={confirmPassword}
                   onChange={(event) => setConfirmPassword(event.target.value)}
                   disabled={isViewMode}
@@ -589,14 +373,8 @@ export function AddCenterPage() {
             </Box>
 
             <Box className="add-center-form__actions">
-              {submitError ? (
-                <Typography component="p" className="add-center-form__actions-copy">
-                  {submitError}
-                </Typography>
-              ) : null}
               <Typography component="p" className="add-center-form__actions-copy">
-                Form create/update center mutationlariga ulangan. Ma'lumotlarni
-                saqlash uchun Save tugmasidan foydalaning.
+                Use Save to persist your changes.
               </Typography>
 
               <Box className="add-center-form__buttons">
@@ -604,30 +382,15 @@ export function AddCenterPage() {
                   component={Link}
                   to={ROUTES_PATH.center}
                   className="add-center-form__cancel"
-                  variant="outlined"
+                  variant="secondary"
                 >
                   {isViewMode ? 'Back' : 'Cancel'}
                 </Button>
                 {isViewMode ? null : (
                   <Button
                     className="add-center-form__submit"
-                    variant="contained"
-                    onClick={() => {
-                      agentLog({
-                        sessionId: '24497a',
-                        runId: 'pre-fix',
-                        hypothesisId: 'H-btn-click',
-                        location: 'AddCenterPage.tsx:saveButton/onClick',
-                        message: 'Save button clicked',
-                        data: {
-                          isViewMode,
-                          isEditMode,
-                          isCreatingCenter,
-                          isUpdatingCenter,
-                        },
-                      })
-                      handleCreateCenter()
-                    }}
+                    variant="primary"
+                    onClick={handleCreateCenter}
                     disabled={isCreatingCenter || isUpdatingCenter}
                   >
                     {isCreatingCenter || isUpdatingCenter

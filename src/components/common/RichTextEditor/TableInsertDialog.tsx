@@ -1,28 +1,29 @@
 import { useCallback, useEffect, useId, useState } from 'react'
 import {
   Box,
-  Button,
   Dialog,
   DialogActions,
   DialogContent,
   IconButton,
   Typography,
 } from '@mui/material'
+import { c, tokens } from '../../../theme'
+import { Button } from '../Button'
 
 const MAX_DIM = 10
 const DEFAULT_ROWS = 3
 const DEFAULT_COLS = 3
 
-/** Panjara chiziqlari va tanlov uchun bir xil palitra */
+/** Shared palette for grid lines and selection */
 const palette = {
-  line: '#e2e8f0',
-  lineStrong: '#cbd5e1',
-  surface: '#f8fafc',
-  selected: '#dbeafe',
-  selectedBorder: '#3b82f6',
-  selectedHover: '#bfdbfe',
-  accent: '#2563eb',
-  accentHover: '#1d4ed8',
+  line: c.border.default,
+  lineStrong: c.border.strong,
+  surface: c.surface.muted,
+  selected: c.info.bgMuted,
+  selectedBorder: c.info.light,
+  selectedHover: c.info.border,
+  accent: c.info.main,
+  accentHover: c.info.dark,
 }
 
 export type TableInsertDialogProps = {
@@ -66,7 +67,7 @@ export function TableInsertDialog({ open, onClose, onInsert }: TableInsertDialog
       slotProps={{
         backdrop: {
           sx: {
-            bgcolor: 'rgba(15, 23, 42, 0.48)',
+            bgcolor: tokens.rgba.slate900_48,
             backdropFilter: 'blur(4px)',
           },
         },
@@ -77,9 +78,9 @@ export function TableInsertDialog({ open, onClose, onInsert }: TableInsertDialog
             maxWidth: 400,
             width: '100%',
             overflow: 'hidden',
-            border: '1px solid rgba(15, 23, 42, 0.08)',
+            border: `1px solid ${tokens.rgba.slate900_08}`,
             boxShadow:
-              '0 0 0 1px rgba(255,255,255,0.06) inset, 0 25px 50px -12px rgba(15, 23, 42, 0.22)',
+              `0 0 0 1px ${tokens.rgba.white_06} inset, ${tokens.shadows.dialogLg}`,
           },
         },
       }}
@@ -91,14 +92,14 @@ export function TableInsertDialog({ open, onClose, onInsert }: TableInsertDialog
           pb: 2,
           position: 'relative',
           borderBottom: '1px solid',
-          borderColor: 'rgba(15, 23, 42, 0.06)',
-          bgcolor: '#fff',
+          borderColor: tokens.rgba.slate900_06,
+          bgcolor: c.surface.default,
         }}
       >
         <IconButton
           type="button"
           onClick={onClose}
-          aria-label="Yopish"
+          aria-label="Close"
           size="small"
           sx={{
             position: 'absolute',
@@ -106,7 +107,7 @@ export function TableInsertDialog({ open, onClose, onInsert }: TableInsertDialog
             top: 10,
             color: 'text.secondary',
             borderRadius: '10px',
-            '&:hover': { bgcolor: 'rgba(15, 23, 42, 0.06)' },
+            '&:hover': { bgcolor: tokens.rgba.slate900_06 },
           }}
         >
           <Typography component="span" sx={{ fontSize: '1.35rem', lineHeight: 1, fontWeight: 300 }}>
@@ -120,7 +121,7 @@ export function TableInsertDialog({ open, onClose, onInsert }: TableInsertDialog
             fontWeight: 700,
             fontSize: '1.125rem',
             letterSpacing: '-0.02em',
-            color: '#0f172a',
+            color: c.text.primary,
             pr: 5,
           }}
         >
@@ -168,18 +169,18 @@ export function TableInsertDialog({ open, onClose, onInsert }: TableInsertDialog
               px: 1.75,
               py: 0.65,
               borderRadius: '999px',
-              bgcolor: '#fff',
+              bgcolor: c.surface.default,
               border: `1px solid ${palette.line}`,
-              boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+              boxShadow: tokens.shadows.sm,
             }}
           >
-            <Typography component="span" sx={{ fontWeight: 800, fontSize: '1.05rem', color: '#0f172a' }}>
+            <Typography component="span" sx={{ fontWeight: 800, fontSize: '1.05rem', color: c.text.primary }}>
               {displayRow}
             </Typography>
             <Typography component="span" sx={{ fontWeight: 500, color: palette.lineStrong, fontSize: '0.95rem' }}>
               ×
             </Typography>
-            <Typography component="span" sx={{ fontWeight: 800, fontSize: '1.05rem', color: '#0f172a' }}>
+            <Typography component="span" sx={{ fontWeight: 800, fontSize: '1.05rem', color: c.text.primary }}>
               {displayCol}
             </Typography>
           </Box>
@@ -191,7 +192,7 @@ export function TableInsertDialog({ open, onClose, onInsert }: TableInsertDialog
         <Box
           component="div"
           role="grid"
-          aria-label="Jadval o‘lchami"
+          aria-label="Table size"
           onPointerLeave={() => {
             setHoveredRow(null)
             setHoveredCol(null)
@@ -199,14 +200,14 @@ export function TableInsertDialog({ open, onClose, onInsert }: TableInsertDialog
           sx={{
             display: 'grid',
             gridTemplateColumns: `repeat(${MAX_DIM}, 1fr)`,
-            gap: '3px',
+            gap: 0.375,
             width: 'fit-content',
             mx: 'auto',
             p: '10px',
             borderRadius: '12px',
-            bgcolor: '#fff',
+            bgcolor: c.surface.default,
             border: `1px solid ${palette.line}`,
-            boxShadow: '0 1px 3px rgba(15, 23, 42, 0.06)',
+            boxShadow: tokens.shadows.md,
           }}
         >
           {Array.from({ length: MAX_DIM }, (_, ri) =>
@@ -235,7 +236,7 @@ export function TableInsertDialog({ open, onClose, onInsert }: TableInsertDialog
                     border: `1px solid ${selected ? palette.selectedBorder : palette.line}`,
                     borderRadius: '4px',
                     cursor: 'pointer',
-                    bgcolor: selected ? palette.selected : '#fff',
+                    bgcolor: selected ? palette.selected : c.surface.default,
                     boxShadow: selected ? `0 0 0 1px ${palette.accent} inset` : 'none',
                     transition: 'background-color 0.1s ease, border-color 0.1s ease, box-shadow 0.1s ease',
                     '&:hover': {
@@ -260,15 +261,14 @@ export function TableInsertDialog({ open, onClose, onInsert }: TableInsertDialog
           py: 2,
           gap: 1,
           justifyContent: 'flex-end',
-          bgcolor: '#fff',
+          bgcolor: c.surface.default,
           borderTop: '1px solid',
-          borderColor: 'rgba(15, 23, 42, 0.06)',
+          borderColor: tokens.rgba.slate900_06,
         }}
       >
         <Button
           type="button"
-          variant="outlined"
-          color="inherit"
+          variant="secondary"
           onClick={onClose}
           sx={{
             textTransform: 'none',
@@ -277,15 +277,15 @@ export function TableInsertDialog({ open, onClose, onInsert }: TableInsertDialog
             px: 2.25,
             py: 0.85,
             borderColor: palette.lineStrong,
-            color: '#334155',
-            '&:hover': { borderColor: '#94a3b8', bgcolor: 'rgba(15, 23, 42, 0.03)' },
+            color: c.text.subtle,
+            '&:hover': { borderColor: c.text.disabled, bgcolor: tokens.rgba.slate900_04 },
           }}
         >
           Cancel
         </Button>
         <Button
           type="button"
-          variant="contained"
+          variant="primary"
           disableElevation
           onClick={handleInsert}
           sx={{

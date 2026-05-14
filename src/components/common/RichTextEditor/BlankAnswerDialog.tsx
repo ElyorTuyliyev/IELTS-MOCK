@@ -1,5 +1,7 @@
 import { useEffect, useId, useMemo, useState } from 'react'
-import { Box, Button, Dialog, DialogActions, DialogContent, IconButton, TextField, Typography } from '@mui/material'
+import { Box, Dialog, DialogActions, DialogContent, IconButton, TextField, Typography } from '@mui/material'
+import { Button } from '../Button'
+import { useToast } from '../Toast'
 
 export type BlankAnswerDialogSubmit = { id: string; answer: string }
 
@@ -17,16 +19,15 @@ function normalizeId(raw: string): string {
 }
 
 export function BlankAnswerDialog({ open, defaultId, onClose, onInsert }: BlankAnswerDialogProps) {
+  const toast = useToast()
   const titleId = useId()
   const descId = useId()
   const [answer, setAnswer] = useState('')
-  const [error, setError] = useState<string | null>(null)
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!open) return
     setAnswer('')
-    setError(null)
   }, [open])
   /* eslint-enable react-hooks/set-state-in-effect */
 
@@ -34,11 +35,10 @@ export function BlankAnswerDialog({ open, defaultId, onClose, onInsert }: BlankA
 
   const handleInsert = () => {
     if (!answer.trim()) {
-      setError('Javob yozing.')
+      toast.error('Enter an answer.')
       return
     }
     onInsert({ id: normalizedId, answer: answer.trim() })
-    setError(null)
   }
 
   return (
@@ -65,38 +65,32 @@ export function BlankAnswerDialog({ open, defaultId, onClose, onInsert }: BlankA
           </Typography>
         </IconButton>
         <Typography id={titleId} component="h2" variant="h6" sx={{ fontWeight: 800, pr: 4 }}>
-          Blank javobi
+          Blank answer
         </Typography>
         <Typography id={descId} variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          Blank (____) uchun javobni kiriting. Javob HTML ichida saqlanadi.
+          Enter the answer for the blank (____). The answer is stored inside the HTML.
         </Typography>
       </Box>
 
       <DialogContent sx={{ pt: 1, px: 3 }}>
-        {error ? (
-          <Typography variant="body2" color="error" sx={{ mb: 1 }}>
-            {error}
-          </Typography>
-        ) : null}
-
         <TextField
           fullWidth
           label="Correct answer"
           value={answer}
           onChange={(e) => setAnswer(e.target.value)}
-          placeholder="Masalan: Apple"
+          placeholder="e.g. Apple"
           sx={{ mb: 0.5 }}
         />
         <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'text.secondary' }}>
-          ID avtomatik qo‘yiladi: <strong>{normalizedId}</strong>
+          ID is assigned automatically: <strong>{normalizedId}</strong>
         </Typography>
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2.5, pt: 1 }}>
-        <Button type="button" variant="outlined" color="inherit" onClick={onClose}>
+        <Button type="button" variant="secondary" onClick={onClose}>
           Cancel
         </Button>
-        <Button type="button" variant="contained" onClick={handleInsert}>
+        <Button type="button" variant="primary" onClick={handleInsert}>
           Insert
         </Button>
       </DialogActions>

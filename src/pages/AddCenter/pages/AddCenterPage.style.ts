@@ -1,23 +1,24 @@
 import styled from '@emotion/styled'
 
+import theme, { c, tokens } from '@/theme'
 export const AddCenterPageRoot = styled.div`
   .add-center-page {
     display: grid;
-    gap: 24px;
+    gap: ${theme.spacing(3)};
   }
 
   .add-center-page__hero {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 20px;
+    gap: ${theme.spacing(2.5)};
     padding: 30px 32px;
-    border: 1px solid rgba(148, 163, 184, 0.18);
+    border: 1px solid ${tokens.rgba.border_24};
     border-radius: 30px;
     background:
-      radial-gradient(circle at top right, rgba(20, 184, 166, 0.18), transparent 30%),
-      linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.96));
-    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+      radial-gradient(circle at top right, ${tokens.rgba.teal_12}, transparent 30%),
+      linear-gradient(135deg, ${tokens.rgba.white_92}, ${tokens.rgba.white_92});
+    box-shadow: 0 24px 60px ${tokens.rgba.slate900_08};
   }
 
   .add-center-page__eyebrow {
@@ -26,7 +27,7 @@ export const AddCenterPageRoot = styled.div`
     font-weight: 800;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: #0f766e;
+    color: ${c.teal.main};
   }
 
   .add-center-page__title {
@@ -34,7 +35,7 @@ export const AddCenterPageRoot = styled.div`
     font-size: clamp(28px, 3vw, 40px);
     font-weight: 800;
     letter-spacing: -0.04em;
-    color: #0f172a;
+    color: ${c.text.primary};
   }
 
   .add-center-page__description {
@@ -42,7 +43,7 @@ export const AddCenterPageRoot = styled.div`
     max-width: 640px;
     font-size: 15px;
     line-height: 1.7;
-    color: #5b6477;
+    color: ${c.text.secondary};
   }
 
   .add-center-page__back {
@@ -53,15 +54,15 @@ export const AddCenterPageRoot = styled.div`
 
   .add-center-form {
     display: grid;
-    gap: 22px;
+    gap: ${theme.spacing(2.75)};
   }
 
   .add-center-form__section {
     padding: 24px;
     border-radius: 28px;
-    background: rgba(255, 255, 255, 0.96);
-    border: 1px solid rgba(148, 163, 184, 0.16);
-    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.06);
+    background: ${tokens.rgba.white_92};
+    border: 1px solid ${tokens.rgba.border_24};
+    box-shadow: 0 18px 42px ${tokens.rgba.slate900_06};
   }
 
   .add-center-form__section-header {
@@ -72,19 +73,19 @@ export const AddCenterPageRoot = styled.div`
     margin: 0;
     font-size: 20px;
     font-weight: 800;
-    color: #111827;
+    color: ${c.text.primary};
   }
 
   .add-center-form__section-text {
     margin: 8px 0 0;
     font-size: 14px;
-    color: #64748b;
+    color: ${c.text.secondary};
   }
 
   .add-center-form__grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
+    gap: ${theme.spacing(2)};
   }
 
   .add-center-form__field--full {
@@ -94,14 +95,14 @@ export const AddCenterPageRoot = styled.div`
   .add-center-form__summary {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 14px;
+    gap: ${theme.spacing(1.75)};
   }
 
   .add-center-form__summary-card {
     padding: 18px;
     border-radius: 22px;
-    background: linear-gradient(180deg, #f8fafc, #ffffff);
-    border: 1px solid rgba(203, 213, 225, 0.9);
+    background: linear-gradient(180deg, ${c.surface.muted}, ${c.surface.default});
+    border: 1px solid ${tokens.rgba.border_24};
   }
 
   .add-center-form__summary-label {
@@ -110,7 +111,7 @@ export const AddCenterPageRoot = styled.div`
     font-weight: 800;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #64748b;
+    color: ${c.text.secondary};
   }
 
   .add-center-form__summary-value {
@@ -118,25 +119,25 @@ export const AddCenterPageRoot = styled.div`
     margin-top: 8px;
     font-size: 22px;
     font-weight: 800;
-    color: #0f172a;
+    color: ${c.text.primary};
   }
 
   .add-center-form__actions {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    gap: ${theme.spacing(2)};
   }
 
   .add-center-form__actions-copy {
     font-size: 14px;
-    color: #64748b;
+    color: ${c.text.secondary};
   }
 
   .add-center-form__buttons {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: ${theme.spacing(1.5)};
   }
 
   .add-center-form__cancel,
@@ -146,8 +147,8 @@ export const AddCenterPageRoot = styled.div`
   }
 
   .add-center-form__submit {
-    background: linear-gradient(135deg, #0f766e, #14b8a6);
-    box-shadow: 0 16px 30px rgba(20, 184, 166, 0.22);
+    background: linear-gradient(135deg, ${c.teal.main}, ${c.teal.accent});
+    box-shadow: 0 16px 30px ${tokens.rgba.teal_12};
   }
 
   @media (max-width: 960px) {

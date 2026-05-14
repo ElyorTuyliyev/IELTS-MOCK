@@ -1,24 +1,36 @@
+import type { MouseEvent, ReactElement } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
+import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
 import {
   Box,
-  Button,
   Collapse,
   IconButton,
-  TextField,
+  Tooltip,
   Typography,
+  useMediaQuery,
 } from "@mui/material";
 
+import { Button } from "../../common/Button";
+import { SearchField } from "../../../components/common/SearchField";
 import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 import { selectAuthToken, selectUserRole } from "../../../store";
 import { clearAuth, hasRequiredRole } from "../../../store/slices/authSlice";
 import { ROUTES_PATH, SIDEBAR_ROUTE_GROUPS } from "../../../routes";
+import { SIDEBAR_ICONS } from "../../../routes/sidebarIcons";
 import { agentLog } from "../../../utils/agentLog";
-import { SidebarRoot } from "./Sidebar.style";
+import { SidebarCollapsedPopover, SidebarCollapsedPopoverPaper, SidebarRoot } from "./Sidebar.style";
+
+type CollapsedSubmenuState = {
+  label: string;
+  children: Array<{ label: string; path?: string }>;
+  anchorEl: HTMLElement;
+};
 
 const SIDEBAR_ACCORDION_STORAGE_KEY = "sidebar-expanded-items";
+const SIDEBAR_COLLAPSED_MEDIA_QUERY = "(max-width:1120px)";
 const ME_CENTER_QUERY = gql`
   query MeCenter {
     meCenter {
@@ -35,7 +47,10 @@ export function Sidebar() {
   const dispatch = useAppDispatch();
   const role = useAppSelector(selectUserRole);
   const authToken = useAppSelector(selectAuthToken);
+  const isCollapsed = useMediaQuery(SIDEBAR_COLLAPSED_MEDIA_QUERY);
   const [searchTerm, setSearchTerm] = useState("");
+  const [collapsedSubmenu, setCollapsedSubmenu] =
+    useState<CollapsedSubmenuState | null>(null);
   const [expandedItems, setExpandedItems] = useState<
     Record<string, boolean | undefined>
   >(() => {
@@ -205,8 +220,63 @@ export function Sidebar() {
     }
   }, [expandedItems]);
 
+  useEffect(() => {
+    setCollapsedSubmenu(null);
+  }, [location.pathname, isCollapsed]);
+
+  const renderSidebarIcon = (iconKey: keyof typeof SIDEBAR_ICONS) => {
+    const Icon = SIDEBAR_ICONS[iconKey];
+    return <Icon className="sidebar__link-icon-svg" fontSize="small" />;
+  };
+
+  const wrapWithTooltip = (
+    label: string,
+    node: ReactElement,
+    enabled = true,
+  ) =>
+    isCollapsed && enabled ? (
+      <Tooltip title={label} placement="right" arrow>
+        {node}
+      </Tooltip>
+    ) : (
+      node
+    );
+
+  const closeCollapsedSubmenu = () => {
+    setCollapsedSubmenu(null);
+  };
+
+  const handleAccordionClick = (
+    item: {
+      label: string;
+      path?: string;
+      children?: Array<{ label: string; path?: string }>;
+    },
+    event: MouseEvent<HTMLButtonElement>,
+  ) => {
+    if (isCollapsed) {
+      if (item.children?.length) {
+        setCollapsedSubmenu((current) =>
+          current?.label === item.label
+            ? null
+            : {
+                label: item.label,
+                children: item.children ?? [],
+                anchorEl: event.currentTarget,
+              },
+        );
+      }
+      return;
+    }
+
+    toggleItem(item.label);
+  };
+
   return (
-    <SidebarRoot as="aside" className="dashboard__sidebar sidebar">
+    <SidebarRoot
+      as="aside"
+      className={`dashboard__sidebar sidebar${isCollapsed ? " sidebar--collapsed" : ""}`}
+    >
       <Box component="header" className="sidebar__header">
         <Box className="sidebar__brand">
           <Box className="sidebar__brand-logo" aria-hidden="true">
@@ -235,9 +305,9 @@ export function Sidebar() {
       </Box>
 
       <Box component="form" className="sidebar__search" role="search">
-        <TextField
+        <SearchField
           className="sidebar__search-input"
-          type="search"
+          showIcon={false}
           placeholder="Search"
           aria-label="Search menu"
           value={searchTerm}
@@ -279,51 +349,63 @@ export function Sidebar() {
                     className="sidebar__item"
                   >
                     {hasChildren ? (
-                      <Button
-                        className={`sidebar__link sidebar__link--accordion${
-                          isActive ? " sidebar__link--active" : ""
-                        }`}
-                        variant="text"
-                        onClick={() => toggleItem(item.label)}
-                        aria-expanded={isExpanded}
-                        aria-controls={`sidebar-sublist-${item.label}`}
-                      >
-                        <Box
-                          component="span"
-                          className="sidebar__link-icon"
-                          aria-hidden="true"
-                        >
-                          {item.icon}
-                        </Box>
-                        <span className="sidebar__link-text">{item.label}</span>
-                        <span
-                          className={`sidebar__link-arrow${
-                            isExpanded ? " sidebar__link-arrow--expanded" : ""
+                      wrapWithTooltip(
+                        item.label,
+                        <Button
+                          className={`sidebar__link sidebar__link--accordion${
+                            isActive ? " sidebar__link--active" : ""
                           }`}
+                          variant="text"
+                          onClick={(event) => handleAccordionClick(item, event)}
+                          aria-expanded={isCollapsed ? undefined : isExpanded}
+                          aria-controls={
+                            isCollapsed
+                              ? undefined
+                              : `sidebar-sublist-${item.label}`
+                          }
+                          aria-haspopup={isCollapsed ? "menu" : undefined}
                         >
-                          ⌄
-                        </span>
-                      </Button>
+                          <Box
+                            component="span"
+                            className="sidebar__link-icon"
+                            aria-hidden="true"
+                          >
+                            {renderSidebarIcon(item.icon)}
+                          </Box>
+                          <span className="sidebar__link-text">{item.label}</span>
+                          <span
+                            className={`sidebar__link-arrow${
+                              isExpanded ? " sidebar__link-arrow--expanded" : ""
+                            }`}
+                          >
+                            ⌄
+                          </span>
+                        </Button>,
+                        false,
+                      )
                     ) : (
-                      <Button
-                        component={item.path ? NavLink : "button"}
-                        to={item.path}
-                        className={`sidebar__link${isActive ? " sidebar__link--active" : ""}`}
-                        variant="text"
-                        onClick={collapseAccordionItems}
-                      >
-                        <Box
-                          component="span"
-                          className="sidebar__link-icon"
-                          aria-hidden="true"
+                      wrapWithTooltip(
+                        item.label,
+                        <Button
+                          component={item.path ? NavLink : "button"}
+                          to={item.path}
+                          className={`sidebar__link${isActive ? " sidebar__link--active" : ""}`}
+                          variant="text"
+                          onClick={collapseAccordionItems}
                         >
-                          {item.icon}
-                        </Box>
-                        <span className="sidebar__link-text">{item.label}</span>
-                      </Button>
+                          <Box
+                            component="span"
+                            className="sidebar__link-icon"
+                            aria-hidden="true"
+                          >
+                            {renderSidebarIcon(item.icon)}
+                          </Box>
+                          <span className="sidebar__link-text">{item.label}</span>
+                        </Button>,
+                      )
                     )}
 
-                    {hasChildren ? (
+                    {hasChildren && !isCollapsed ? (
                       <Collapse
                         in={isExpanded}
                         timeout="auto"
@@ -368,16 +450,81 @@ export function Sidebar() {
         ))}
       </Box>
 
-      <Button
-        className="sidebar__logout"
-        variant="outlined"
-        onClick={handleLogout}
+      <Box component="footer" className="sidebar__footer">
+        {wrapWithTooltip(
+          "Sign out",
+          <Button
+            className="sidebar__logout"
+            variant="text"
+            onClick={handleLogout}
+            aria-label="Sign out"
+          >
+            <Box
+              component="span"
+              className="sidebar__logout-icon"
+              aria-hidden="true"
+            >
+              <LogoutOutlinedIcon
+                className="sidebar__logout-icon-svg"
+                fontSize="small"
+              />
+            </Box>
+            <span className="sidebar__logout-text">Sign out</span>
+          </Button>,
+        )}
+      </Box>
+
+      <SidebarCollapsedPopover
+        open={Boolean(collapsedSubmenu)}
+        anchorEl={collapsedSubmenu?.anchorEl ?? null}
+        onClose={closeCollapsedSubmenu}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "left" }}
+        slotProps={{
+          paper: {
+            component: SidebarCollapsedPopoverPaper,
+            elevation: 0,
+          },
+        }}
       >
-        <span className="sidebar__logout-icon" aria-hidden="true">
-          ⇦
-        </span>
-        Logout
-      </Button>
+        <Typography component="h3" className="sidebar__collapsed-popover-title">
+          {collapsedSubmenu?.label}
+        </Typography>
+        <Box
+          component="ul"
+          className="sidebar__collapsed-popover-list"
+          role="menu"
+        >
+          {collapsedSubmenu?.children.map((child) => (
+            <Box
+              key={child.label}
+              component="li"
+              className="sidebar__collapsed-popover-item"
+              role="none"
+            >
+              <Button
+                component={child.path ? NavLink : "button"}
+                to={child.path}
+                className={`sidebar__collapsed-popover-link${
+                  child.path === location.pathname
+                    ? " sidebar__collapsed-popover-link--active"
+                    : ""
+                }`}
+                variant="text"
+                role="menuitem"
+                onClick={closeCollapsedSubmenu}
+              >
+                <Box
+                  component="span"
+                  className="sidebar__collapsed-popover-dot"
+                  aria-hidden="true"
+                />
+                <span>{child.label}</span>
+              </Button>
+            </Box>
+          ))}
+        </Box>
+      </SidebarCollapsedPopover>
     </SidebarRoot>
   );
 }

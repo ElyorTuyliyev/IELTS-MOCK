@@ -10,6 +10,7 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import { Box } from '@mui/material'
+import { c, tokens } from '../../../theme'
 import { Color } from '@tiptap/extension-color'
 import { Highlight } from '@tiptap/extension-highlight'
 import { Image } from '@tiptap/extension-image'
@@ -34,14 +35,23 @@ import { RadioGroup } from './extensions/radioGroupExtension'
 import { DragDropFillBlankDialog } from './DragDropFillBlankDialog'
 import { RadioOptionsDialog } from './RadioOptionsDialog'
 import { TableInsertDialog } from './TableInsertDialog'
+import {
+  patchDragDropAttrsInHtml,
+  repairDragDropGapsInHtml,
+} from './utils/dragDropHtmlSync'
+import { resolveNextQuestionNumber } from './utils/questionNumbering'
 
 export type RichTextEditorProps = {
   value: string
   onChange: (nextValue: string) => void
   placeholder?: string
   minHeight?: number
+  /** Text area max height; overflow scrolls inside */
+  maxHeight?: number
   /** Hide toolbar (read-only preview style still editable if focused programmatically) */
   readOnly?: boolean
+  /** Previous parts HTML — next Q number continues from the highest Q here */
+  priorQuestionHtml?: string[]
 }
 
 function IconBold() {
@@ -272,14 +282,14 @@ function TableDeleteCorner({ editor }: { editor: Editor }) {
         width: 30,
         height: 30,
         borderRadius: 999,
-        border: '1px solid rgba(15, 23, 42, 0.18)',
-        background: 'rgba(255,255,255,0.95)',
-        color: '#b91c1c',
+        border: `1px solid ${tokens.rgba.slate900_18}`,
+        background: tokens.rgba.white_95,
+        color: c.error.main,
         fontSize: 18,
         lineHeight: 1,
         fontWeight: 700,
         cursor: 'pointer',
-        boxShadow: '0 10px 22px rgba(15, 23, 42, 0.12)',
+        boxShadow: tokens.shadows.floating,
       }}
     >
       ×
@@ -331,28 +341,6 @@ function IconBlank() {
   )
 }
 
-function nextQuestionNumber(editor: Editor): number {
-  const text = editor.getText() ?? ''
-  const html = editor.getHTML() ?? ''
-  let max = 0
-  for (const m of text.matchAll(/\[(\d{1,3})\]/g)) {
-    const n = Number(m[1])
-    if (Number.isFinite(n)) max = Math.max(max, n)
-  }
-  for (const m of text.matchAll(/\bQ(\d{1,3})\b/gi)) {
-    const n = Number(m[1])
-    if (Number.isFinite(n)) max = Math.max(max, n)
-  }
-  for (const m of html.matchAll(/data-id="Q(\d{1,4})"/gi)) {
-    const n = Number(m[1])
-    if (Number.isFinite(n)) max = Math.max(max, n)
-  }
-  for (const m of html.matchAll(/\bQ(\d{1,4})\b/gi)) {
-    const n = Number(m[1])
-    if (Number.isFinite(n)) max = Math.max(max, n)
-  }
-  return Math.max(1, max + 1)
-}
 
 const ResizableImage = Image.extend({
   addAttributes() {
@@ -534,7 +522,7 @@ function blockTypeValue(editor: Editor): string {
   return 'paragraph'
 }
 
-/** Editor `textStyle` dan joriy font-size (bo‘sh = standart) */
+/** Current font-size from editor `textStyle` (empty = default) */
 function textFontSizeFromEditor(editor: Editor): string {
   const raw = editor.getAttributes('textStyle').fontSize
   if (raw == null || typeof raw !== 'string') return ''
@@ -545,7 +533,7 @@ function textFontSizeFromEditor(editor: Editor): string {
   return t
 }
 
-/** `null` — olib tashlash; `false` — noto‘g‘ri; string — setFontSize ga */
+/** `null` — remove; `false` — invalid; string — passed to setFontSize */
 function normalizeUserFontSize(raw: string): string | null | false {
   const t = raw.trim().replace(/,/g, '.')
   if (!t) return null
@@ -589,8 +577,8 @@ function FontSizeToolbarInput({ editor }: { editor: Editor }) {
       type="text"
       className="rte-fontsize-input"
       inputMode="decimal"
-      aria-label="Matn o‘lchami"
-      title="Masalan: 16, 16px, 1.125rem, 120%. Bo‘sh — standart. Enter — qo‘llash."
+      aria-label="Font size"
+      title="Examples: 16, 16px, 1.125rem, 120%. Empty = default. Enter to apply."
       placeholder="16px"
       value={draft}
       onChange={(e) => setDraft(e.target.value)}
@@ -661,7 +649,7 @@ function RichTextToolbar({
 
   const setLink = () => {
     const previous = editor.getAttributes('link').href as string | undefined
-    const next = window.prompt('Havola URL', previous ?? 'https://')
+    const next = window.prompt('Link URL', previous ?? 'https://')
     if (next === null) return
     if (next === '') {
       editor.chain().focus().extendMarkRange('link').unsetLink().run()
@@ -671,12 +659,12 @@ function RichTextToolbar({
   }
 
   return (
-    <div className="rte-toolbar" role="toolbar" aria-label="Matn formatlash">
+    <div className="rte-toolbar" role="toolbar" aria-label="Text formatting">
       <div className="rte-toolbar__scroll">
       <div className="rte-toolbar__group">
         <select
           className="rte-select"
-          aria-label="Blok turi"
+          aria-label="Block type"
           value={blockValue}
           onChange={(e) => setBlockType(e.target.value)}
         >
@@ -692,28 +680,28 @@ function RichTextToolbar({
 
       <div className="rte-toolbar__group">
         <ToolbarButton
-          title="Qalin"
+          title="Bold"
           active={editor.isActive('bold')}
           onClick={() => editor.chain().focus().toggleBold().run()}
         >
           <IconBold />
         </ToolbarButton>
         <ToolbarButton
-          title="Kursiv"
+          title="Italic"
           active={editor.isActive('italic')}
           onClick={() => editor.chain().focus().toggleItalic().run()}
         >
           <IconItalic />
         </ToolbarButton>
         <ToolbarButton
-          title="Chiziq osti"
+          title="Underline"
           active={editor.isActive('underline')}
           onClick={() => editor.chain().focus().toggleUnderline().run()}
         >
           <IconUnderline />
         </ToolbarButton>
         <ToolbarButton
-          title="Chiziq ustidan"
+          title="Strikethrough"
           active={editor.isActive('strike')}
           onClick={() => editor.chain().focus().toggleStrike().run()}
         >
@@ -729,12 +717,12 @@ function RichTextToolbar({
             ref={textColorInputRef}
             type="color"
             className="rte-color-input"
-            aria-label="Matn rangi"
-            defaultValue="#111827"
+            aria-label="Text color"
+            defaultValue={c.slate[900]}
             onChange={onTextColorPick}
           />
           <ToolbarButton
-            title="Matn rangi"
+            title="Text color"
             onClick={() => textColorInputRef.current?.click()}
           >
             <span className="rte-swatch rte-swatch--text">A</span>
@@ -745,12 +733,12 @@ function RichTextToolbar({
             ref={highlightInputRef}
             type="color"
             className="rte-color-input"
-            aria-label="Ajratish rangi"
-            defaultValue="#fef08a"
+            aria-label="Highlight color"
+            defaultValue={c.warning.highlight}
             onChange={onHighlightPick}
           />
           <ToolbarButton
-            title="Ajratish"
+            title="Highlight"
             active={editor.isActive('highlight')}
             onClick={() => highlightInputRef.current?.click()}
           >
@@ -763,20 +751,20 @@ function RichTextToolbar({
 
       <div className="rte-toolbar__group">
         <ToolbarButton
-          title="Iqtibos"
+          title="Blockquote"
           active={editor.isActive('blockquote')}
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
         >
           <IconQuote />
         </ToolbarButton>
         <ToolbarButton
-          title="Havola"
+          title="Link"
           active={editor.isActive('link')}
           onClick={setLink}
         >
           <IconLink />
         </ToolbarButton>
-        <ToolbarButton title="Rasm" onClick={() => imageInputRef.current?.click()}>
+        <ToolbarButton title="Image" onClick={() => imageInputRef.current?.click()}>
           <IconImage />
         </ToolbarButton>
         <input
@@ -789,7 +777,7 @@ function RichTextToolbar({
           onChange={onImageFile}
         />
         <ToolbarButton
-          title="Kod bloki"
+          title="Code block"
           active={editor.isActive('codeBlock')}
           onClick={() => editor.chain().focus().toggleCodeBlock().run()}
         >
@@ -801,28 +789,28 @@ function RichTextToolbar({
 
       <div className="rte-toolbar__group">
         <ToolbarButton
-          title="Markerli ro‘yxat"
+          title="Bulleted list"
           active={editor.isActive('bulletList')}
           onClick={() => editor.chain().focus().toggleBulletList().run()}
         >
           <IconListBullet />
         </ToolbarButton>
         <ToolbarButton
-          title="Raqamli ro‘yxat"
+          title="Numbered list"
           active={editor.isActive('orderedList')}
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
         >
           <IconListNumber />
         </ToolbarButton>
         <ToolbarButton
-          title="Chapga surish"
+          title="Outdent"
           disabled={!canLift}
           onClick={() => editor.chain().focus().liftListItem('listItem').run()}
         >
           <IconOutdent />
         </ToolbarButton>
         <ToolbarButton
-          title="O‘ngga surish"
+          title="Indent"
           disabled={!canSink}
           onClick={() => editor.chain().focus().sinkListItem('listItem').run()}
         >
@@ -834,7 +822,7 @@ function RichTextToolbar({
 
       <div className="rte-toolbar__group">
         <ToolbarButton
-          title="Chapga tekislash"
+          title="Align left"
           active={editor.isActive({ textAlign: 'left' })}
           onClick={() => editor.chain().focus().setTextAlign('left').run()}
         >
@@ -848,14 +836,14 @@ function RichTextToolbar({
           <IconAlignCenter />
         </ToolbarButton>
         <ToolbarButton
-          title="O‘ngga"
+          title="Align right"
           active={editor.isActive({ textAlign: 'right' })}
           onClick={() => editor.chain().focus().setTextAlign('right').run()}
         >
           <IconAlignRight />
         </ToolbarButton>
         <ToolbarButton
-          title="Ikki tomondan"
+          title="Justify"
           active={editor.isActive({ textAlign: 'justify' })}
           onClick={() => editor.chain().focus().setTextAlign('justify').run()}
         >
@@ -867,24 +855,24 @@ function RichTextToolbar({
 
       <div className="rte-toolbar__group">
         <ToolbarButton
-          title="Gorizontal chiziq"
+          title="Horizontal rule"
           onClick={() => editor.chain().focus().setHorizontalRule().run()}
         >
           <IconHr />
         </ToolbarButton>
-        <ToolbarButton title="Jadval qo‘shish" onClick={onOpenTableModal}>
+        <ToolbarButton title="Insert table" onClick={onOpenTableModal}>
           <IconTable />
         </ToolbarButton>
         {isInTable ? (
           <ToolbarButton
-            title="Jadvalni o‘chirish"
+            title="Delete table"
             onClick={() => editor.chain().focus().deleteTable().run()}
           >
             🗑
           </ToolbarButton>
         ) : null}
         <ToolbarButton
-          title="Radio variantlar"
+          title="Radio options"
           active={editor.isActive('radioGroup')}
           onClick={onOpenRadioModal}
         >
@@ -905,10 +893,10 @@ function RichTextToolbar({
       <span className="rte-toolbar__sep" aria-hidden />
 
       <div className="rte-toolbar__group rte-toolbar__group--history">
-        <ToolbarButton title="Bekor qilish" onClick={() => editor.chain().focus().undo().run()}>
+        <ToolbarButton title="Undo" onClick={() => editor.chain().focus().undo().run()}>
           ↶
         </ToolbarButton>
-        <ToolbarButton title="Qayta" onClick={() => editor.chain().focus().redo().run()}>
+        <ToolbarButton title="Redo" onClick={() => editor.chain().focus().redo().run()}>
           ↷
         </ToolbarButton>
       </div>
@@ -917,7 +905,7 @@ function RichTextToolbar({
 
       <div className="rte-toolbar__group">
         <ToolbarButton
-          title={expanded ? 'Kichraytirish' : 'To‘liq kenglik'}
+          title={expanded ? 'Collapse' : 'Full width'}
           active={expanded}
           onClick={onToggleExpand}
         >
@@ -932,9 +920,11 @@ function RichTextToolbar({
 export function RichTextEditor({
   value,
   onChange,
-  placeholder = 'Matn kiriting…',
+  placeholder = 'Enter text…',
   minHeight = 200,
+  maxHeight = 500,
   readOnly = false,
+  priorQuestionHtml = [],
 }: RichTextEditorProps) {
   const [, setToolbarTick] = useState(0)
   const toolbarRafRef = useRef<number | null>(null)
@@ -943,11 +933,13 @@ export function RichTextEditor({
   const [radioDefaultQuestionNumber, setRadioDefaultQuestionNumber] = useState(1)
   const [tableModalOpen, setTableModalOpen] = useState(false)
   const [dragDropFillModalOpen, setDragDropFillModalOpen] = useState(false)
+  const [dragDropDefaultStartNumber, setDragDropDefaultStartNumber] = useState(1)
   const [blankAnswerOpen, setBlankAnswerOpen] = useState(false)
   const [blankDefaultId, setBlankDefaultId] = useState('Q1')
   const textColorRef = useRef<HTMLInputElement>(null)
   const highlightRef = useRef<HTMLInputElement>(null)
   const imageRef = useRef<HTMLInputElement>(null)
+  const lastEmittedHtmlRef = useRef<string | null>(null)
   const instanceId = useId()
   const scheduleToolbarRefresh = useCallback(() => {
     if (toolbarRafRef.current != null) return
@@ -999,7 +991,9 @@ export function RichTextEditor({
     shouldRerenderOnTransaction: false,
     editable: !readOnly,
     onUpdate: ({ editor: ed }) => {
-      onChange(ed.getHTML())
+      const html = patchDragDropAttrsInHtml(ed.getHTML(), ed)
+      lastEmittedHtmlRef.current = html
+      onChange(html)
       scheduleToolbarRefresh()
     },
     onSelectionUpdate: () => {
@@ -1029,10 +1023,15 @@ export function RichTextEditor({
 
   useEffect(() => {
     if (!editor) return
-    const next = value || '<p></p>'
-    if (editor.getHTML() !== next) {
-      editor.commands.setContent(next, { emitUpdate: false })
+    const next = repairDragDropGapsInHtml(value || '<p></p>')
+    const current = patchDragDropAttrsInHtml(editor.getHTML(), editor)
+    if (current === next) {
+      lastEmittedHtmlRef.current = next
+      return
     }
+    if (next === lastEmittedHtmlRef.current) return
+    editor.commands.setContent(next, { emitUpdate: false })
+    lastEmittedHtmlRef.current = next
   }, [editor, value])
 
   // Row height resize for tables (drag near bottom border)
@@ -1201,7 +1200,7 @@ export function RichTextEditor({
     <>
       {expanded ? (
         <RichTextEditorExpandBackdrop
-          aria-label="To‘liq kenglik rejimini yopish"
+          aria-label="Close full-width mode"
           role="button"
           tabIndex={-1}
           onClick={() => setExpanded(false)}
@@ -1220,7 +1219,14 @@ export function RichTextEditor({
                   .focus()
                   .insertContent({
                     type: 'paragraph',
-                    content: [{ type: 'text', text: `Q${questionNumber} ${questionText}` }],
+                    attrs: { class: 'rte-radio-question' },
+                    content: [
+                      {
+                        type: 'text',
+                        text: `Q${questionNumber} ${questionText}`,
+                        marks: [{ type: 'bold' }],
+                      },
+                    ],
                   })
                   .insertRadioGroup(options, correctValue)
                   .run()
@@ -1245,6 +1251,7 @@ export function RichTextEditor({
           {dragDropFillModalOpen ? (
             <DragDropFillBlankDialog
               open={dragDropFillModalOpen}
+              defaultStartNumber={dragDropDefaultStartNumber}
               onClose={() => setDragDropFillModalOpen(false)}
               onInsert={(payload) => {
                 editor.chain().focus().insertDragDropFillBlank(payload).run()
@@ -1270,6 +1277,7 @@ export function RichTextEditor({
         style={
           {
             '--rte-min-height': `${minHeight}px`,
+            '--rte-max-height': `${maxHeight}px`,
           } as CSSProperties
         }
         data-rich-editor={instanceId}
@@ -1284,13 +1292,16 @@ export function RichTextEditor({
             onHighlightPick={onHighlight}
             onImageFile={onImageFile}
             onOpenRadioModal={() => {
-              setRadioDefaultQuestionNumber(nextQuestionNumber(editor))
+              setRadioDefaultQuestionNumber(resolveNextQuestionNumber(editor, priorQuestionHtml))
               setRadioModalOpen(true)
             }}
             onOpenTableModal={() => setTableModalOpen(true)}
-            onOpenDragDropFillModal={() => setDragDropFillModalOpen(true)}
+            onOpenDragDropFillModal={() => {
+              setDragDropDefaultStartNumber(resolveNextQuestionNumber(editor, priorQuestionHtml))
+              setDragDropFillModalOpen(true)
+            }}
             onInsertBlank={() => {
-              const n = nextQuestionNumber(editor)
+              const n = resolveNextQuestionNumber(editor, priorQuestionHtml)
               setBlankDefaultId(`Q${n}`)
               setBlankAnswerOpen(true)
             }}

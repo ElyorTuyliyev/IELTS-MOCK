@@ -1,2 +1,2 @@
-export { SignInPage } from './SignInPage/SignInPage'
-export { SignUpPage } from './SignUpPage/SignUpPage'
+export { SignInPage } from './SignInPage'
+export { SignUpPage } from './SignUpPage'

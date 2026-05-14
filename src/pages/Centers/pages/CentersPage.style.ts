@@ -1,23 +1,24 @@
 import styled from '@emotion/styled'
 
+import theme, { c, tokens } from '@/theme'
 export const CentersPageRoot = styled.div`
   .centers-page {
     display: grid;
-    gap: 24px;
+    gap: ${theme.spacing(3)};
   }
 
   .centers-page__header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    gap: ${theme.spacing(2)};
     padding: 28px 32px;
-    border: 1px solid rgba(99, 102, 241, 0.14);
+    border: 1px solid ${tokens.rgba.primary_14};
     border-radius: 28px;
     background:
-      radial-gradient(circle at top right, rgba(16, 185, 129, 0.2), transparent 30%),
-      linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(244, 247, 255, 0.94));
-    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+      radial-gradient(circle at top right, ${tokens.rgba.teal_12}, transparent 30%),
+      linear-gradient(135deg, ${tokens.rgba.white_92}, ${tokens.rgba.white_92});
+    box-shadow: 0 24px 60px ${tokens.rgba.slate900_08};
   }
 
   .centers-page__title {
@@ -25,7 +26,7 @@ export const CentersPageRoot = styled.div`
     font-size: clamp(28px, 3vw, 38px);
     font-weight: 800;
     letter-spacing: -0.04em;
-    color: #111827;
+    color: ${c.text.primary};
   }
 
   .centers-page__description {
@@ -33,7 +34,7 @@ export const CentersPageRoot = styled.div`
     max-width: 620px;
     font-size: 15px;
     line-height: 1.7;
-    color: #5b6477;
+    color: ${c.text.secondary};
   }
 
   .centers-page__cta {
@@ -41,22 +42,22 @@ export const CentersPageRoot = styled.div`
     min-width: 180px;
     border-radius: 999px;
     padding: 14px 20px;
-    background: linear-gradient(135deg, #0f766e, #14b8a6);
-    box-shadow: 0 18px 32px rgba(20, 184, 166, 0.24);
+    background: linear-gradient(135deg, ${c.teal.main}, ${c.teal.accent});
+    box-shadow: 0 18px 32px ${tokens.rgba.teal_12};
   }
 
   .centers-page__stats {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 18px;
+    gap: ${theme.spacing(2.25)};
   }
 
   .centers-stat {
     padding: 22px 24px;
     border-radius: 24px;
-    background: #ffffff;
-    border: 1px solid rgba(148, 163, 184, 0.16);
-    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+    background: ${c.surface.default};
+    border: 1px solid ${tokens.rgba.border_24};
+    box-shadow: 0 18px 40px ${tokens.rgba.slate900_06};
   }
 
   .centers-stat__label {
@@ -66,27 +67,27 @@ export const CentersPageRoot = styled.div`
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: #64748b;
+    color: ${c.text.secondary};
   }
 
   .centers-stat__value {
     margin: 0;
     font-size: 30px;
     font-weight: 800;
-    color: #111827;
+    color: ${c.text.primary};
   }
 
   .centers-stat__meta {
     margin-top: 8px;
     font-size: 14px;
-    color: #475569;
+    color: ${c.text.muted};
   }
 
   .centers-panel {
-    background: rgba(255, 255, 255, 0.96);
-    border: 1px solid rgba(148, 163, 184, 0.16);
+    background: ${tokens.rgba.white_92};
+    border: 1px solid ${tokens.rgba.border_24};
     border-radius: 28px;
-    box-shadow: 0 20px 44px rgba(15, 23, 42, 0.06);
+    box-shadow: 0 20px 44px ${tokens.rgba.slate900_06};
     padding: 22px;
   }
 
@@ -94,7 +95,7 @@ export const CentersPageRoot = styled.div`
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: ${theme.spacing(1.5)};
     margin-bottom: 18px;
   }
 
@@ -102,30 +103,30 @@ export const CentersPageRoot = styled.div`
     margin: 0;
     font-size: 20px;
     font-weight: 800;
-    color: #111827;
+    color: ${c.text.primary};
   }
 
   .centers-panel__subtitle {
     margin: 6px 0 0;
     font-size: 14px;
-    color: #64748b;
+    color: ${c.text.secondary};
   }
 
   .centers-table {
     overflow-x: auto;
     overflow-y: visible;
-    border: 1px solid #dbe2f1;
+    border: 1px solid ${c.border.medium};
     border-radius: 22px;
-    background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
-    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.04);
+    background: ${c.gradient.card};
+    box-shadow: 0 12px 30px ${tokens.rgba.slate900_04};
   }
 
   .centers-table__filters {
     display: flex;
     justify-content: space-between;
-    gap: 14px;
+    gap: ${theme.spacing(1.75)};
     padding: 20px;
-    border-bottom: 1px solid #edf2fb;
+    border-bottom: 1px solid ${c.border.divider};
     flex-wrap: wrap;
   }
 
@@ -137,18 +138,18 @@ export const CentersPageRoot = styled.div`
   .centers-table__select .MuiOutlinedInput-root {
     min-height: 46px;
     border-radius: 12px;
-    background: #ffffff;
+    background: ${c.surface.default};
   }
 
   .centers-table__search-icon {
-    color: #334155;
+    color: ${c.text.subtle};
     font-size: 1.15rem;
     line-height: 1;
   }
 
   .centers-table__actions {
     display: flex;
-    gap: 12px;
+    gap: ${theme.spacing(1.5)};
     flex-wrap: wrap;
   }
 
@@ -159,10 +160,10 @@ export const CentersPageRoot = styled.div`
   .centers-table__ghost-button {
     min-height: 46px;
     padding: 0 16px;
-    border: 1px solid #d8def0;
+    border: 1px solid ${c.border.soft};
     border-radius: 12px;
-    background: #ffffff;
-    color: #0f172a;
+    background: ${c.surface.default};
+    color: ${c.text.primary};
     font-weight: 600;
     text-transform: none;
   }
@@ -182,8 +183,8 @@ export const CentersPageRoot = styled.div`
   }
 
   .centers-table .MuiDataGrid-columnHeaders {
-    background: #f8fafc;
-    border-bottom: 1px solid #edf2fb;
+    background: ${c.surface.muted};
+    border-bottom: 1px solid ${c.border.divider};
   }
 
   .centers-table .MuiDataGrid-columnHeader,
@@ -199,7 +200,7 @@ export const CentersPageRoot = styled.div`
   }
 
   .centers-table .MuiDataGrid-columnHeaderTitle {
-    color: #475569;
+    color: ${c.text.muted};
     font-size: 0.92rem;
     font-weight: 800;
   }
@@ -211,25 +212,25 @@ export const CentersPageRoot = styled.div`
   }
 
   .centers-table .MuiDataGrid-row {
-    border-top: 1px solid #edf2fb;
+    border-top: 1px solid ${c.border.divider};
   }
 
   .centers-table .MuiDataGrid-row:hover {
-    background: rgba(248, 250, 252, 0.72);
+    background: ${tokens.rgba.slate900_04};
   }
 
   .centers-table .MuiDataGrid-cell {
-    color: #111827;
+    color: ${c.text.primary};
     font-weight: 500;
     overflow: visible;
   }
 
   .centers-table .MuiCheckbox-root {
-    color: #c0cadc;
+    color: ${c.neutral.placeholder};
   }
 
   .centers-table .MuiCheckbox-root.Mui-checked {
-    color: #0f766e;
+    color: ${c.teal.main};
   }
 
   .centers-table .MuiDataGrid-columnHeaderCheckbox,
@@ -258,44 +259,44 @@ export const CentersPageRoot = styled.div`
   }
 
   .centers-table__pill--active {
-    background: #ecfdf5;
-    color: #2bb6a3;
+    background: ${c.success.bg};
+    color: ${c.teal.main};
   }
 
   .centers-table__pill--growing {
-    background: #fff7ed;
-    color: #f97316;
+    background: ${c.surface.default}7ed;
+    color: ${c.orange.main};
   }
 
   .centers-table__pill--top-score {
-    background: #eef2ff;
-    color: #4f46e5;
+    background: ${c.background.default};
+    color: ${c.info.indigo};
   }
 
   .centers-table__footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 16px;
+    gap: ${theme.spacing(2)};
     padding: 16px 20px;
-    border-top: 1px solid #edf2fb;
+    border-top: 1px solid ${c.border.divider};
     flex-wrap: wrap;
   }
 
   .centers-table__pagination {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: ${theme.spacing(1.25)};
   }
 
   .centers-table__page-button,
   .centers-table__show-button {
     min-width: 44px;
     height: 44px;
-    border: 1px solid #dbe2f1;
+    border: 1px solid ${c.border.medium};
     border-radius: 14px;
-    background: #ffffff;
-    color: #111827;
+    background: ${c.surface.default};
+    color: ${c.text.primary};
     text-transform: none;
     font-size: 1.1rem;
   }
@@ -303,29 +304,29 @@ export const CentersPageRoot = styled.div`
   .centers-table__page-number {
     min-width: 34px;
     height: 34px;
-    color: #111827;
+    color: ${c.text.primary};
     font-size: 1rem;
     font-weight: 600;
     text-transform: none;
   }
 
   .centers-table__page-number--active {
-    border: 1px solid #dbe2f1;
+    border: 1px solid ${c.border.medium};
     border-radius: 12px;
-    background: #f8fafc;
+    background: ${c.surface.muted};
   }
 
   .centers-table__page-ellipsis {
-    color: #475569;
+    color: ${c.text.muted};
     font-weight: 700;
   }
 
   .centers-table__footer-meta {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: ${theme.spacing(2)};
     flex-wrap: wrap;
-    color: #475569;
+    color: ${c.text.muted};
     font-size: 0.94rem;
     font-weight: 500;
   }

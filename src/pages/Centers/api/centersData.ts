@@ -17,10 +17,10 @@ export type CenterRow = {
 export const CENTER_PAGE_SIZE = 8
 
 export const CENTER_STATS: CenterStat[] = [
-  { label: 'Total centers', value: '0', meta: 'Hozircha center yo‘q' },
-  { label: 'Active students', value: '0', meta: 'Center qo‘shilganda yangilanadi' },
-  { label: 'Teachers', value: '0', meta: 'Center qo‘shilganda yangilanadi' },
-  { label: 'Average band', value: '0', meta: 'Natijalar yo‘q' },
+  { label: 'Total centers', value: '0', meta: 'No centers yet' },
+  { label: 'Active students', value: '0', meta: 'Updates when a center is added' },
+  { label: 'Teachers', value: '0', meta: 'Updates when a center is added' },
+  { label: 'Average band', value: '0', meta: 'No results yet' },
 ]
 
 export const CENTERS: CenterRow[] = []

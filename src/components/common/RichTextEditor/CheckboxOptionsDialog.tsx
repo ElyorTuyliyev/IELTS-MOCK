@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useId, useState } from 'react'
 import {
   Box,
-  Button,
   Checkbox,
   Dialog,
   DialogActions,
@@ -11,6 +10,9 @@ import {
   Typography,
 } from '@mui/material'
 
+import { c, tokens } from '../../../theme'
+import { Button } from '../Button'
+import { useToast } from '../Toast'
 import type { CheckboxOption } from './extensions/checkboxGroupExtension'
 
 type Row = { id: string; text: string; checked: boolean }
@@ -48,21 +50,19 @@ export function CheckboxOptionsDialog({
   onClose,
   onInsert,
 }: CheckboxOptionsDialogProps) {
+  const toast = useToast()
   const titleId = useId()
   const descId = useId()
   const [questionNumber, setQuestionNumber] = useState<number>(Math.max(1, Math.floor(defaultQuestionNumber)))
   const [questionText, setQuestionText] = useState('')
   const [rows, setRows] = useState<Row[]>(initialRows)
-  const [error, setError] = useState<string | null>(null)
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!open) return
-    // Reset form state each time modal opens.
     setQuestionNumber(Math.max(1, Math.floor(defaultQuestionNumber)))
     setQuestionText('')
     setRows(initialRows())
-    setError(null)
   }, [open, defaultQuestionNumber])
   /* eslint-enable react-hooks/set-state-in-effect */
 
@@ -90,16 +90,16 @@ export function CheckboxOptionsDialog({
   const handleInsert = useCallback(() => {
     const trimmedQuestion = questionText.trim()
     if (!trimmedQuestion) {
-      setError('Savol matnini kiriting.')
+      toast.error('Enter the question text.')
       return
     }
     const trimmed = rows.map((row) => row.text.trim())
     if (trimmed.some((text) => text.length === 0)) {
-      setError('Barcha variantlar uchun matn kiriting.')
+      toast.error('Enter text for every option.')
       return
     }
     if (rows.length < MIN_OPTIONS) {
-      setError(`Kamida ${MIN_OPTIONS} ta variant bo‘lishi kerak.`)
+      toast.error(`At least ${MIN_OPTIONS} options are required.`)
       return
     }
     const options: CheckboxOption[] = rows.map((row) => ({
@@ -110,26 +110,25 @@ export function CheckboxOptionsDialog({
     const safeQuestionNumber =
       Number.isFinite(questionNumber) && questionNumber > 0 ? Math.floor(questionNumber) : 1
     onInsert(safeQuestionNumber, trimmedQuestion, options, checkedValues)
-    setError(null)
-  }, [questionNumber, questionText, rows, onInsert])
+  }, [questionNumber, questionText, rows, onInsert, toast])
 
   const textFieldSx = {
     flex: 1,
     '& .MuiOutlinedInput-root': { borderRadius: 2 },
     '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
-      borderColor: '#7c3aed',
+      borderColor: c.primary.main,
       borderWidth: 2,
     },
   } as const
 
   const darkButtonSx = {
-    bgcolor: '#111827',
-    color: '#fff',
+    bgcolor: c.slate[900],
+    color: c.white,
     textTransform: 'none' as const,
     fontWeight: 600,
     borderRadius: 2,
     py: 1.25,
-    '&:hover': { bgcolor: '#0f172a' },
+    '&:hover': { bgcolor: c.text.primary },
   }
 
   return (
@@ -144,7 +143,7 @@ export function CheckboxOptionsDialog({
             borderRadius: 3,
             maxWidth: 520,
             width: '100%',
-            boxShadow: '0 24px 48px rgba(15, 23, 42, 0.12)',
+            boxShadow: tokens.shadows.dialog,
           },
         },
       }}
@@ -153,7 +152,7 @@ export function CheckboxOptionsDialog({
         <IconButton
           type="button"
           onClick={onClose}
-          aria-label="Yopish"
+          aria-label="Close"
           sx={{
             position: 'absolute',
             right: 8,
@@ -174,11 +173,6 @@ export function CheckboxOptionsDialog({
       </Box>
 
       <DialogContent sx={{ pt: 1, pb: 2, px: 3 }}>
-        {error ? (
-          <Typography variant="body2" color="error" sx={{ mb: 2 }}>
-            {error}
-          </Typography>
-        ) : null}
         <TextField
           type="number"
           size="small"
@@ -192,7 +186,7 @@ export function CheckboxOptionsDialog({
           size="small"
           fullWidth
           label="Question"
-          placeholder="Savol matni"
+          placeholder="Question text"
           value={questionText}
           onChange={(e) => setQuestionText(e.target.value)}
           sx={{ mb: 2 }}
@@ -228,13 +222,13 @@ export function CheckboxOptionsDialog({
                 onChange={() => handleToggleChecked(row.id)}
                 sx={{ p: 0.75 }}
                 slotProps={{
-                  input: { 'aria-label': 'To‘g‘ri variant (bir nechta mumkin)' },
+                  input: { 'aria-label': 'Correct option (multiple allowed)' },
                 }}
               />
               <IconButton
                 type="button"
                 size="small"
-                aria-label="Variantni o‘chirish"
+                aria-label="Remove option"
                 disabled={rows.length <= MIN_OPTIONS}
                 onClick={() => handleRemove(row.id)}
                 sx={{ color: rows.length <= MIN_OPTIONS ? 'action.disabled' : 'error.main' }}
@@ -250,7 +244,7 @@ export function CheckboxOptionsDialog({
         <Button
           type="button"
           fullWidth
-          variant="contained"
+          variant="primary"
           onClick={handleAdd}
           sx={{ ...darkButtonSx, mt: 2.5 }}
         >
@@ -261,14 +255,13 @@ export function CheckboxOptionsDialog({
       <DialogActions sx={{ px: 3, pb: 2.5, pt: 0, gap: 1, justifyContent: 'flex-end' }}>
         <Button
           type="button"
-          variant="outlined"
-          color="inherit"
+          variant="secondary"
           onClick={onClose}
           sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2, px: 2.5 }}
         >
           Cancel
         </Button>
-        <Button type="button" variant="contained" onClick={handleInsert} sx={{ ...darkButtonSx, px: 2.5 }}>
+        <Button type="button" variant="primary" onClick={handleInsert} sx={{ ...darkButtonSx, px: 2.5 }}>
           Insert
         </Button>
       </DialogActions>

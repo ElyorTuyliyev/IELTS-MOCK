@@ -1,11 +1,13 @@
 import { css } from '@emotion/react'
 
+import { menuActionGlobalStyles } from '../components/common/MenuAction'
+import { tokens, c } from '../theme/tokens'
+
 export const globalStyles = css`
   :root {
-    font-family:
-      Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    color: #111827;
-    background: #eef2ff;
+    font-family: ${tokens.typography.fontFamily};
+    color: ${c.text.primary};
+    background: ${c.background.default};
   }
 
   * {
@@ -21,8 +23,8 @@ export const globalStyles = css`
   body {
     margin: 0;
     background:
-      radial-gradient(circle at top left, rgba(124, 58, 237, 0.14), transparent 28%),
-      linear-gradient(180deg, #f8f9ff 0%, #eef2ff 100%);
+      radial-gradient(circle at top left, ${tokens.rgba.primary_14}, transparent 28%),
+      ${c.gradient.body};
   }
 
   button,
@@ -35,4 +37,6 @@ export const globalStyles = css`
     color: inherit;
     text-decoration: none;
   }
+
+  ${menuActionGlobalStyles}
 `

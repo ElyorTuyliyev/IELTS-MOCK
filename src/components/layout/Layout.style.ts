@@ -1,18 +1,19 @@
 import { Box } from '@mui/material'
 import { styled } from '@mui/material/styles'
 
+import theme, { tokens } from '@/theme'
 const panelSurface = `
-  border: 1px solid rgba(148, 163, 184, 0.24);
+  border: 1px solid ${tokens.rgba.border_24};
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+  background: ${tokens.rgba.white_92};
+  box-shadow: ${tokens.shadows.card};
 `
 
 export const LayoutRoot = styled(Box)`
   display: grid;
   grid-template-columns: 288px minmax(0, 1fr);
   min-height: 100vh;
-  gap: 16px;
+  gap: ${theme.spacing(2)};
   padding: 16px;
 
   .dashboard__content {
@@ -28,6 +29,12 @@ export const LayoutRoot = styled(Box)`
   }
 
   @media (max-width: 1120px) {
-    grid-template-columns: 1fr;
+    grid-template-columns: 76px minmax(0, 1fr);
+    gap: ${theme.spacing(1.5)};
+    padding: 12px;
+
+    .content__main {
+      padding: 20px 16px;
+    }
   }
 `

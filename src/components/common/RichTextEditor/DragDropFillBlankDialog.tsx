@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   Box,
-  Button,
   Dialog,
   DialogActions,
   DialogContent,
@@ -13,6 +12,9 @@ import {
   Typography,
 } from '@mui/material'
 
+import { c, tokens } from '../../../theme'
+import { Button } from '../Button'
+import { useToast } from '../Toast'
 import {
   DRAG_DROP_GAP_TOKEN,
   type DragDropFillBlankPayload,
@@ -20,17 +22,17 @@ import {
 } from './extensions/dragDropFillBlankExtension'
 
 const palette = {
-  border: '#e2e8f0',
-  borderStrong: '#cbd5e1',
-  surface: '#ffffff',
-  surfaceMuted: '#f8fafc',
-  text: '#0f172a',
-  muted: '#64748b',
-  exampleBg: '#eff6ff',
-  exampleBorder: '#bfdbfe',
-  exampleText: '#1e40af',
-  primaryDark: '#111827',
-  primaryHover: '#0f172a',
+  border: c.border.default,
+  borderStrong: c.border.strong,
+  surface: c.surface.default,
+  surfaceMuted: c.surface.muted,
+  text: c.text.primary,
+  muted: c.text.secondary,
+  exampleBg: c.info.bg,
+  exampleBorder: c.info.border,
+  exampleText: c.info.darker,
+  primaryDark: c.slate[900],
+  primaryHover: c.text.primary,
 }
 
 function countGaps(text: string): number {
@@ -50,6 +52,7 @@ export type DragDropFillBlankDialogProps = {
   open: boolean
   onClose: () => void
   onInsert: (payload: DragDropFillBlankPayload) => void
+  defaultStartNumber?: number
 }
 
 type DistractorRow = { id: string; text: string }
@@ -75,7 +78,7 @@ function Panel({
         borderRadius: '14px',
         bgcolor: palette.surface,
         border: `1px solid ${palette.border}`,
-        boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+        boxShadow: tokens.shadows.sm,
       }}
     >
       <Typography
@@ -102,7 +105,7 @@ function Panel({
 
 const primaryButtonSx = {
   bgcolor: palette.primaryDark,
-  color: '#fff',
+  color: c.white,
   textTransform: 'none' as const,
   fontWeight: 600,
   borderRadius: '10px',
@@ -110,28 +113,33 @@ const primaryButtonSx = {
   '&:hover': { bgcolor: palette.primaryHover },
 }
 
-export function DragDropFillBlankDialog({ open, onClose, onInsert }: DragDropFillBlankDialogProps) {
+export function DragDropFillBlankDialog({
+  open,
+  onClose,
+  onInsert,
+  defaultStartNumber = 1,
+}: DragDropFillBlankDialogProps) {
+  const toast = useToast()
   const titleId = useId()
   const descId = useId()
   const questionInputRef = useRef<HTMLTextAreaElement | null>(null)
   const [questionText, setQuestionText] = useState('')
   const [mode, setMode] = useState<'shuffled' | 'ordered'>('shuffled')
   const [startNumber, setStartNumber] = useState('1')
+  const [targetsLabel, setTargetsLabel] = useState('Categories')
+  const [poolLabel, setPoolLabel] = useState('Options')
   const [gapAnswers, setGapAnswers] = useState<string[]>([])
   const [distractors, setDistractors] = useState<DistractorRow[]>([])
-  const [error, setError] = useState<string | null>(null)
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!open) return
-    // Reset dialog inputs on each open.
     setQuestionText('')
     setMode('shuffled')
-    setStartNumber('1')
+    setStartNumber(String(Math.max(1, Math.floor(defaultStartNumber))))
     setGapAnswers([])
     setDistractors([])
-    setError(null)
-  }, [open])
+  }, [open, defaultStartNumber])
   /* eslint-enable react-hooks/set-state-in-effect */
 
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -190,21 +198,21 @@ export function DragDropFillBlankDialog({ open, onClose, onInsert }: DragDropFil
   const handleInsert = useCallback(() => {
     const n = countGaps(questionText)
     if (n === 0) {
-      setError(`Add at least one blank in the question using ${DRAG_DROP_GAP_TOKEN} (four underscores).`)
+      toast.error(`Add at least one blank in the question using ${DRAG_DROP_GAP_TOKEN} (four underscores).`)
       return
     }
     if (gapAnswers.length !== n) {
-      setError('The number of blanks and answers does not match. Check your question text.')
+      toast.error('The number of blanks and answers does not match. Check your question text.')
       return
     }
     const trimmedGaps = gapAnswers.map((a) => a.trim())
     if (trimmedGaps.some((a) => a.length === 0)) {
-      setError('Enter a correct answer for every gap.')
+      toast.error('Enter a correct answer for every gap.')
       return
     }
     const uniq = new Set(trimmedGaps)
     if (uniq.size !== trimmedGaps.length) {
-      setError('Each gap should have a different correct answer.')
+      toast.error('Each gap should have a different correct answer.')
       return
     }
     const parsedStart = Number(startNumber)
@@ -222,14 +230,15 @@ export function DragDropFillBlankDialog({ open, onClose, onInsert }: DragDropFil
       mode,
       gaps,
       distractors: distractorStrings,
+      targetsLabel: targetsLabel.trim() || 'Categories',
+      poolLabel: poolLabel.trim() || 'Options',
     })
-    setError(null)
-  }, [questionText, mode, gapAnswers, distractors, onInsert, startNumber])
+  }, [questionText, mode, gapAnswers, distractors, onInsert, startNumber, targetsLabel, poolLabel, toast])
 
   const textFieldSx = {
     '& .MuiOutlinedInput-root': { borderRadius: '10px' },
     '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
-      borderColor: '#3b82f6',
+      borderColor: c.info.light,
       borderWidth: 2,
     },
   } as const
@@ -243,7 +252,7 @@ export function DragDropFillBlankDialog({ open, onClose, onInsert }: DragDropFil
       slotProps={{
         backdrop: {
           sx: {
-            bgcolor: 'rgba(15, 23, 42, 0.42)',
+            bgcolor: tokens.rgba.slate900_42,
             backdropFilter: 'blur(3px)',
           },
         },
@@ -254,8 +263,8 @@ export function DragDropFillBlankDialog({ open, onClose, onInsert }: DragDropFil
             maxWidth: 560,
             width: '100%',
             overflow: 'hidden',
-            border: '1px solid rgba(15, 23, 42, 0.08)',
-            boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.18)',
+            border: `1px solid ${tokens.rgba.slate900_08}`,
+            boxShadow: tokens.shadows.dialogLg,
           },
         },
       }}
@@ -281,7 +290,7 @@ export function DragDropFillBlankDialog({ open, onClose, onInsert }: DragDropFil
             top: 10,
             borderRadius: '10px',
             color: palette.muted,
-            '&:hover': { bgcolor: 'rgba(15, 23, 42, 0.06)' },
+            '&:hover': { bgcolor: tokens.rgba.slate900_06 },
           }}
         >
           <Typography component="span" sx={{ fontSize: '1.3rem', lineHeight: 1, fontWeight: 300 }}>
@@ -334,7 +343,7 @@ export function DragDropFillBlankDialog({ open, onClose, onInsert }: DragDropFil
                 <Radio
                   sx={{
                     color: palette.borderStrong,
-                    '&.Mui-checked': { color: '#2563eb' },
+                    '&.Mui-checked': { color: c.info.main },
                   }}
                 />
               }
@@ -356,7 +365,7 @@ export function DragDropFillBlankDialog({ open, onClose, onInsert }: DragDropFil
                 <Radio
                   sx={{
                     color: palette.borderStrong,
-                    '&.Mui-checked': { color: '#2563eb' },
+                    '&.Mui-checked': { color: c.info.main },
                   }}
                 />
               }
@@ -373,6 +382,25 @@ export function DragDropFillBlankDialog({ open, onClose, onInsert }: DragDropFil
               sx={{ alignItems: 'flex-start', ml: 0 }}
             />
           </RadioGroup>
+        </Panel>
+
+        <Panel title="Column labels" subtitle="Shown above the matching columns in the exam player.">
+          <TextField
+            fullWidth
+            label="Left column (categories)"
+            value={targetsLabel}
+            onChange={(e) => setTargetsLabel(e.target.value)}
+            placeholder="e.g. Fossil categories"
+            sx={{ ...textFieldSx, mb: 1.5 }}
+          />
+          <TextField
+            fullWidth
+            label="Right column (options)"
+            value={poolLabel}
+            onChange={(e) => setPoolLabel(e.target.value)}
+            placeholder="e.g. Features"
+            sx={textFieldSx}
+          />
         </Panel>
 
         <Panel title="Question text">
@@ -447,7 +475,7 @@ export function DragDropFillBlankDialog({ open, onClose, onInsert }: DragDropFil
               </Box>
             ))
           )}
-          <Button type="button" fullWidth variant="contained" onClick={handleAppendGap} sx={{ ...primaryButtonSx, mt: gapAnswers.length ? 1 : 0 }}>
+          <Button type="button" fullWidth variant="primary" onClick={handleAppendGap} sx={{ ...primaryButtonSx, mt: gapAnswers.length ? 1 : 0 }}>
             Add gap answer ({DRAG_DROP_GAP_TOKEN} to question)
           </Button>
         </Panel>
@@ -490,25 +518,10 @@ export function DragDropFillBlankDialog({ open, onClose, onInsert }: DragDropFil
               </IconButton>
             </Box>
           ))}
-          <Button type="button" fullWidth variant="contained" onClick={handleAddDistractor} sx={{ ...primaryButtonSx, mt: distractors.length ? 1 : 0 }}>
+          <Button type="button" fullWidth variant="primary" onClick={handleAddDistractor} sx={{ ...primaryButtonSx, mt: distractors.length ? 1 : 0 }}>
             Add distractor
           </Button>
         </Panel>
-
-        {error ? (
-          <Box
-            sx={{
-              p: 1.5,
-              borderRadius: '12px',
-              bgcolor: '#fef2f2',
-              border: '1px solid #fecaca',
-            }}
-          >
-            <Typography variant="body2" sx={{ color: '#b91c1c', fontWeight: 600 }}>
-              {error}
-            </Typography>
-          </Box>
-        ) : null}
       </DialogContent>
 
       <DialogActions
@@ -523,8 +536,7 @@ export function DragDropFillBlankDialog({ open, onClose, onInsert }: DragDropFil
       >
         <Button
           type="button"
-          variant="outlined"
-          color="inherit"
+          variant="secondary"
           onClick={onClose}
           sx={{
             textTransform: 'none',
@@ -533,13 +545,13 @@ export function DragDropFillBlankDialog({ open, onClose, onInsert }: DragDropFil
             px: 2.5,
             py: 0.85,
             borderColor: palette.borderStrong,
-            color: '#334155',
-            '&:hover': { borderColor: '#94a3b8', bgcolor: 'rgba(15, 23, 42, 0.03)' },
+            color: c.text.subtle,
+            '&:hover': { borderColor: c.text.disabled, bgcolor: tokens.rgba.slate900_04 },
           }}
         >
           Cancel
         </Button>
-        <Button type="button" variant="contained" disableElevation onClick={handleInsert} sx={{ ...primaryButtonSx, px: 2.75 }}>
+        <Button type="button" variant="primary" disableElevation onClick={handleInsert} sx={{ ...primaryButtonSx, px: 2.75 }}>
           Insert
         </Button>
       </DialogActions>

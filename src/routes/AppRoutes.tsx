@@ -8,16 +8,16 @@ import { hasRequiredRole, USER_ROLES, type UserRole } from '../store/slices/auth
 import { ROUTES_PATH } from './paths'
 
 const DashboardPage = lazy(() =>
-  import('../pages/DashboardPage').then((m) => ({ default: m.DashboardPage })),
+  import('../pages/Dashboard').then((m) => ({ default: m.DashboardPage })),
 )
 const HomePage = lazy(() =>
   import('../pages/HomePage').then((m) => ({ default: m.HomePage })),
 )
-const ExamDetailsPage = lazy(() =>
-  import('../pages/ExamDetailsPage').then((m) => ({ default: m.ExamDetailsPage })),
+const ArchivedExamsPage = lazy(() =>
+  import('../pages/ArchivedExams').then((m) => ({ default: m.ArchivedExamsPage })),
 )
-const PrizeQuizzesPage = lazy(() =>
-  import('../pages/PrizeQuizzesPage').then((m) => ({ default: m.PrizeQuizzesPage })),
+const ExamDetailsPage = lazy(() =>
+  import('../pages/ExamDetails').then((m) => ({ default: m.ExamDetailsPage })),
 )
 const CentersPage = lazy(() =>
   import('../pages/Centers').then((m) => ({ default: m.CentersPage })),
@@ -25,26 +25,21 @@ const CentersPage = lazy(() =>
 const AddCenterPage = lazy(() =>
   import('../pages/AddCenter').then((m) => ({ default: m.AddCenterPage })),
 )
-const CoursesPage = lazy(() =>
-  import('../pages/CoursesPage').then((m) => ({ default: m.CoursesPage })),
-)
-const FeaturePage = lazy(() =>
-  import('../pages/FeaturePage/FeaturePage').then((m) => ({ default: m.FeaturePage })),
-)
+
 const QuestionsPage = lazy(() =>
-  import('../pages/QuestionsPage').then((m) => ({ default: m.QuestionsPage })),
+  import('../pages/Questions').then((m) => ({ default: m.QuestionsPage })),
 )
 const AddQuestionPage = lazy(() =>
-  import('../pages/AddQuestionPage').then((m) => ({ default: m.AddQuestionPage })),
+  import('../pages/AddQuestion').then((m) => ({ default: m.AddQuestionPage })),
 )
 const AllStudentsPage = lazy(() =>
-  import('../pages/AllStudentsPage').then((m) => ({ default: m.AllStudentsPage })),
+  import('../pages/AllStudents').then((m) => ({ default: m.AllStudentsPage })),
 )
 const StatisticsPage = lazy(() =>
-  import('../pages/StatisticsPage').then((m) => ({ default: m.StatisticsPage })),
+  import('../pages/Statistics').then((m) => ({ default: m.StatisticsPage })),
 )
 const PaymentsPage = lazy(() =>
-  import('../pages/PaymentsPage').then((m) => ({ default: m.PaymentsPage })),
+  import('../pages/Payments').then((m) => ({ default: m.PaymentsPage })),
 )
 const SignInPage = lazy(() =>
   import('../pages/Auth/SignInPage').then((m) => ({ default: m.SignInPage })),
@@ -53,13 +48,22 @@ const SignUpPage = lazy(() =>
   import('../pages/Auth/SignUpPage').then((m) => ({ default: m.SignUpPage })),
 )
 const SignupFormsPage = lazy(() =>
-  import('../pages/SignupFormsPage').then((m) => ({ default: m.SignupFormsPage })),
+  import('../pages/SignupForms').then((m) => ({ default: m.SignupFormsPage })),
 )
 const StudentLeadSignupPage = lazy(() =>
-  import('../pages/StudentLeadSignupPage').then((m) => ({ default: m.StudentLeadSignupPage })),
+  import('../pages/StudentLeadSignup').then((m) => ({ default: m.StudentLeadSignupPage })),
 )
 const StudentExamPlayerPage = lazy(() =>
-  import('../pages/StudentExamPlayerPage').then((m) => ({ default: m.StudentExamPlayerPage })),
+  import('../pages/StudentExam').then((m) => ({ default: m.StudentExamPlayerPage })),
+)
+const StudentMyExamsPage = lazy(() =>
+  import('../pages/StudentMyExams').then((m) => ({ default: m.StudentMyExamsPage })),
+)
+const NotFoundPage = lazy(() =>
+  import('../pages/NotFound').then((m) => ({ default: m.NotFoundPage })),
+)
+const NotificationsPage = lazy(() =>
+  import('../pages/Notifications').then((m) => ({ default: m.NotificationsPage })),
 )
 
 type AppRouteConfig = {
@@ -119,14 +123,19 @@ const appRoutes: AppRouteConfig[] = [
     allowedRoles: examRoles,
   },
   {
+    path: ROUTES_PATH.examsArchive,
+    element: <ArchivedExamsPage />,
+    allowedRoles: examRoles,
+  },
+  {
     path: ROUTES_PATH.examDetails,
     element: <ExamDetailsPage />,
     allowedRoles: examRoles,
   },
   {
-    path: ROUTES_PATH.prizeQuizzes,
-    element: <PrizeQuizzesPage />,
-    allowedRoles: examRoles,
+    path: ROUTES_PATH.studentMyExams,
+    element: <StudentMyExamsPage />,
+    allowedRoles: studentOnly,
   },
   {
     path: ROUTES_PATH.studentExamPlayer,
@@ -148,20 +157,10 @@ const appRoutes: AppRouteConfig[] = [
     element: <Navigate to={ROUTES_PATH.courses} replace />,
     allowedRoles: superAdminOnly,
   },
-  {
-    path: ROUTES_PATH.courses,
-    element: <CoursesPage />,
-    allowedRoles: superAdminOnly,
-  },
+  
   {
     path: ROUTES_PATH.courseware,
-    element: (
-      <FeaturePage
-        eyebrow="Learning"
-        title="Courseware"
-        description="This page is ready for lessons, modules, and course content management linked to your LMS workflow."
-      />
-    ),
+    element: <NotFoundPage />,
     allowedRoles: superAdminOnly,
   },
   {
@@ -185,28 +184,6 @@ const appRoutes: AppRouteConfig[] = [
     allowedRoles: centerRoles,
   },
   {
-    path: ROUTES_PATH.batchImport,
-    element: (
-      <FeaturePage
-        eyebrow="Bank"
-        title="Batch Import"
-        description="Upload, map, and validate bulk question imports from external sources on this screen."
-      />
-    ),
-    allowedRoles: centerRoles,
-  },
-  {
-    path: ROUTES_PATH.importRecords,
-    element: (
-      <FeaturePage
-        eyebrow="Bank"
-        title="Import Records"
-        description="Track import history, validation results, and retry actions for previously uploaded question files."
-      />
-    ),
-    allowedRoles: centerRoles,
-  },
-  {
     path: ROUTES_PATH.students,
     element: <Navigate to={ROUTES_PATH.allStudents} replace />,
     allowedRoles: centerRoles,
@@ -223,24 +200,12 @@ const appRoutes: AppRouteConfig[] = [
   },
   {
     path: ROUTES_PATH.studentSettings,
-    element: (
-      <FeaturePage
-        eyebrow="People"
-        title="Student Settings"
-        description="Manage student-facing settings, login fields, access rules, and profile preferences here."
-      />
-    ),
+    element: <NotFoundPage />,
     allowedRoles: centerRoles,
   },
   {
     path: ROUTES_PATH.resultsDatabase,
-    element: (
-      <FeaturePage
-        eyebrow="Management"
-        title="Results Database"
-        description="This screen can hold result tables, score history, and searchable assessment records."
-      />
-    ),
+    element: <NotFoundPage />,
     allowedRoles: studentFeatureRoles,
   },
   {
@@ -250,13 +215,7 @@ const appRoutes: AppRouteConfig[] = [
   },
   {
     path: ROUTES_PATH.certificates,
-    element: (
-      <FeaturePage
-        eyebrow="Management"
-        title="Certificates"
-        description="Manage certificate templates, issue history, and verification workflows on this page."
-      />
-    ),
+    element: <NotFoundPage />,
     allowedRoles: studentFeatureRoles,
   },
   {
@@ -266,36 +225,23 @@ const appRoutes: AppRouteConfig[] = [
   },
   {
     path: ROUTES_PATH.surveys,
-    element: (
-      <FeaturePage
-        eyebrow="Feedback"
-        title="Surveys"
-        description="This route is ready for survey campaigns, response summaries, and follow-up actions."
-      />
-    ),
+    element: <NotFoundPage />,
     allowedRoles: superAdminOnly,
   },
   {
     path: ROUTES_PATH.settings,
-    element: (
-      <FeaturePage
-        eyebrow="System"
-        title="Settings"
-        description="Application preferences, organization settings, and user controls can be added here."
-      />
-    ),
+    element: <NotFoundPage />,
     allowedRoles: superAdminOnly,
   },
   {
     path: ROUTES_PATH.help,
-    element: (
-      <FeaturePage
-        eyebrow="Support"
-        title="Help"
-        description="Use this page for help center links, onboarding tips, FAQs, or support contact actions."
-      />
-    ),
+    element: <NotFoundPage />,
     allowedRoles: superAdminOnly,
+  },
+  {
+    path: ROUTES_PATH.notifications,
+    element: <NotificationsPage />,
+    allowedRoles: allRoles,
   },
   {
     path: ROUTES_PATH.signIn,
@@ -339,7 +285,7 @@ export function AppRoutes() {
           }
         />
       ))}
-      <Route path="*" element={<Navigate to={ROUTES_PATH.signIn} replace />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )
 }

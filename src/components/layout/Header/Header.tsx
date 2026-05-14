@@ -1,12 +1,16 @@
-import { useCallback, useMemo, useState } from 'react'
-import { Box, Button, IconButton, Snackbar, Typography } from '@mui/material'
+import { useCallback, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
+import NotificationsOutlinedIcon from '@mui/icons-material/NotificationsOutlined'
+import { Badge, Box, IconButton, Typography } from '@mui/material'
+import { Button } from '../../common/Button'
+import { useToast } from '../../common/Toast'
 import { useAppSelector } from '../../../store/hooks'
 import { selectAuthToken, selectUserName, selectUserRole } from '../../../store'
 import { ROUTES_PATH } from '../../../routes/paths'
 import { USER_ROLES, type UserRole } from '../../../store/slices/authSlice'
+import { useNotifications } from '../../../features/notifications'
+import { isMongoObjectId } from '../../../helpers'
 import { HeaderRoot } from './Header.style'
-
-const team = ['TA', 'SN', 'AR', '10+']
 
 type JwtPayload = {
   firstName?: string | null
@@ -35,8 +39,6 @@ function decodeJwtPayload(authToken: string | null): JwtPayload | null {
   }
 }
 
-const MONGO_OBJECT_ID_RE = /^[a-f0-9]{24}$/i
-
 function buildStudentInviteUrl(authToken: string | null, role: UserRole | null): string {
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const base = `${origin}${ROUTES_PATH.studentLeadJoin}`
@@ -44,7 +46,7 @@ function buildStudentInviteUrl(authToken: string | null, role: UserRole | null):
 
   if (role === USER_ROLES.center) {
     const centerId = payload?.centerId ?? payload?.id ?? null
-    if (centerId && MONGO_OBJECT_ID_RE.test(centerId)) {
+    if (centerId && isMongoObjectId(centerId)) {
       return `${base}?centerId=${encodeURIComponent(centerId)}`
     }
   }
@@ -53,10 +55,12 @@ function buildStudentInviteUrl(authToken: string | null, role: UserRole | null):
 }
 
 export function Header() {
+  const navigate = useNavigate()
   const userName = useAppSelector(selectUserName)
   const authToken = useAppSelector(selectAuthToken)
   const userRole = useAppSelector(selectUserRole)
-  const [copyOpen, setCopyOpen] = useState(false)
+  const { unreadCount: notificationUnreadCount } = useNotifications()
+  const toast = useToast()
 
   const tokenPayload = useMemo(() => decodeJwtPayload(authToken), [authToken])
   const tokenName = (() => {
@@ -82,8 +86,8 @@ export function Header() {
     } catch {
       window.prompt('Copy invite link:', inviteUrl)
     }
-    setCopyOpen(true)
-  }, [inviteUrl])
+    toast.success('Invite link copied to clipboard. Share it with students.')
+  }, [inviteUrl, toast])
 
   return (
     <HeaderRoot className="content__topbar">
@@ -98,21 +102,6 @@ export function Header() {
         </Box>
 
         <Box className="content__actions">
-          <IconButton className="content__icon-button" aria-label="Messages">
-            ✉
-          </IconButton>
-          <IconButton className="content__icon-button" aria-label="Notifications">
-            🔔
-          </IconButton>
-
-          <Box className="content__team" aria-label="Team">
-            {team.map((member) => (
-              <Box key={member} component="span" className="content__team-member">
-                {member}
-              </Box>
-            ))}
-          </Box>
-
           {showInviteStudents ? (
             <Button
               type="button"
@@ -123,16 +112,26 @@ export function Header() {
               Invite Students
             </Button>
           ) : null}
+          <Badge
+            className="content__notification-badge"
+            badgeContent={
+              notificationUnreadCount > 99 ? '99+' : notificationUnreadCount
+            }
+            color="error"
+            invisible={notificationUnreadCount < 1}
+            overlap="rectangular"
+            anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+          >
+            <IconButton
+              className="content__icon-button"
+              aria-label="Notifications"
+              onClick={() => navigate(ROUTES_PATH.notifications)}
+            >
+              <NotificationsOutlinedIcon className="content__notification-icon" fontSize="small" />
+            </IconButton>
+          </Badge>
         </Box>
       </Box>
-
-      <Snackbar
-        open={copyOpen}
-        autoHideDuration={4000}
-        onClose={() => setCopyOpen(false)}
-        message="Invite link copied to clipboard. Share it with students."
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      />
     </HeaderRoot>
   )
 }

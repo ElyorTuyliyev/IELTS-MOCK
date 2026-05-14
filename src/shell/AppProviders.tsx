@@ -3,12 +3,16 @@ import { Suspense } from 'react'
 import { ApolloProvider } from '@apollo/client/react'
 import { Global } from '@emotion/react'
 import { Box, CircularProgress } from '@mui/material'
+import { ThemeProvider } from '@mui/material/styles'
 import { Provider } from 'react-redux'
 import { PersistGate } from 'redux-persist/integration/react'
 import { BrowserRouter } from 'react-router-dom'
 
+import { ToastProvider } from '../components/common/Toast'
 import { apolloClient } from '../graphql/client'
+import { NotificationsProvider } from '../features/notifications'
 import { persistor, store } from '../store'
+import { muiTheme } from '../theme'
 import { globalStyles } from './globalStyles'
 
 function RouteFallback() {
@@ -36,8 +40,14 @@ export function AppProviders({ children }: AppProvidersProps) {
       <PersistGate loading={null} persistor={persistor}>
         <ApolloProvider client={apolloClient}>
           <BrowserRouter>
-            <Global styles={globalStyles} />
-            <Suspense fallback={<RouteFallback />}>{children}</Suspense>
+            <ThemeProvider theme={muiTheme}>
+              <Global styles={globalStyles} />
+              <ToastProvider>
+                <NotificationsProvider>
+                  <Suspense fallback={<RouteFallback />}>{children}</Suspense>
+                </NotificationsProvider>
+              </ToastProvider>
+            </ThemeProvider>
           </BrowserRouter>
         </ApolloProvider>
       </PersistGate>

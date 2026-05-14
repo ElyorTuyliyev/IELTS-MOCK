@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useId, useState } from 'react'
 import {
   Box,
-  Button,
   Dialog,
   DialogActions,
   DialogContent,
@@ -13,6 +12,9 @@ import {
   Typography,
 } from '@mui/material'
 
+import { c, tokens } from '../../../theme'
+import { Button } from '../Button'
+import { useToast } from '../Toast'
 import type { RadioOption } from './extensions/radioGroupExtension'
 
 type Row = { id: string; text: string }
@@ -32,7 +34,7 @@ export type RadioOptionsDialogProps = {
   open: boolean
   defaultQuestionNumber?: number
   onClose: () => void
-  /** `correctValue` — tanlangan variantning `value` si (editor ichida checked). */
+  /** `correctValue` — selected option `value` (checked in the editor). */
   onInsert: (questionNumber: number, questionText: string, options: RadioOption[], correctValue: string) => void
 }
 
@@ -42,24 +44,22 @@ export function RadioOptionsDialog({
   onClose,
   onInsert,
 }: RadioOptionsDialogProps) {
+  const toast = useToast()
   const titleId = useId()
   const descId = useId()
   const [questionText, setQuestionText] = useState('')
   const [questionNumber, setQuestionNumber] = useState<number>(Math.max(1, Math.floor(defaultQuestionNumber)))
   const [rows, setRows] = useState<Row[]>(initialRows)
   const [correctId, setCorrectId] = useState<string>(() => initialRows()[0]?.id ?? '')
-  const [error, setError] = useState<string | null>(null)
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!open) return
     const next = initialRows()
-    // Reset form state each time modal opens.
     setQuestionText('')
     setQuestionNumber(Math.max(1, Math.floor(defaultQuestionNumber)))
     setRows(next)
     setCorrectId(next[0]?.id ?? '')
-    setError(null)
   }, [open, defaultQuestionNumber])
   /* eslint-enable react-hooks/set-state-in-effect */
 
@@ -91,16 +91,16 @@ export function RadioOptionsDialog({
   const handleInsert = useCallback(() => {
     const trimmedQuestion = questionText.trim()
     if (!trimmedQuestion) {
-      setError('Savol matnini kiriting.')
+      toast.error('Enter the question text.')
       return
     }
     const trimmed = rows.map((row) => row.text.trim())
     if (trimmed.some((text) => text.length === 0)) {
-      setError('Barcha variantlar uchun matn kiriting.')
+      toast.error('Enter text for every option.')
       return
     }
     if (rows.length < MIN_OPTIONS) {
-      setError(`Kamida ${MIN_OPTIONS} ta variant bo‘lishi kerak.`)
+      toast.error(`At least ${MIN_OPTIONS} options are required.`)
       return
     }
     const options: RadioOption[] = rows.map((row) => ({
@@ -110,26 +110,25 @@ export function RadioOptionsDialog({
     const safeQuestionNumber =
       Number.isFinite(questionNumber) && questionNumber > 0 ? Math.floor(questionNumber) : 1
     onInsert(safeQuestionNumber, trimmedQuestion, options, correctId)
-    setError(null)
-  }, [questionText, questionNumber, rows, correctId, onInsert])
+  }, [questionText, questionNumber, rows, correctId, onInsert, toast])
 
   const textFieldSx = {
     flex: 1,
     '& .MuiOutlinedInput-root': { borderRadius: 2 },
     '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
-      borderColor: '#7c3aed',
+      borderColor: c.primary.main,
       borderWidth: 2,
     },
   } as const
 
   const darkButtonSx = {
-    bgcolor: '#111827',
-    color: '#fff',
+    bgcolor: c.slate[900],
+    color: c.white,
     textTransform: 'none' as const,
     fontWeight: 600,
     borderRadius: 2,
     py: 1.25,
-    '&:hover': { bgcolor: '#0f172a' },
+    '&:hover': { bgcolor: c.text.primary },
   }
 
   return (
@@ -144,7 +143,7 @@ export function RadioOptionsDialog({
             borderRadius: 3,
             maxWidth: 520,
             width: '100%',
-            boxShadow: '0 24px 48px rgba(15, 23, 42, 0.12)',
+            boxShadow: tokens.shadows.dialog,
           },
         },
       }}
@@ -153,7 +152,7 @@ export function RadioOptionsDialog({
         <IconButton
           type="button"
           onClick={onClose}
-          aria-label="Yopish"
+          aria-label="Close"
           sx={{
             position: 'absolute',
             right: 8,
@@ -174,11 +173,6 @@ export function RadioOptionsDialog({
       </Box>
 
       <DialogContent sx={{ pt: 1, pb: 2, px: 3 }}>
-        {error ? (
-          <Typography variant="body2" color="error" sx={{ mb: 2 }}>
-            {error}
-          </Typography>
-        ) : null}
         <TextField
           type="number"
           size="small"
@@ -192,7 +186,7 @@ export function RadioOptionsDialog({
           size="small"
           fullWidth
           label="Question"
-          placeholder="Savol matni"
+          placeholder="Question text"
           value={questionText}
           onChange={(e) => setQuestionText(e.target.value)}
           sx={{ mb: 2 }}
@@ -230,7 +224,7 @@ export function RadioOptionsDialog({
               <FormControlLabel
                 value={row.id}
                 control={
-                  <Radio sx={{ p: 0.75 }} slotProps={{ input: { 'aria-label': 'To‘g‘ri variant' } }} />
+                  <Radio sx={{ p: 0.75 }} slotProps={{ input: { 'aria-label': 'Correct option' } }} />
                 }
                 label=""
                 sx={{ m: 0, mr: 0.5 }}
@@ -238,7 +232,7 @@ export function RadioOptionsDialog({
               <IconButton
                 type="button"
                 size="small"
-                aria-label="Variantni o‘chirish"
+                aria-label="Remove option"
                 disabled={rows.length <= MIN_OPTIONS}
                 onClick={() => handleRemove(row.id)}
                 sx={{ color: rows.length <= MIN_OPTIONS ? 'action.disabled' : 'error.main' }}
@@ -254,7 +248,7 @@ export function RadioOptionsDialog({
         <Button
           type="button"
           fullWidth
-          variant="contained"
+          variant="primary"
           onClick={handleAdd}
           sx={{ ...darkButtonSx, mt: 2.5 }}
         >
@@ -265,14 +259,13 @@ export function RadioOptionsDialog({
       <DialogActions sx={{ px: 3, pb: 2.5, pt: 0, gap: 1, justifyContent: 'flex-end' }}>
         <Button
           type="button"
-          variant="outlined"
-          color="inherit"
+          variant="secondary"
           onClick={onClose}
           sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2, px: 2.5 }}
         >
           Cancel
         </Button>
-        <Button type="button" variant="contained" onClick={handleInsert} sx={{ ...darkButtonSx, px: 2.5 }}>
+        <Button type="button" variant="primary" onClick={handleInsert} sx={{ ...darkButtonSx, px: 2.5 }}>
           Insert
         </Button>
       </DialogActions>

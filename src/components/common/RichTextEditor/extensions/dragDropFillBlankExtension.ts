@@ -1,6 +1,19 @@
 import { mergeAttributes, Node } from '@tiptap/core'
+import {
+  attachDragDropBlockBehavior,
+  captureDragDropValuesFromBlock,
+} from '../utils/dragDropBlockHydration'
+import {
+  recoverGapsJsonFromElement,
+  resolveGapsJsonForMount,
+} from '../utils/dragDropHtmlSync'
+import {
+  getEditorDragDropPreviewValues,
+  mergeEditorDragDropPreviewValues,
+  writeEditorDragDropPreviewValue,
+} from '../utils/dragDropEditorPreviewState'
 
-/** Savoldagi bo‘shliq belgisi (4 ta past chiziq) */
+/** Blank marker in the question (4 underscores) */
 export const DRAG_DROP_GAP_TOKEN = '____'
 
 export type DragDropGap = { id: string; answer: string }
@@ -10,10 +23,30 @@ export type DragDropFillBlankPayload = {
   mode: 'shuffled' | 'ordered'
   gaps: DragDropGap[]
   distractors: string[]
+  targetsLabel?: string
+  poolLabel?: string
 }
 
-function escapeText(value: string): string {
+/** For HTML attribute values (so `"` inside JSON is not broken) */
+export function escapeHtmlAttr(value: string): string {
   return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+}
+
+function normalizeJsonAttr(value: string | null | undefined): string {
+  if (!value) return '[]'
+  try {
+    return JSON.stringify(JSON.parse(value))
+  } catch {
+    return String(value)
+  }
+}
+
+function createClientKey(): string {
+  return `dd-${Math.random().toString(36).slice(2, 11)}`
 }
 
 function buildQuestionParts(questionText: string, gaps: DragDropGap[]) {
@@ -29,17 +62,97 @@ function buildQuestionParts(questionText: string, gaps: DragDropGap[]) {
   return parts
 }
 
-function buildPool(mode: string, gaps: DragDropGap[], distractors: string[]) {
+export type DragDropMatchingRow = { label: string; gapId: string }
+
+export function gapIdToDisplayNumber(gapId: string): string {
+  const match = gapId.match(/\d+/)
+  return match?.[0] ?? gapId
+}
+
+export function extractDragDropInstruction(questionText: string): string {
+  return String(questionText ?? '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !line.includes(DRAG_DROP_GAP_TOKEN))
+    .join(' ')
+}
+
+export function buildMatchingRows(questionText: string, gaps: DragDropGap[]): DragDropMatchingRow[] {
+  const lines = String(questionText ?? '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+
+  if (lines.length > 0) {
+    const rows: DragDropMatchingRow[] = []
+    let gapIndex = 0
+    for (const line of lines) {
+      if (!line.includes(DRAG_DROP_GAP_TOKEN)) continue
+      const segments = line.split(DRAG_DROP_GAP_TOKEN)
+      const gapCount = segments.length - 1
+      for (let i = 0; i < gapCount; i += 1) {
+        const label = (i === 0 ? segments[0] : '').trim() || `Item ${gapIndex + 1}`
+        rows.push({
+          label,
+          gapId: gaps[gapIndex]?.id?.trim() || `Q${gapIndex + 1}`,
+        })
+        gapIndex += 1
+      }
+    }
+    if (rows.length > 0) return rows
+  }
+
+  const parts = buildQuestionParts(questionText, gaps)
+  const rows: DragDropMatchingRow[] = []
+  let currentLabel = ''
+  let gapIndex = 0
+  for (const part of parts) {
+    if (typeof part === 'string') {
+      const trimmed = part.trim().replace(/\s+/g, ' ')
+      if (trimmed) currentLabel = trimmed
+    } else {
+      rows.push({
+        label: currentLabel || `Item ${gapIndex + 1}`,
+        gapId: part.id,
+      })
+      currentLabel = ''
+      gapIndex += 1
+    }
+  }
+  if (rows.length > 0) return rows
+
+  return gaps.map((gap, index) => ({
+    label: `Item ${index + 1}`,
+    gapId: gap.id?.trim() || `Q${index + 1}`,
+  }))
+}
+
+export function buildPool(
+  mode: string,
+  gaps: DragDropGap[],
+  distractors: string[],
+  seed = '',
+) {
   const answers = gaps.map((g) => g.answer).filter(Boolean)
   const pool = [...answers, ...distractors.map((d) => String(d ?? '')).filter(Boolean)]
   if (mode === 'shuffled') {
-    // stable-ish shuffle for preview
-    return pool.sort((a, b) => a.localeCompare(b))
+    const arr = [...pool]
+    let hash = 0
+    const seedStr = seed || JSON.stringify(gaps.map((g) => g.id))
+    for (let i = 0; i < seedStr.length; i += 1) {
+      hash = (hash * 31 + seedStr.charCodeAt(i)) | 0
+    }
+    for (let i = arr.length - 1; i > 0; i -= 1) {
+      hash = (hash * 1664525 + 1013904223) | 0
+      const j = Math.abs(hash) % (i + 1)
+      ;[arr[i], arr[j]] = [arr[j], arr[i]]
+    }
+    return arr
   }
   return pool
 }
 
-function parseGaps(json: string | null | undefined): DragDropGap[] {
+export function parseGaps(json: string | null | undefined): DragDropGap[] {
   if (!json) return []
   try {
     const parsed = JSON.parse(json) as unknown
@@ -48,18 +161,18 @@ function parseGaps(json: string | null | undefined): DragDropGap[] {
       if (item && typeof item === 'object' && 'answer' in item) {
         const o = item as { id?: string; answer: string }
         return {
-          id: typeof o.id === 'string' && o.id ? o.id : `gap${index + 1}`,
+          id: typeof o.id === 'string' && o.id ? o.id : `Q${index + 1}`,
           answer: String(o.answer ?? ''),
         }
       }
-      return { id: `gap${index + 1}`, answer: '' }
+      return { id: `Q${index + 1}`, answer: '' }
     })
   } catch {
     return []
   }
 }
 
-function parseDistractors(json: string | null | undefined): string[] {
+export function parseDistractors(json: string | null | undefined): string[] {
   if (!json) return []
   try {
     const parsed = JSON.parse(json) as unknown
@@ -70,9 +183,82 @@ function parseDistractors(json: string | null | undefined): string[] {
   }
 }
 
-// Note: Previously we rendered meta lists (Answers/Distractors).
-// Now we render "question + blanks + pool chips" preview (like IELTS UI),
-// so those helpers are not needed.
+function appendMatchingLayout(
+  parent: HTMLElement,
+  questionText: string,
+  gaps: DragDropGap[],
+  pool: string[],
+  targetsLabel = 'Categories',
+  poolLabel = 'Options',
+) {
+  const rows = buildMatchingRows(questionText, gaps)
+  const instruction = extractDragDropInstruction(questionText)
+
+  if (instruction) {
+    const intro = document.createElement('p')
+    intro.className = 'rte-drag-drop-fill__instruction'
+    intro.textContent = instruction
+    parent.appendChild(intro)
+  }
+
+  const layout = document.createElement('div')
+  layout.className = 'rte-drag-drop-fill__layout'
+
+  const targets = document.createElement('div')
+  targets.className = 'rte-drag-drop-fill__targets'
+  const targetsHead = document.createElement('div')
+  targetsHead.className = 'rte-drag-drop-fill__column-head'
+  targetsHead.textContent = targetsLabel
+  targets.appendChild(targetsHead)
+  rows.forEach((row) => {
+    const rowEl = document.createElement('div')
+    rowEl.className = 'rte-drag-drop-fill__row'
+
+    const label = document.createElement('span')
+    label.className = 'rte-drag-drop-fill__row-label'
+    label.textContent = row.label
+
+    const drop = document.createElement('div')
+    drop.className = 'rte-drag-drop-fill__drop'
+    drop.dataset.gapId = row.gapId
+    drop.setAttribute('data-gap-id', row.gapId)
+    drop.dataset.type = 'drop'
+    drop.setAttribute('role', 'button')
+    drop.tabIndex = 0
+
+    const dropNum = document.createElement('span')
+    dropNum.className = 'rte-drag-drop-fill__drop-num'
+    dropNum.textContent = gapIdToDisplayNumber(row.gapId)
+    drop.appendChild(dropNum)
+
+    rowEl.appendChild(label)
+    rowEl.appendChild(drop)
+    targets.appendChild(rowEl)
+  })
+
+  const poolWrap = document.createElement('div')
+  poolWrap.className = 'rte-drag-drop-fill__pool'
+  const poolLabelEl = document.createElement('div')
+  poolLabelEl.className = 'rte-drag-drop-fill__pool-label'
+  poolLabelEl.textContent = poolLabel
+  const poolItems = document.createElement('div')
+  poolItems.className = 'rte-drag-drop-fill__pool-items'
+  pool.forEach((value, chipIndex) => {
+    const chip = document.createElement('span')
+    chip.className = 'rte-drag-drop-fill__chip'
+    chip.draggable = false
+    chip.dataset.chipValue = value || '—'
+    chip.dataset.chipIndex = String(chipIndex)
+    chip.textContent = value || '—'
+    poolItems.appendChild(chip)
+  })
+  poolWrap.appendChild(poolLabelEl)
+  poolWrap.appendChild(poolItems)
+
+  layout.appendChild(targets)
+  layout.appendChild(poolWrap)
+  parent.appendChild(layout)
+}
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
@@ -95,7 +281,7 @@ export const DragDropFillBlank = Node.create({
         default: '',
         parseHTML: (element) => element.getAttribute('data-question-text') ?? '',
         renderHTML: (attributes) => ({
-          'data-question-text': String(attributes.questionText ?? ''),
+          'data-question-text': escapeHtmlAttr(String(attributes.questionText ?? '')),
         }),
       },
       mode: {
@@ -110,21 +296,59 @@ export const DragDropFillBlank = Node.create({
         default: '[]',
         parseHTML: (element) => element.getAttribute('data-gaps') ?? '[]',
         renderHTML: (attributes) => ({
-          'data-gaps': String(attributes.gapsJson ?? '[]'),
+          'data-gaps': escapeHtmlAttr(String(attributes.gapsJson ?? '[]')),
         }),
       },
       distractorsJson: {
         default: '[]',
         parseHTML: (element) => element.getAttribute('data-distractors') ?? '[]',
         renderHTML: (attributes) => ({
-          'data-distractors': String(attributes.distractorsJson ?? '[]'),
+          'data-distractors': escapeHtmlAttr(String(attributes.distractorsJson ?? '[]')),
         }),
+      },
+      targetsLabel: {
+        default: 'Categories',
+        parseHTML: (element) => element.getAttribute('data-targets-label') ?? 'Categories',
+        renderHTML: (attributes) => ({
+          'data-targets-label': escapeHtmlAttr(String(attributes.targetsLabel ?? 'Categories')),
+        }),
+      },
+      poolLabel: {
+        default: 'Options',
+        parseHTML: (element) => element.getAttribute('data-pool-label') ?? 'Options',
+        renderHTML: (attributes) => ({
+          'data-pool-label': escapeHtmlAttr(String(attributes.poolLabel ?? 'Options')),
+        }),
+      },
+      clientKey: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-client-key'),
+        renderHTML: (attributes) => {
+          const key = String(attributes.clientKey ?? '').trim()
+          return key ? { 'data-client-key': escapeHtmlAttr(key) } : {}
+        },
       },
     }
   },
 
   parseHTML() {
-    return [{ tag: 'div[data-type="drag-drop-fill"]' }]
+    return [
+      {
+        tag: 'div[data-type="drag-drop-fill"]',
+        getAttrs: (element) => {
+          if (!(element instanceof HTMLElement)) return false
+          return {
+            questionText: element.getAttribute('data-question-text') ?? '',
+            mode: (element.getAttribute('data-mode') as 'shuffled' | 'ordered') ?? 'shuffled',
+            gapsJson: recoverGapsJsonFromElement(element),
+            distractorsJson: element.getAttribute('data-distractors') ?? '[]',
+            targetsLabel: element.getAttribute('data-targets-label') ?? 'Categories',
+            poolLabel: element.getAttribute('data-pool-label') ?? 'Options',
+            clientKey: element.getAttribute('data-client-key'),
+          }
+        },
+      },
+    ]
   },
 
   renderHTML({ node, HTMLAttributes }) {
@@ -132,46 +356,73 @@ export const DragDropFillBlank = Node.create({
     const mode = String(node.attrs.mode ?? 'shuffled')
     const gaps = parseGaps(node.attrs.gapsJson as string)
     const distractors = parseDistractors(node.attrs.distractorsJson as string)
-    const excerpt = q || '—'
-    const questionParts = buildQuestionParts(excerpt, gaps)
-    const pool = buildPool(mode, gaps, distractors)
-    return [
+    const rows = buildMatchingRows(q, gaps)
+    const instruction = extractDragDropInstruction(q)
+    const targetsLabel = String(node.attrs.targetsLabel ?? 'Categories')
+    const poolLabel = String(node.attrs.poolLabel ?? 'Options')
+    const pool = buildPool(mode, gaps, distractors, q)
+    const children: Array<unknown> = []
+
+    if (instruction) {
+      children.push(['p', { class: 'rte-drag-drop-fill__instruction' }, instruction])
+    }
+
+    children.push([
       'div',
-      mergeAttributes(HTMLAttributes, {
-        'data-type': 'drag-drop-fill',
-        class: 'rte-drag-drop-fill',
-        'data-question-text': q,
-        'data-mode': mode,
-        'data-gaps': String(node.attrs.gapsJson ?? '[]'),
-        'data-distractors': String(node.attrs.distractorsJson ?? '[]'),
-      }),
+      { class: 'rte-drag-drop-fill__layout' },
       [
         'div',
-        { class: 'rte-drag-drop-fill__question' },
-        ...questionParts.map((part) => {
-          if (typeof part === 'string') return escapeText(part)
-          return [
-            'input',
+        { class: 'rte-drag-drop-fill__targets' },
+        ['div', { class: 'rte-drag-drop-fill__column-head' }, targetsLabel],
+        ...rows.map((row) => [
+          'div',
+          { class: 'rte-drag-drop-fill__row' },
+          ['span', { class: 'rte-drag-drop-fill__row-label' }, row.label],
+          [
+            'div',
             {
-              class: 'rte-drag-drop-fill__blank',
-              type: 'text',
-              disabled: 'disabled',
-              value: '',
-              placeholder: part.id,
+              class: 'rte-drag-drop-fill__drop',
+              'data-gap-id': row.gapId,
+              role: 'button',
+              tabindex: '0',
             },
-          ]
-        }),
+            ['span', { class: 'rte-drag-drop-fill__drop-num' }, gapIdToDisplayNumber(row.gapId)],
+          ],
+        ]),
       ],
       [
         'div',
         { class: 'rte-drag-drop-fill__pool' },
-        ['div', { class: 'rte-drag-drop-fill__pool-label' }, 'Drag answers to fill the gaps'],
+        ['div', { class: 'rte-drag-drop-fill__pool-label' }, poolLabel],
         [
           'div',
           { class: 'rte-drag-drop-fill__pool-items' },
-          ...pool.map((value) => ['span', { class: 'rte-drag-drop-fill__chip' }, value || '—']),
+          ...pool.map((value, chipIndex) => [
+            'span',
+            {
+              class: 'rte-drag-drop-fill__chip',
+              'data-chip-value': escapeHtmlAttr(value || '—'),
+              'data-chip-index': String(chipIndex),
+            },
+            value || '—',
+          ]),
         ],
       ],
+    ])
+
+    return [
+      'div',
+      mergeAttributes(HTMLAttributes, {
+        'data-type': 'drag-drop-fill',
+        class: 'rte-drag-drop-fill rte-drag-drop-fill--matching',
+        'data-question-text': escapeHtmlAttr(q),
+        'data-mode': mode,
+        'data-gaps': escapeHtmlAttr(String(node.attrs.gapsJson ?? '[]')),
+        'data-distractors': escapeHtmlAttr(String(node.attrs.distractorsJson ?? '[]')),
+        'data-targets-label': escapeHtmlAttr(targetsLabel),
+        'data-pool-label': escapeHtmlAttr(poolLabel),
+      }),
+      ...children,
     ]
   },
 
@@ -187,6 +438,9 @@ export const DragDropFillBlank = Node.create({
               mode: payload.mode,
               gapsJson: JSON.stringify(payload.gaps),
               distractorsJson: JSON.stringify(payload.distractors),
+              targetsLabel: payload.targetsLabel ?? 'Categories',
+              poolLabel: payload.poolLabel ?? 'Options',
+              clientKey: createClientKey(),
             },
           })
         },
@@ -196,31 +450,97 @@ export const DragDropFillBlank = Node.create({
   addNodeView() {
     return ({ node, editor, getPos }) => {
       const dom = document.createElement('div')
-      dom.className = 'rte-drag-drop-fill'
+      dom.className = 'rte-drag-drop-fill rte-drag-drop-fill--matching'
       dom.setAttribute('data-type', 'drag-drop-fill')
       dom.setAttribute('contenteditable', 'false')
 
-      const mount = (current: typeof node) => {
+      let dragCleanup: (() => void) | null = null
+      let currentNode = node
+
+      const resolveClientKey = (n: typeof node): string => {
+        const fromAttr = String(n.attrs.clientKey ?? '').trim()
+        return fromAttr || createClientKey()
+      }
+
+      const persistClientKey = (n: typeof node, clientKey: string) => {
+        if (String(n.attrs.clientKey ?? '').trim() === clientKey) return
+        const pos = typeof getPos === 'function' ? getPos() : null
+        if (!editor || typeof pos !== 'number') return
+        editor.commands.command(({ tr }) => {
+          tr.setNodeMarkup(pos, undefined, { ...n.attrs, clientKey })
+          return true
+        })
+      }
+
+      const attrsSignature = (n: typeof node) =>
+        JSON.stringify([
+          String(n.attrs.questionText ?? ''),
+          String(n.attrs.mode ?? 'shuffled'),
+          normalizeJsonAttr(String(n.attrs.gapsJson ?? '[]')),
+          normalizeJsonAttr(String(n.attrs.distractorsJson ?? '[]')),
+          String(n.attrs.targetsLabel ?? 'Categories'),
+          String(n.attrs.poolLabel ?? 'Options'),
+        ])
+
+      const mount = (next: typeof node) => {
+        const clientKey = resolveClientKey(next)
+        persistClientKey(next, clientKey)
+        dom.dataset.previewKey = clientKey
+        dom.setAttribute('data-client-key', clientKey)
+
+        if (dom.querySelector('.rte-drag-drop-fill__chip')) {
+          mergeEditorDragDropPreviewValues(
+            clientKey,
+            captureDragDropValuesFromBlock(dom, clientKey),
+          )
+        }
+
+        const resolvedGapsJson = resolveGapsJsonForMount(
+          dom,
+          String(next.attrs.gapsJson ?? '[]'),
+        )
+        const pos = typeof getPos === 'function' ? getPos() : null
+        if (
+          editor &&
+          typeof pos === 'number' &&
+          resolvedGapsJson !== String(next.attrs.gapsJson ?? '[]')
+        ) {
+          editor.commands.command(({ tr }) => {
+            tr.setNodeMarkup(pos, undefined, {
+              ...next.attrs,
+              gapsJson: resolvedGapsJson,
+              clientKey,
+            })
+            return true
+          })
+        }
+
+        dragCleanup?.()
+        dragCleanup = null
+
         while (dom.firstChild) {
           dom.removeChild(dom.firstChild)
         }
-        const q = String(current.attrs.questionText ?? '')
-        const mode = String(current.attrs.mode ?? 'shuffled')
-        const gaps = parseGaps(current.attrs.gapsJson as string)
-        const distractors = parseDistractors(current.attrs.distractorsJson as string)
-        const excerpt = q || '—'
-        const questionParts = buildQuestionParts(excerpt, gaps)
-        const pool = buildPool(mode, gaps, distractors)
+
+        const q = String(next.attrs.questionText ?? '')
+        const mode = String(next.attrs.mode ?? 'shuffled')
+        const gaps = parseGaps(resolvedGapsJson)
+        const distractors = parseDistractors(next.attrs.distractorsJson as string)
+        const targetsLabel = String(next.attrs.targetsLabel ?? 'Categories')
+        const poolLabel = String(next.attrs.poolLabel ?? 'Options')
+        const pool = buildPool(mode, gaps, distractors, q)
 
         dom.setAttribute('data-question-text', q)
         dom.setAttribute('data-mode', mode)
-        dom.setAttribute('data-gaps', String(current.attrs.gapsJson ?? '[]'))
-        dom.setAttribute('data-distractors', String(current.attrs.distractorsJson ?? '[]'))
+        dom.setAttribute('data-gaps', resolvedGapsJson)
+        dom.setAttribute('data-distractors', String(next.attrs.distractorsJson ?? '[]'))
+        dom.setAttribute('data-targets-label', targetsLabel)
+        dom.setAttribute('data-pool-label', poolLabel)
 
         const close = document.createElement('button')
         close.type = 'button'
         close.className = 'rte-drag-drop-fill__close'
-        close.setAttribute('aria-label', "Remove block")
+        close.setAttribute('aria-label', 'Remove block')
         close.textContent = '×'
         close.onclick = (e) => {
           e.preventDefault()
@@ -232,45 +552,30 @@ export const DragDropFillBlank = Node.create({
             .chain()
             .focus()
             .command(({ tr }) => {
-              tr.deleteRange(pos, pos + current.nodeSize)
+              tr.deleteRange(pos, pos + next.nodeSize)
               return true
             })
             .run()
         }
         dom.appendChild(close)
 
-        const question = document.createElement('div')
-        question.className = 'rte-drag-drop-fill__question'
-        questionParts.forEach((part) => {
-          if (typeof part === 'string') {
-            question.appendChild(document.createTextNode(part))
-            return
-          }
-          const input = document.createElement('input')
-          input.className = 'rte-drag-drop-fill__blank'
-          input.type = 'text'
-          input.disabled = true
-          input.placeholder = part.id
-          question.appendChild(input)
-        })
-        dom.appendChild(question)
+        appendMatchingLayout(dom, q, gaps, pool, targetsLabel, poolLabel)
 
-        const poolWrap = document.createElement('div')
-        poolWrap.className = 'rte-drag-drop-fill__pool'
-        const poolLabel = document.createElement('div')
-        poolLabel.className = 'rte-drag-drop-fill__pool-label'
-        poolLabel.textContent = 'Drag answers to fill the gaps'
-        poolWrap.appendChild(poolLabel)
-        const poolItems = document.createElement('div')
-        poolItems.className = 'rte-drag-drop-fill__pool-items'
-        pool.forEach((value) => {
-          const chip = document.createElement('span')
-          chip.className = 'rte-drag-drop-fill__chip'
-          chip.textContent = value || '—'
-          poolItems.appendChild(chip)
+        const previewValuesRef = { current: getEditorDragDropPreviewValues(clientKey) }
+        dragCleanup = attachDragDropBlockBehavior(dom, {
+          blockKey: clientKey,
+          examMode: false,
+          valuesRef: previewValuesRef,
+          onValueChange: (key, value) => writeEditorDragDropPreviewValue(clientKey, key, value),
         })
-        poolWrap.appendChild(poolItems)
-        dom.appendChild(poolWrap)
+        currentNode =
+          resolvedGapsJson === String(next.attrs.gapsJson ?? '[]')
+            ? next
+            : next.type.create({
+                ...next.attrs,
+                gapsJson: resolvedGapsJson,
+                clientKey,
+              })
       }
 
       mount(node)
@@ -281,15 +586,26 @@ export const DragDropFillBlank = Node.create({
           if (updated.type.name !== 'dragDropFillBlank') {
             return false
           }
+          if (attrsSignature(updated) === attrsSignature(currentNode)) {
+            currentNode = updated
+            return true
+          }
           mount(updated)
           return true
         },
         stopEvent: (event: Event) => {
           const target = event.target as HTMLElement | null
           if (!target) return false
-          // Only intercept clicks for our internal controls (e.g. close button).
-          // Let ProseMirror handle selection/cursor around the atom node.
-          return Boolean(target.closest('button.rte-drag-drop-fill__close'))
+          if (target.closest('button.rte-drag-drop-fill__close')) return true
+          return Boolean(
+            target.closest(
+              '.rte-drag-drop-fill__chip, .rte-drag-drop-fill__drop, .rte-drag-drop-fill__pool-items',
+            ),
+          )
+        },
+        destroy: () => {
+          dragCleanup?.()
+          dragCleanup = null
         },
         ignoreMutation: () => true,
       }
