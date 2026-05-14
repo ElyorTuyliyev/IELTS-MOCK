@@ -24,12 +24,12 @@ export function BlankAnswerDialog({ open, defaultId, onClose, onInsert }: BlankA
   const descId = useId()
   const [answer, setAnswer] = useState('')
 
-  /* eslint-disable react-hooks/set-state-in-effect */
+   
   useEffect(() => {
     if (!open) return
     setAnswer('')
   }, [open])
-  /* eslint-enable react-hooks/set-state-in-effect */
+   
 
   const normalizedId = useMemo(() => normalizeId(defaultId), [defaultId])
 

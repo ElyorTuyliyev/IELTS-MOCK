@@ -8,7 +8,7 @@ import {
   allStudentsModalGlobalStyles,
 } from './AllStudentsPage.style'
 import { FIND_ALL_USERS_QUERY } from '../api/findAllUsersQuery'
-import type { FindAllUsersQueryResponse } from '../types'
+import type { FindAllUsersQueryResponse } from '@/types/allStudents'
 import { useStudentsData } from '../hooks/useStudentsData'
 import { useStudentForm } from '../hooks/useStudentForm'
 import { StudentsHeader, StudentsTable, StudentFormModal } from '../components'

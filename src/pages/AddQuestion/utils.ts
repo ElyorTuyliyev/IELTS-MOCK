@@ -1,6 +1,6 @@
 import { graphqlUrl } from "../../graphql/client";
 import { IELTS_MODULE_OPTIONS, QUESTION_TEMPLATES, type IeltsModule } from "./AddQuestionPage.constants";
-import type { AnswerKeyPayload, OptionsPayloadItem, PartItem } from "./types";
+import type { AnswerKeyPayload, OptionsPayloadItem, PartItem } from '@/types/addQuestion'
 
 export const EMPTY_HTML = "<p></p>";
 export const LISTENING_PART_LABELS = ["Part 1", "Part 2", "Part 3", "Part 4"] as const;

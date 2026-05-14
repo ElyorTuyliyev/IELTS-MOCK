@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import type { GridPaginationModel } from '@mui/x-data-grid'
 
 import { CENTER_PAGE_SIZE, CENTERS } from '../api/centersData'
-import type { EditableCenter, FindAllCentersQueryResponse } from '../types'
+import type { EditableCenter, FindAllCentersQueryResponse } from '@/types/centers'
 
 type UseCentersDataParams = {
   centersData: FindAllCentersQueryResponse | undefined

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@apollo/client/react";
+import type { InternalRefetchQueryDescriptor } from "@apollo/client";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { selectAuthToken } from "../../../store";
@@ -24,7 +25,7 @@ import type {
   PartItem,
   ReadingPartContent,
   UpdateQuestionMutationData,
-} from "../types";
+} from '@/types/addQuestion'
 import {
   buildPartContentBlock,
   buildPartLabel,
@@ -227,14 +228,17 @@ export function useAddQuestionForm() {
   const [existingListeningAudio, setExistingListeningAudio] = useState<string | null>(null);
   const [existingSpeakingAudio, setExistingSpeakingAudio] = useState<string | null>(null);
   const [existingSupportingImage, setExistingSupportingImage] = useState<string | null>(null);
-  const [editPartSlotIndex, setEditPartSlotIndex] = useState<number | null>(null);
+  const [, setEditPartSlotIndex] = useState<number | null>(null);
 
   // ── Stable references (FIX: unstable `exams` / `parts` fallback) ──
   const exams = useMemo(() => {
     const all = examsData?.findAllExams ?? STABLE_EMPTY_EXAMS
     return all.filter((exam) => exam.isActive && !exam.isCompleted)
   }, [examsData?.findAllExams])
-  const modules = modulesData?.findAllModules ?? [];
+  const modules = useMemo(
+    () => modulesData?.findAllModules ?? [],
+    [modulesData?.findAllModules],
+  );
   const allParts = partsData?.findAllParts ?? STABLE_EMPTY_PARTS;
 
   // ── Derived values ──
@@ -328,43 +332,6 @@ export function useAddQuestionForm() {
       return Boolean(sEx && String(sEx) === String(qEx));
     });
   }, [isEditMode, oneQuestionData, allQuestionsData]);
-
-  // ── Part array size sync effects ──
-  useEffect(() => {
-    if (selectedModule !== "Listening") return;
-    const expected = LISTENING_PART_LABELS.length;
-    setListeningPartContents((cur) => {
-      if (cur.length === expected) return cur;
-      if (cur.length > expected) return cur.slice(0, expected);
-      return [...cur, ...Array.from({ length: expected - cur.length }, () => EMPTY_HTML)];
-    });
-  }, [selectedModule]);
-
-  useEffect(() => {
-    if (selectedModule !== "Writing") return;
-    const expected = WRITING_PART_LABELS.length;
-    setWritingPartContents((cur) => {
-      if (cur.length === expected) return cur;
-      if (cur.length > expected) return cur.slice(0, expected);
-      return [...cur, ...Array.from({ length: expected - cur.length }, () => EMPTY_HTML)];
-    });
-  }, [selectedModule]);
-
-  useEffect(() => {
-    if (selectedModule !== "Reading") return;
-    const expected = READING_PART_LABELS.length;
-    setReadingPartContents((cur) => {
-      if (cur.length === expected) return cur;
-      if (cur.length > expected) return cur.slice(0, expected);
-      return [
-        ...cur,
-        ...Array.from({ length: expected - cur.length }, () => ({
-          passage: EMPTY_HTML,
-          questions: EMPTY_HTML,
-        })),
-      ];
-    });
-  }, [selectedModule]);
 
   // ── Edit-mode hydration ──
   const editHydrationKeyRef = useRef("");
@@ -483,27 +450,25 @@ export function useAddQuestionForm() {
   }, [questionId, oneQuestionData, exams, modules, allParts, siblingQuestions]);
 
   // ── Audio blob URLs (FIX: create + cleanup in same effect) ──
-  const [listeningBlobUrl, setListeningBlobUrl] = useState<string | null>(null);
+  const listeningBlobUrl = useMemo(
+    () => (listeningAudioFile ? URL.createObjectURL(listeningAudioFile) : null),
+    [listeningAudioFile],
+  );
   useEffect(() => {
-    if (!listeningAudioFile) {
-      setListeningBlobUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(listeningAudioFile);
-    setListeningBlobUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [listeningAudioFile]);
+    return () => {
+      if (listeningBlobUrl) URL.revokeObjectURL(listeningBlobUrl);
+    };
+  }, [listeningBlobUrl]);
 
-  const [speakingBlobUrl, setSpeakingBlobUrl] = useState<string | null>(null);
+  const speakingBlobUrl = useMemo(
+    () => (speakingAudioFile ? URL.createObjectURL(speakingAudioFile) : null),
+    [speakingAudioFile],
+  );
   useEffect(() => {
-    if (!speakingAudioFile) {
-      setSpeakingBlobUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(speakingAudioFile);
-    setSpeakingBlobUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [speakingAudioFile]);
+    return () => {
+      if (speakingBlobUrl) URL.revokeObjectURL(speakingBlobUrl);
+    };
+  }, [speakingBlobUrl]);
 
   const listeningAudioPreviewSrc =
     listeningBlobUrl ??
@@ -873,7 +838,6 @@ export function useAddQuestionForm() {
     selectedModule,
     instruction,
     isEditMode,
-    editPartSlotIndex,
     listeningPartEntries,
     listeningAudioFile,
     existingListeningAudio,
@@ -896,6 +860,7 @@ export function useAddQuestionForm() {
     navigate,
     siblingQuestions,
     selectedModuleParts,
+    toast,
   ]);
 
   const handleCancel = useCallback(() => {
@@ -979,14 +944,14 @@ type ExecuteUpdateParams = {
   partId?: string;
   placementNumber?: number;
   optionsSource?: string;
-  refetch: Array<{ query: unknown }>;
+  refetch: InternalRefetchQueryDescriptor[];
 };
 
 async function executeUpdate(params: ExecuteUpdateParams) {
   const optionsHtml = params.optionsSource ?? params.sourceMaterial;
   const result = await params.updateQuestion({
     ...(params.refetch.length > 0 && {
-      refetchQueries: params.refetch as any,
+      refetchQueries: params.refetch,
       awaitRefetchQueries: true,
     }),
     variables: {

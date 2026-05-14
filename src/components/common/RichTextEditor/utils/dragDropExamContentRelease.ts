@@ -87,7 +87,7 @@ function isInsideDragDropChrome(el: Element): boolean {
 
 function isLaterSectionHeading(el: Element, fromQ: number): boolean {
   const text = (el.textContent ?? '').trim()
-  const rangeMatch = text.match(/Questions\s+(\d+)\s*[–\-]\s*(\d+)/i)
+  const rangeMatch = text.match(/Questions\s+(\d+)\s*[–-]\s*(\d+)/i)
   if (rangeMatch) {
     const start = Number(rangeMatch[1])
     const end = Number(rangeMatch[2])

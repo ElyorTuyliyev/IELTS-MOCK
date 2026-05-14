@@ -1,4 +1,4 @@
-import type { UserRole } from '../../store/slices/authSlice'
+import type { UserRole } from '@/store/slices/authSlice'
 
 export type NotificationCategory = 'exam' | 'student' | 'system' | 'payment' | 'result'
 

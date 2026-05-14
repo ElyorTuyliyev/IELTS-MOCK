@@ -63,7 +63,7 @@ export function ExamDetailsPage() {
         .map((row) => row.studentId),
     )
     return students.filter((u) => !enrolledIds.has(u._id))
-  }, [exam?._id, studentExamsData?.findAllStudentExams, usersData?.findAllUsers])
+  }, [exam, studentExamsData?.findAllStudentExams, usersData?.findAllUsers])
 
   const handleEnrolled = useCallback(() => {
     void refetchStudentExams()

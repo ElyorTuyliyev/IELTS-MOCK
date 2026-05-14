@@ -10,7 +10,7 @@ import { SearchField } from '../../../../components/common/SearchField'
 import { Select } from '../../../../components/common/Select'
 import { CENTER_PAGE_SIZE } from '../../api/centersData'
 import { getVisiblePages } from '../../components/pagination'
-import type { EditableCenter, MappedCenterRow } from '../../types'
+import type { EditableCenter, MappedCenterRow } from '@/types/centers'
 import { createCentersColumns } from './CentersColumns'
 
 type CentersTableProps = {

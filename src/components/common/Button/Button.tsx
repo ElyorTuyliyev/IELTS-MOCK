@@ -31,7 +31,9 @@ function getMuiColor(appVariant: AppButtonVariant): MuiButtonProps['color'] {
   return 'primary'
 }
 
-export const Button = forwardRef(function Button<RootComponent extends ElementType = 'button'>(
+export const Button = forwardRef(function Button<
+  RootComponent extends ElementType = 'button',
+>(
   {
     variant = 'primary',
     size = 'md',
@@ -41,7 +43,7 @@ export const Button = forwardRef(function Button<RootComponent extends ElementTy
     children,
     ...props
   }: ButtonProps<RootComponent>,
-  ref: ForwardedRef<unknown>,
+  ref: ForwardedRef<Element>,
 ) {
   const isDisabled = Boolean(disabled || loading)
 
@@ -64,5 +66,5 @@ export const Button = forwardRef(function Button<RootComponent extends ElementTy
     </StyledButton>
   )
 }) as <RootComponent extends ElementType = 'button'>(
-  props: ButtonProps<RootComponent> & { ref?: ForwardedRef<unknown> },
+  props: ButtonProps<RootComponent> & { ref?: ForwardedRef<Element> },
 ) => ReactElement

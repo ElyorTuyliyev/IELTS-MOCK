@@ -19,7 +19,7 @@ import type {
   FindAllUsersQueryResponse,
   UpdateStudentMutationResponse,
   UpdateStudentMutationVariables,
-} from '../types'
+} from '@/types/allStudents'
 import { normalizeEmail, validateGmailField } from '../../../utils/emailValidation'
 import { validatePasswordField } from '../../../utils/passwordValidation'
 import { decodeJwtPayload, OBJECT_ID_PATTERN, safeDateToIso } from '../utils'

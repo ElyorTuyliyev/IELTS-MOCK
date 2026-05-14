@@ -27,7 +27,10 @@ export function useExamNavigation(moduleData: ModuleDataResult) {
     () => visibleParts.find((item) => item.partNumber === part),
     [visibleParts, part],
   )
-  const currentPartQuestions: DisplayQuestion[] = currentPart?.questions ?? []
+  const currentPartQuestions = useMemo(
+    () => currentPart?.questions ?? [],
+    [currentPart?.questions],
+  )
   const currentPartPassage = currentPart?.passageHtml
 
   const currentQuestionIds = useMemo(

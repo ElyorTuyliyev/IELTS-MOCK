@@ -12,7 +12,6 @@ import {
   Typography,
 } from "@mui/material";
 
-import { c } from "../../../../theme";
 import { Button } from "../../../../components/common/Button";
 import { PasswordTextField } from "../../../../components/common/PasswordTextField";
 import { useToast } from "../../../../components/common/Toast";
@@ -21,7 +20,7 @@ import { ROUTES_PATH } from "../../../../routes";
 import { emailRegisterRules, isValidEmail, normalizeEmail } from "../../../../utils/emailValidation";
 import { passwordRegisterRules } from "../../../../utils/passwordValidation";
 import { useAppDispatch } from "../../../../store/hooks";
-import { setAuthSession } from "../../../../store/slices/authSlice";
+import { setAuthSession, USER_ROLES } from "../../../../store/slices/authSlice";
 import {
   AUTH_CHART_BARS,
   AUTH_PAGINATION_DOTS,

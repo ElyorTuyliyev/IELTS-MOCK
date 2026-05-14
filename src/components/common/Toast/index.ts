@@ -1,2 +1,3 @@
-export { ToastProvider, useToast } from './ToastProvider'
-export type { ToastApi, ToastOptions, ToastSeverity } from './types'
+export { ToastProvider } from './ToastProvider'
+export { useToast } from './toastContext'
+export type { ToastApi, ToastOptions, ToastSeverity } from '@/types/toast'

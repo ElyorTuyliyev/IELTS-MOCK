@@ -174,7 +174,7 @@ function countQuestionRangeFromHeadings(
   let headingMin = Infinity
   let headingMax = -Infinity
 
-  for (const match of html.matchAll(/Questions\s+(\d+)\s*[–\-]\s*(\d+)/gi)) {
+  for (const match of html.matchAll(/Questions\s+(\d+)\s*[–-]\s*(\d+)/gi)) {
     const start = Number(match[1])
     const end = Number(match[2])
     if (!Number.isFinite(start) || !Number.isFinite(end) || start > end) continue
@@ -464,7 +464,7 @@ function findLaterQuestionSectionElement(
     const text = (el.textContent ?? '').trim()
     if (!text) continue
 
-    const rangeMatch = text.match(/Questions\s+(\d+)\s*[–\-]\s*(\d+)/i)
+    const rangeMatch = text.match(/Questions\s+(\d+)\s*[–-]\s*(\d+)/i)
     if (rangeMatch) {
       const start = Number(rangeMatch[1])
       const end = Number(rangeMatch[2])

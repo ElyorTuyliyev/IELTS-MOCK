@@ -14,9 +14,9 @@ function questionNumberFromDropZone(zone: HTMLElement): string | null {
 function getExamContainers(
   listeningContentRef: RefObject<HTMLDivElement | null>,
   moduleContentRef: RefObject<HTMLDivElement | null>,
-): HTMLElement[] {
+): HTMLDivElement[] {
   return [listeningContentRef.current, moduleContentRef.current].filter(
-    (node): node is HTMLElement => node !== null,
+    (node): node is HTMLDivElement => node !== null,
   )
 }
 
@@ -30,7 +30,10 @@ export function useActiveQuestionSync(
   readingHtml: string | null,
 ) {
   const activeQuestionRef = useRef(activeQuestion)
-  activeQuestionRef.current = activeQuestion
+
+  useEffect(() => {
+    activeQuestionRef.current = activeQuestion
+  }, [activeQuestion])
 
   const contentKey = `${activeModule}|${listeningHtml ?? ''}|${readingHtml ?? ''}`
 

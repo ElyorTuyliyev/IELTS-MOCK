@@ -1,5 +1,4 @@
 import styled from '@emotion/styled'
-import { css } from '@emotion/react'
 
 import theme, { c, tokens } from '@/theme'
 export const QuestionsPageRoot = styled.div`

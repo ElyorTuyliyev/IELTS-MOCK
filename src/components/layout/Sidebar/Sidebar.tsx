@@ -48,9 +48,17 @@ export function Sidebar() {
   const role = useAppSelector(selectUserRole);
   const authToken = useAppSelector(selectAuthToken);
   const isCollapsed = useMediaQuery(SIDEBAR_COLLAPSED_MEDIA_QUERY);
+  const navEpoch = `${location.pathname}:${isCollapsed}`;
+  const [collapsedSubmenuState, setCollapsedSubmenuState] = useState<{
+    epoch: string;
+    value: CollapsedSubmenuState | null;
+  }>({ epoch: navEpoch, value: null });
+  const collapsedSubmenu =
+    collapsedSubmenuState.epoch === navEpoch ? collapsedSubmenuState.value : null;
+  const setCollapsedSubmenu = (value: CollapsedSubmenuState | null) => {
+    setCollapsedSubmenuState({ epoch: navEpoch, value });
+  };
   const [searchTerm, setSearchTerm] = useState("");
-  const [collapsedSubmenu, setCollapsedSubmenu] =
-    useState<CollapsedSubmenuState | null>(null);
   const [expandedItems, setExpandedItems] = useState<
     Record<string, boolean | undefined>
   >(() => {
@@ -219,10 +227,6 @@ export function Sidebar() {
       );
     }
   }, [expandedItems]);
-
-  useEffect(() => {
-    setCollapsedSubmenu(null);
-  }, [location.pathname, isCollapsed]);
 
   const renderSidebarIcon = (iconKey: keyof typeof SIDEBAR_ICONS) => {
     const Icon = SIDEBAR_ICONS[iconKey];

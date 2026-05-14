@@ -1,5 +1,5 @@
 import { ToastAlert, ToastSnackbar } from './Toast.styles'
-import type { ToastItem } from './types'
+import type { ToastItem } from '@/types/toast'
 
 type ToastContainerProps = {
   toast: ToastItem | null

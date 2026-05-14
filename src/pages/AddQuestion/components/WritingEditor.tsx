@@ -3,7 +3,7 @@ import { Box } from "@mui/material";
 
 import { RichTextEditor } from "../../../components/common/RichTextEditor/RichTextEditor";
 import { EMPTY_HTML } from "../utils";
-import type { WritingPartEntry } from "../types";
+import type { WritingPartEntry } from '@/types/addQuestion'
 
 type WritingEditorProps = {
   entries: WritingPartEntry[];

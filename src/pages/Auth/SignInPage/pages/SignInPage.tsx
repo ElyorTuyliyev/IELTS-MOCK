@@ -10,7 +10,6 @@ import {
   Typography,
 } from "@mui/material";
 
-import { c } from "../../../../theme";
 import { Button } from "../../../../components/common/Button";
 import { PasswordTextField } from "../../../../components/common/PasswordTextField";
 import { useToast } from "../../../../components/common/Toast";

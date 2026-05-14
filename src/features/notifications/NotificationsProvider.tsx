@@ -1,7 +1,5 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useMemo,
   type ReactNode,
 } from 'react'
@@ -17,19 +15,8 @@ import {
   MARK_ALL_NOTIFICATIONS_AS_READ_MUTATION,
   MARK_NOTIFICATION_AS_READ_MUTATION,
 } from '../../pages/Notifications/api/notificationMutations'
-import type { AppNotification, NotificationCategory } from './types'
-
-type NotificationsContextValue = {
-  notifications: AppNotification[]
-  unreadCount: number
-  loading: boolean
-  error: string | null
-  markAsRead: (id: string) => Promise<void>
-  markAllAsRead: () => Promise<void>
-  refetch: () => Promise<void>
-}
-
-const NotificationsContext = createContext<NotificationsContextValue | null>(null)
+import { NotificationsContext } from './notificationsContext'
+import type { AppNotification, NotificationCategory } from '@/types/notifications'
 
 const NOTIFICATION_CATEGORIES: NotificationCategory[] = [
   'exam',
@@ -128,12 +115,4 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       {children}
     </NotificationsContext.Provider>
   )
-}
-
-export function useNotifications() {
-  const context = useContext(NotificationsContext)
-  if (!context) {
-    throw new Error('useNotifications must be used within NotificationsProvider')
-  }
-  return context
 }

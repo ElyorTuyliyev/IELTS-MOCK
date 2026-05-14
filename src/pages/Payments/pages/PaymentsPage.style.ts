@@ -1,6 +1,6 @@
 import styled from '@emotion/styled'
 
-import theme, { c, tokens } from '@/theme'
+import theme, { c } from '@/theme'
 export const PaymentsPageRoot = styled.div`
   .payments-page {
     display: flex;

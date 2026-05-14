@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import { useMemo, useState } from 'react'
 
 import { useQuery } from '@apollo/client/react'
-import { Alert, Box, TextField, Typography } from '@mui/material'
+import { Alert, Box, Typography } from '@mui/material'
 
 import { c, tokens } from '../../../theme'
 import { Layout } from '../../../components/layout'

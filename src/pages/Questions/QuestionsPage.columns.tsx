@@ -6,14 +6,6 @@ import type { GridColDef } from '@mui/x-data-grid'
 import type { QuestionGridRow } from './QuestionsPage.constants'
 import { QuestionRowActionsMenu } from './components'
 
-function ModuleCell({ moduleType }: { moduleType: string }) {
-  return (
-    <Box className="question-table__module-cell">
-      <span className="question-table__module-text">{moduleType}</span>
-    </Box>
-  )
-}
-
 type CreateQuestionColumnsOptions = {
   onDelete?: (row: QuestionGridRow) => void
   onEdit?: (row: QuestionGridRow) => void
@@ -32,7 +24,11 @@ export function createQuestionColumns({
       flex: 1,
       sortable: false,
       headerAlign: 'left',
-      renderCell: (params) => <ModuleCell moduleType={params.row.questionType} />,
+      renderCell: (params) => (
+        <Box className="question-table__module-cell">
+          <span className="question-table__module-text">{params.row.questionType}</span>
+        </Box>
+      ),
     },
     {
       field: 'title',

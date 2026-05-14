@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery } from '@apollo/client/react'
-import { Box, TextField, Typography } from '@mui/material'
+import { Box, Typography } from '@mui/material'
 import { Button } from '../../../components/common/Button'
 
 import { SearchField } from '../../../components/common/SearchField'
@@ -186,15 +186,13 @@ export function QuestionsPage() {
     [handleRequestDelete, handleEditQuestion],
   )
   const totalPages = Math.max(1, Math.ceil(rows.length / paginationModel.pageSize))
-
-  useEffect(() => {
-    if (paginationModel.page > totalPages - 1) {
-      setPaginationModel((currentState) => ({
-        ...currentState,
-        page: Math.max(0, totalPages - 1),
-      }))
-    }
-  }, [paginationModel.page, totalPages])
+  const gridPaginationModel = useMemo(
+    () => ({
+      ...paginationModel,
+      page: Math.min(paginationModel.page, Math.max(0, totalPages - 1)),
+    }),
+    [paginationModel, totalPages],
+  )
 
   const statsSummary = useMemo(() => {
     const countByModule = (module: QuestionType) =>
@@ -318,7 +316,7 @@ export function QuestionsPage() {
                 columns={columns}
                 pagination
                 paginationMode="client"
-                paginationModel={paginationModel}
+                paginationModel={gridPaginationModel}
                 onPaginationModelChange={handlePaginationModelChange}
                 pageSizeOptions={[...PAGE_SIZE_OPTIONS]}
                 checkboxSelection

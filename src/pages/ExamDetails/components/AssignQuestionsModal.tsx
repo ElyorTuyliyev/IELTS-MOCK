@@ -29,7 +29,7 @@ import {
 import type {
   InitializeRandomQuestionsMutationResponse,
   InitializeRandomQuestionsMutationVariables,
-} from '../api/types'
+} from '@/types/examDetails'
 import { AssignQuestionsRoot } from './AssignQuestionsModal.style'
 
 const MODULES = ['Listening', 'Reading', 'Writing', 'Speaking'] as const
@@ -145,7 +145,7 @@ export function AssignQuestionsModal({
       cancelled = true
       setInitPending(false)
     }
-  }, [open, studentExamId, existingSortedKey, initializeMutation, onSaved, existingQuestionIds])
+  }, [open, studentExamId, existingSortedKey, initializeMutation, onSaved, existingQuestionIds, toast])
 
   const showQuestionsLoading = loading || initPending
 

@@ -57,14 +57,14 @@ export function CheckboxOptionsDialog({
   const [questionText, setQuestionText] = useState('')
   const [rows, setRows] = useState<Row[]>(initialRows)
 
-  /* eslint-disable react-hooks/set-state-in-effect */
+   
   useEffect(() => {
     if (!open) return
     setQuestionNumber(Math.max(1, Math.floor(defaultQuestionNumber)))
     setQuestionText('')
     setRows(initialRows())
   }, [open, defaultQuestionNumber])
-  /* eslint-enable react-hooks/set-state-in-effect */
+   
 
   const handleAdd = useCallback(() => {
     setRows((current) => [...current, createRow()])

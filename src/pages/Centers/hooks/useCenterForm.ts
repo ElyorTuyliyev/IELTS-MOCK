@@ -19,7 +19,7 @@ import type {
   DeleteCenterMutationResponse,
   DeleteCenterMutationVariables,
   EditableCenter,
-} from '../types'
+} from '@/types/centers'
 
 type UseCenterFormParams = {
   refetchCenters: () => Promise<unknown>

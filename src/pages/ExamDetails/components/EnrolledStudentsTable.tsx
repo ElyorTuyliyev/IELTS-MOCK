@@ -85,8 +85,12 @@ export function EnrolledStudentsTable({
   onDeleted,
 }: EnrolledStudentsTableProps) {
   const toast = useToast()
-  const [removeStudentExam] = useMutation(REMOVE_STUDENT_EXAM_MUTATION)
-  const [startStudentExam] = useMutation(START_STUDENT_EXAM_MUTATION)
+  const [removeStudentExam] = useMutation<{ removeStudentExam: boolean }>(
+    REMOVE_STUDENT_EXAM_MUTATION,
+  )
+  const [startStudentExam] = useMutation<{
+    startStudentExam: { _id: string; isReleased: boolean }
+  }>(START_STUDENT_EXAM_MUTATION)
   const [pendingDelete, setPendingDelete] = useState<EnrolledRow | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [startingId, setStartingId] = useState<string | null>(null)

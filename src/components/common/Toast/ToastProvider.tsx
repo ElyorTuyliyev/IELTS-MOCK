@@ -1,7 +1,5 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useMemo,
   useRef,
   useState,
@@ -9,17 +7,10 @@ import {
 } from 'react'
 
 import { ToastContainer } from './ToastContainer'
-import type { ToastApi, ToastItem, ToastOptions, ToastSeverity } from './types'
+import { ToastContext } from './toastContext'
+import type { ToastItem, ToastOptions, ToastSeverity } from '@/types/toast'
 
 const DEFAULT_DURATION = 4500
-
-type ToastContextValue = ToastApi
-
-const ToastContext = createContext<ToastContextValue | null>(null)
-
-function createToastId() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
-}
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const queueRef = useRef<ToastItem[]>([])
@@ -104,10 +95,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   )
 }
 
-export function useToast() {
-  const context = useContext(ToastContext)
-  if (!context) {
-    throw new Error('useToast must be used within ToastProvider')
-  }
-  return context
+function createToastId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
 }

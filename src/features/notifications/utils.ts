@@ -6,7 +6,7 @@ import PeopleOutlinedIcon from '@mui/icons-material/PeopleOutlined'
 import type { SvgIconComponent } from '@mui/icons-material'
 
 import { c } from '../../theme'
-import type { NotificationCategory } from './types'
+import type { NotificationCategory } from '@/types/notifications'
 
 export const NOTIFICATION_CATEGORY_ICONS: Record<NotificationCategory, SvgIconComponent> = {
   exam: AssignmentOutlinedIcon,

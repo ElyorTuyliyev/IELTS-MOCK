@@ -39,6 +39,39 @@ export type CreateCenterMutationVariables = {
   establishedAt: string
 }
 
+export type UpdateCenterMutationResponse = {
+  updateCenter: {
+    _id: string
+    name: string
+  } | null
+}
+
+export type UpdateCenterMutationVariables = {
+  _id: string
+  name?: string
+  manager?: string
+  address?: string
+  phone?: string
+  email?: string
+  password?: string
+  logo?: string
+  establishedAt?: string
+}
+
+export type AddCenterLocationState = {
+  mode?: 'create' | 'edit' | 'view'
+  center?: {
+    id: string
+    name: string
+    manager?: string
+    email: string
+    phone: string
+    address: string
+    logo: string
+    establishedAt?: string
+  }
+}
+
 export type EditableCenter = {
   id: string
   name: string

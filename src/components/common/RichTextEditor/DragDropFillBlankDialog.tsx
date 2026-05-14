@@ -131,7 +131,7 @@ export function DragDropFillBlankDialog({
   const [gapAnswers, setGapAnswers] = useState<string[]>([])
   const [distractors, setDistractors] = useState<DistractorRow[]>([])
 
-  /* eslint-disable react-hooks/set-state-in-effect */
+   
   useEffect(() => {
     if (!open) return
     setQuestionText('')
@@ -140,14 +140,14 @@ export function DragDropFillBlankDialog({
     setGapAnswers([])
     setDistractors([])
   }, [open, defaultStartNumber])
-  /* eslint-enable react-hooks/set-state-in-effect */
+   
 
-  /* eslint-disable react-hooks/set-state-in-effect */
+   
   useEffect(() => {
     // Keep answer inputs in sync with number of blanks in question text.
     setGapAnswers((prev) => syncGapAnswers(questionText, prev))
   }, [questionText])
-  /* eslint-enable react-hooks/set-state-in-effect */
+   
 
   const gapCount = useMemo(() => countGaps(questionText), [questionText])
 

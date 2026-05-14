@@ -3,7 +3,7 @@ import type { GridPaginationModel } from '@mui/x-data-grid'
 
 import type { StudentRow } from '../AllStudentsPage.constants'
 import { createStudentColumnsWithActions } from '../AllStudentsPage.columns'
-import type { FindAllUsersQueryResponse } from '../types'
+import type { FindAllUsersQueryResponse } from '@/types/allStudents'
 import { formatCreationDate, parseCreationDateTimestamp } from '../utils'
 
 function formatGender(value?: string | null) {

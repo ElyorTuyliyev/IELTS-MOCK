@@ -3,7 +3,7 @@ import { Box } from '@mui/material'
 
 import { Layout } from '../../../components/layout'
 import { GET_ALL_CENTERS_QUERY } from '../api/getAllCentersQuery'
-import type { FindAllCentersQueryResponse } from '../types'
+import type { FindAllCentersQueryResponse } from '@/types/centers'
 import { useCentersData } from '../hooks/useCentersData'
 import { useCenterForm } from '../hooks/useCenterForm'
 import { CentersHeader, CentersTable, CreateCenterModal } from './components'

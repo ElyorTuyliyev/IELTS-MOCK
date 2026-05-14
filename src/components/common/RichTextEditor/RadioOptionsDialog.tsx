@@ -52,7 +52,7 @@ export function RadioOptionsDialog({
   const [rows, setRows] = useState<Row[]>(initialRows)
   const [correctId, setCorrectId] = useState<string>(() => initialRows()[0]?.id ?? '')
 
-  /* eslint-disable react-hooks/set-state-in-effect */
+   
   useEffect(() => {
     if (!open) return
     const next = initialRows()
@@ -61,9 +61,9 @@ export function RadioOptionsDialog({
     setRows(next)
     setCorrectId(next[0]?.id ?? '')
   }, [open, defaultQuestionNumber])
-  /* eslint-enable react-hooks/set-state-in-effect */
+   
 
-  /* eslint-disable react-hooks/set-state-in-effect */
+   
   useEffect(() => {
     if (rows.length === 0) return
     if (!rows.some((row) => row.id === correctId)) {
@@ -71,7 +71,7 @@ export function RadioOptionsDialog({
       setCorrectId(rows[0].id)
     }
   }, [rows, correctId])
-  /* eslint-enable react-hooks/set-state-in-effect */
+   
 
   const handleAdd = useCallback(() => {
     setRows((current) => [...current, createRow()])
