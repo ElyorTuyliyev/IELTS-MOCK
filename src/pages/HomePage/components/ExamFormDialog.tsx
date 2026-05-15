@@ -9,6 +9,7 @@ import {
   Typography,
 } from '@mui/material'
 import { Button } from '../../../components/common/Button'
+import { DateInput } from '../../../components/common/DateInput'
 import { Select } from '../../../components/common/Select'
 import { useToast } from '../../../components/common/Toast'
 import { formatPriceValue, parsePriceValue } from '../../../utils/priceFormat'
@@ -159,12 +160,10 @@ export function ExamFormDialog({
           ]}
         />
 
-        <TextField
+        <DateInput
           label="Exam Date"
-          type="date"
           value={form.examDate}
           onChange={(e) => updateField('examDate', e.target.value)}
-          slotProps={{ inputLabel: { shrink: true } }}
           fullWidth
           className="exam-form__field"
         />

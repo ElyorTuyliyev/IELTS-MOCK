@@ -79,10 +79,24 @@ export function useDragDropFillSync(
   listeningContentRef: RefObject<HTMLDivElement | null>,
   moduleContentRef: RefObject<HTMLDivElement | null>,
   listeningInteractionReady = true,
+  initialDragDropValues?: Record<string, string>,
 ) {
-  const [dragDropValues, setDragDropValues] = useState<Record<string, string>>({})
-  const dragDropValuesRef = useRef(dragDropValues)
+  const [dragDropValues, setDragDropValues] = useState<Record<string, string>>(
+    initialDragDropValues ?? {},
+  )
+  const dragDropValuesRef = useRef(initialDragDropValues ?? {})
+  const dragDropRestoredRef = useRef(
+    Boolean(initialDragDropValues && Object.keys(initialDragDropValues).length > 0),
+  )
   const fallbackQuestionDbId = currentPartQuestions[0]?.questionDbId
+
+  useEffect(() => {
+    if (dragDropRestoredRef.current || !initialDragDropValues) return
+    if (Object.keys(initialDragDropValues).length === 0) return
+    dragDropRestoredRef.current = true
+    setDragDropValues(initialDragDropValues)
+    dragDropValuesRef.current = initialDragDropValues
+  }, [initialDragDropValues])
 
   useEffect(() => {
     dragDropValuesRef.current = dragDropValues

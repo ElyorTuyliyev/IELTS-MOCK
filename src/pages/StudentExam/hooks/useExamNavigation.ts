@@ -1,12 +1,25 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MODULE_ORDER, MODULE_PART_COUNTS, type ModuleName } from '../constants'
 import type { ModuleDataResult } from './useExamData'
 import type { DisplayQuestion, ModulePart } from '../utils'
+import type { ExamSessionNavigation } from '../utils/examSessionPersistence'
 
-export function useExamNavigation(moduleData: ModuleDataResult) {
-  const [moduleIndex, setModuleIndex] = useState(0)
-  const [part, setPart] = useState(1)
-  const [activeQuestion, setActiveQuestion] = useState('1')
+export function useExamNavigation(
+  moduleData: ModuleDataResult,
+  initialNavigation?: ExamSessionNavigation,
+) {
+  const [moduleIndex, setModuleIndex] = useState(initialNavigation?.moduleIndex ?? 0)
+  const [part, setPart] = useState(initialNavigation?.part ?? 1)
+  const [activeQuestion, setActiveQuestion] = useState(initialNavigation?.activeQuestion ?? '1')
+  const navigationRestoredRef = useRef(Boolean(initialNavigation))
+
+  useEffect(() => {
+    if (!initialNavigation || navigationRestoredRef.current) return
+    navigationRestoredRef.current = true
+    setModuleIndex(initialNavigation.moduleIndex)
+    setPart(initialNavigation.part)
+    setActiveQuestion(initialNavigation.activeQuestion)
+  }, [initialNavigation])
 
   const activeModule: ModuleName = MODULE_ORDER[moduleIndex] ?? 'writing'
 

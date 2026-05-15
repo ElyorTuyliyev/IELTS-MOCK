@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useMutation } from '@apollo/client/react'
-import { Box, IconButton, Typography } from '@mui/material'
+import { Box, IconButton, Tooltip, Typography } from '@mui/material'
 import { Button } from '../../../components/common/Button'
 import { DataGrid, type GridColDef } from '@mui/x-data-grid'
 import { ConfirmDialog } from '../../../components/common/ConfirmDialog/ConfirmDialog'
@@ -25,6 +25,7 @@ type EnrolledRow = {
 
 type EnrolledStudentsTableProps = {
   examId: string
+  isArchived?: boolean
   studentExams: StudentExam[]
   users: User[]
   loading: boolean
@@ -78,6 +79,7 @@ function ViewIcon() {
 
 export function EnrolledStudentsTable({
   examId,
+  isArchived = false,
   studentExams,
   users,
   loading,
@@ -102,9 +104,16 @@ export function EnrolledStudentsTable({
     }
   }, [error, toast])
 
-  const handleRequestDelete = useCallback((row: EnrolledRow) => {
-    setPendingDelete(row)
-  }, [])
+  const handleRequestDelete = useCallback(
+    (row: EnrolledRow) => {
+      if (isArchived) {
+        toast.warning('Archived exams cannot remove enrolled students.')
+        return
+      }
+      setPendingDelete(row)
+    },
+    [isArchived, toast],
+  )
 
   const handleConfirmDelete = useCallback(async () => {
     if (!pendingDelete) return
@@ -219,14 +228,25 @@ export function EnrolledStudentsTable({
         disableColumnMenu: true,
         renderCell: (params) => (
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 0.75 }}>
-            <IconButton
-              size="small"
-              className="exam-details__action-btn exam-details__action-btn--danger"
-              aria-label={`Delete ${params.row.fullName}`}
-              onClick={() => handleRequestDelete(params.row)}
+            <Tooltip
+              title={
+                isArchived
+                  ? 'Archived exams cannot remove enrolled students'
+                  : `Remove ${params.row.fullName}`
+              }
             >
-              <DeleteIcon />
-            </IconButton>
+              <span>
+                <IconButton
+                  size="small"
+                  className="exam-details__action-btn exam-details__action-btn--danger"
+                  aria-label={`Delete ${params.row.fullName}`}
+                  disabled={isArchived}
+                  onClick={() => handleRequestDelete(params.row)}
+                >
+                  <DeleteIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
             <IconButton
               size="small"
               className="exam-details__action-btn"
@@ -239,7 +259,7 @@ export function EnrolledStudentsTable({
         ),
       },
     ],
-    [handleRequestDelete, handleOpenAssign, handleStartExam, startingId],
+    [handleRequestDelete, handleOpenAssign, handleStartExam, isArchived, startingId],
   )
 
   const rows = useMemo(() => {

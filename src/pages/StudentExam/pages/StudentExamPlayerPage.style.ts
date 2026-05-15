@@ -384,11 +384,12 @@ export const StudentExamPlayerRoot = styled.div`
     display: flex;
     align-items: stretch;
     overflow-x: auto;
+    scrollbar-gutter: stable;
   }
 
   .student-exam-player__part-tab {
-    min-width: 300px;
-    flex: 1;
+    min-width: 0;
+    flex: 1 1 0;
     border-right: 1px solid ${c.examPlayer.borderSplit};
     border-top: 2px solid transparent;
     background-color: ${c.examPlayer.panelBg};
@@ -423,13 +424,17 @@ export const StudentExamPlayerRoot = styled.div`
     align-items: center;
     justify-content: space-between;
     gap: ${theme.spacing(0.8)};
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .student-exam-player__part-tab-chips {
     display: flex;
     align-items: center;
     gap: ${theme.spacing(0.7)};
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
+    row-gap: ${theme.spacing(0.5)};
+    max-width: 100%;
   }
 
   .student-exam-player__q-chip {

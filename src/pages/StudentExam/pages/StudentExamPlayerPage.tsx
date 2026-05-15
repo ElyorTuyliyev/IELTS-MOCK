@@ -22,9 +22,16 @@ import {
   useExamNavigation,
   useBlankInputSync,
   useDragDropFillSync,
+  useExamSessionPersistence,
+  clearExamSession,
   useSplitResize,
   useStudentExamAccess,
 } from '../hooks'
+import {
+  loadExamSession,
+  resolveExamSessionInitial,
+  type ExamSessionInitial,
+} from '../utils/examSessionPersistence'
 import {
   ListeningModuleContent,
   ListeningStartOverlay,
@@ -49,18 +56,61 @@ export function StudentExamPlayerPage() {
   const examMainRef = useRef<HTMLDivElement | null>(null)
   const previousModuleRef = useRef<ModuleName>(MODULE_ORDER[0])
 
-  const [finishModalOpen, setFinishModalOpen] = useState(false)
-  const [submittedAtLabel, setSubmittedAtLabel] = useState('')
-  const [writingAnswers, setWritingAnswers] = useState<Record<string, string>>({})
-  const [listeningPlayed, setListeningPlayed] = useState(false)
-  const [listeningStarted, setListeningStarted] = useState(false)
-
   const { examId, denyState, accessLoading, access, enrollment } = useStudentExamAccess({
     noQuestions: false,
   })
   const { examQuestions, moduleData, hasAnyQuestions, loading, error } = useExamData(
     enrollment?.questionIds,
   )
+
+  const sessionInitial = useMemo((): ExamSessionInitial | null | undefined => {
+    if (accessLoading || (Boolean(examIdParam) && loading)) {
+      return undefined
+    }
+    if (!examId || !access?.allowed) {
+      return null
+    }
+    const snapshot = loadExamSession(examId)
+    if (!snapshot) {
+      return null
+    }
+    return resolveExamSessionInitial(snapshot, examId, enrollment?.questionIds, moduleData)
+  }, [
+    access?.allowed,
+    accessLoading,
+    enrollment?.questionIds,
+    examId,
+    examIdParam,
+    loading,
+    moduleData,
+  ])
+
+  const [finishModalOpen, setFinishModalOpen] = useState(false)
+  const [submittedAtLabel, setSubmittedAtLabel] = useState('')
+  const [writingAnswers, setWritingAnswers] = useState<Record<string, string>>(
+    () => sessionInitial?.writingAnswers ?? {},
+  )
+  const [listeningPlayed, setListeningPlayed] = useState(
+    () => sessionInitial?.listeningPlayed ?? false,
+  )
+  const [listeningStarted, setListeningStarted] = useState(
+    () => sessionInitial?.listeningStarted ?? false,
+  )
+
+  const didApplySessionInitialRef = useRef(false)
+
+  useEffect(() => {
+    // sessionInitial === undefined => backend/loading hali tugamagan
+    if (sessionInitial === undefined) return
+    if (didApplySessionInitialRef.current) return
+    didApplySessionInitialRef.current = true
+
+    if (sessionInitial) {
+      setWritingAnswers(sessionInitial.writingAnswers)
+      setListeningPlayed(sessionInitial.listeningPlayed)
+      setListeningStarted(sessionInitial.listeningStarted)
+    }
+  }, [sessionInitial])
 
   const resolvedDenyState = useMemo(() => {
     if (accessLoading || (Boolean(examIdParam) && loading)) {
@@ -101,7 +151,7 @@ export function StudentExamPlayerPage() {
     handleMoveQuestion,
     handleSelectPart,
     handleSelectQuestion,
-  } = useExamNavigation(moduleData)
+  } = useExamNavigation(moduleData, sessionInitial?.navigation)
 
   const { listeningHtml, readingHtml, blankValues, choiceValues } = useBlankInputSync(
     activeModule,
@@ -109,6 +159,12 @@ export function StudentExamPlayerPage() {
     currentPartQuestions,
     listeningContentRef,
     moduleContentRef,
+    sessionInitial
+      ? {
+          blankValues: sessionInitial.blankValues,
+          choiceValues: sessionInitial.choiceValues,
+        }
+      : undefined,
   )
 
   const listeningDragDropReady = activeModule !== 'listening' || listeningStarted
@@ -121,6 +177,7 @@ export function StudentExamPlayerPage() {
     listeningContentRef,
     moduleContentRef,
     listeningDragDropReady,
+    sessionInitial ? sessionInitial.dragDropValues : undefined,
   )
 
   useActiveQuestionSync(
@@ -132,6 +189,25 @@ export function StudentExamPlayerPage() {
     listeningHtml,
     readingHtml,
   )
+
+  useExamSessionPersistence({
+    examId,
+    enabled:
+      Boolean(examId) &&
+      Boolean(access?.allowed) &&
+      !finishModalOpen &&
+      !resolvedDenyState &&
+      sessionInitial !== undefined &&
+      (didApplySessionInitialRef.current || sessionInitial === null),
+    questionIds: enrollment?.questionIds,
+    navigation: { moduleIndex, part, activeQuestion },
+    listeningStarted,
+    listeningPlayed,
+    blankValues,
+    choiceValues,
+    dragDropValues,
+    writingAnswers,
+  })
 
   const handleFinishExam = useCallback(async () => {
     setSubmittedAtLabel(
@@ -145,6 +221,7 @@ export function StudentExamPlayerPage() {
     )
 
     if (examId) {
+      let finishedOk = false
       try {
         const answers = mergeSubmitAnswers(
           buildSubmitAnswersFromStores(blankValues, dragDropValues, choiceValues, moduleData),
@@ -152,15 +229,22 @@ export function StudentExamPlayerPage() {
         )
         if (answers.length > 0) {
           await submitMyStudentExam({ variables: { examId, answers } })
+          finishedOk = true
         } else {
           await completeMyStudentExam({ variables: { examId } })
+          finishedOk = true
         }
       } catch {
         try {
           await completeMyStudentExam({ variables: { examId } })
+          finishedOk = true
         } catch {
           // Modal still opens; access check on next visit will block retake if saved
         }
+      }
+
+      if (finishedOk) {
+        clearExamSession(examId)
       }
     }
 

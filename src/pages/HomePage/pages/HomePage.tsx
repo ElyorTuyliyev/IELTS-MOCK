@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useMutation, useQuery } from '@apollo/client/react'
 import { Box, IconButton, Tooltip, Typography } from '@mui/material'
 import { Button } from '../../../components/common/Button'
+import { dateInputValueToIso, isoToDateInputValue } from '../../../components/common/DateInput'
 import { useNavigate } from 'react-router-dom'
 
 import { ConfirmDialog } from '../../../components/common/ConfirmDialog/ConfirmDialog'
@@ -40,17 +41,6 @@ function ExamDeleteIcon() {
       <path d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z" />
     </Box>
   )
-}
-
-function isoToDateInputValue(iso: string) {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) {
-    return ''
-  }
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
 }
 
 function normalizeTimeForInput(t: string) {
@@ -231,6 +221,9 @@ export function HomePage({ archiveOnly = false }: HomePageProps) {
   }, [])
 
   const openEditExamModal = useCallback((exam: ExamCard) => {
+    if (exam.status === 'Archived') {
+      return
+    }
     setExamFormInitial({
       title: exam.title,
       examiner: exam.examiner,
@@ -245,7 +238,7 @@ export function HomePage({ archiveOnly = false }: HomePageProps) {
 
   const handleSaveExam = useCallback(
     async (values: { title: string; examiner: string; examType: string; examDate: string; startTime: string; endTime: string; price: string }) => {
-      const examDateIso = new Date(`${values.examDate}T00:00:00`).toISOString()
+      const examDateIso = dateInputValueToIso(values.examDate)
       const normalizedPrice = parsePriceValue(values.price)
 
       const gqlErrorMessage = (err: unknown): string | null => tryGetGraphQLErrorMessage(err)
@@ -459,16 +452,25 @@ export function HomePage({ archiveOnly = false }: HomePageProps) {
                       </Button>
                       {canManageExams ? (
                         <>
-                          <Tooltip title="Edit">
-                            <IconButton
-                              className="exam-card__icon-action"
-                              size="small"
-                              type="button"
-                              aria-label="Edit exam"
-                              onClick={() => openEditExamModal(exam)}
-                            >
-                              <ExamEditIcon />
-                            </IconButton>
+                          <Tooltip
+                            title={
+                              exam.status === 'Archived'
+                                ? 'Archived exams cannot be edited'
+                                : 'Edit'
+                            }
+                          >
+                            <span>
+                              <IconButton
+                                className="exam-card__icon-action"
+                                size="small"
+                                type="button"
+                                aria-label="Edit exam"
+                                disabled={exam.status === 'Archived'}
+                                onClick={() => openEditExamModal(exam)}
+                              >
+                                <ExamEditIcon />
+                              </IconButton>
+                            </span>
                           </Tooltip>
                           <Tooltip title="Delete">
                             <span>

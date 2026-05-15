@@ -8,6 +8,7 @@ import {
   Typography,
 } from '@mui/material'
 import { Button } from '../../../components/common/Button'
+import { DateInput } from '../../../components/common/DateInput'
 import { PasswordTextField } from '../../../components/common/PasswordTextField'
 import { PhoneInput } from '../../../components/common/PhoneInput'
 import { Select } from '../../../components/common/Select'
@@ -130,10 +131,9 @@ export const StudentFormModal = memo(function StudentFormModal({
 
         <Box className="students-modal__field">
           <label className="students-modal__label">Birthday</label>
-          <TextField
+          <DateInput
             fullWidth
             className="students-modal__control"
-            type="date"
             value={birthday}
             onChange={(e) => onBirthdayChange(e.target.value)}
           />

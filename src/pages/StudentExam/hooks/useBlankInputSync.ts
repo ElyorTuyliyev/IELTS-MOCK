@@ -115,17 +115,51 @@ function bindChoiceInputs(
   return cleanups
 }
 
+type BlankInputInitial = {
+  blankValues?: Record<string, string>
+  choiceValues?: Record<string, string>
+}
+
 export function useBlankInputSync(
   activeModule: ModuleName,
   part: number,
   currentPartQuestions: DisplayQuestion[],
   listeningContentRef: RefObject<HTMLDivElement | null>,
   moduleContentRef: RefObject<HTMLDivElement | null>,
+  initial?: BlankInputInitial,
 ) {
-  const [blankValues, setBlankValues] = useState<Record<string, string>>({})
-  const blankValuesRef = useRef(blankValues)
-  const [choiceValues, setChoiceValues] = useState<Record<string, string>>({})
-  const choiceValuesRef = useRef(choiceValues)
+  const [blankValues, setBlankValues] = useState<Record<string, string>>(
+    initial?.blankValues ?? {},
+  )
+  const blankValuesRef = useRef(initial?.blankValues ?? {})
+  const [choiceValues, setChoiceValues] = useState<Record<string, string>>(
+    initial?.choiceValues ?? {},
+  )
+  const choiceValuesRef = useRef(initial?.choiceValues ?? {})
+  const valuesRestoredRef = useRef(
+    Boolean(
+      (initial?.blankValues && Object.keys(initial.blankValues).length > 0) ||
+        (initial?.choiceValues && Object.keys(initial.choiceValues).length > 0),
+    ),
+  )
+
+  useEffect(() => {
+    if (valuesRestoredRef.current || !initial) return
+    const nextBlanks = initial.blankValues ?? {}
+    const nextChoices = initial.choiceValues ?? {}
+    const hasBlanks = Object.keys(nextBlanks).length > 0
+    const hasChoices = Object.keys(nextChoices).length > 0
+    if (!hasBlanks && !hasChoices) return
+    valuesRestoredRef.current = true
+    if (hasBlanks) {
+      setBlankValues(nextBlanks)
+      blankValuesRef.current = nextBlanks
+    }
+    if (hasChoices) {
+      setChoiceValues(nextChoices)
+      choiceValuesRef.current = nextChoices
+    }
+  }, [initial])
 
   const updateBlankValuesRef = useCallback(() => {
     blankValuesRef.current = blankValues

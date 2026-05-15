@@ -171,6 +171,32 @@ function countQuestionRangeFromHeadings(
 ): number {
   const rangeStart = partNumber ? listeningPartQuestionStart(partNumber) : null
   const rangeEnd = partNumber ? partNumber * 10 : null
+
+  if (rangeStart === null || rangeEnd === null) {
+    const intervals: Array<{ start: number; end: number }> = []
+    for (const match of html.matchAll(/Questions\s+(\d+)\s*[–-]\s*(\d+)/gi)) {
+      const start = Number(match[1])
+      const end = Number(match[2])
+      if (!Number.isFinite(start) || !Number.isFinite(end) || start > end) continue
+      intervals.push({ start, end })
+    }
+    if (intervals.length === 0) return 0
+    intervals.sort((a, b) => a.start - b.start || a.end - b.end)
+    let sum = 0
+    let cur = intervals[0]!
+    for (let i = 1; i < intervals.length; i += 1) {
+      const next = intervals[i]!
+      if (next.start <= cur.end + 1) {
+        cur = { start: cur.start, end: Math.max(cur.end, next.end) }
+      } else {
+        sum += cur.end - cur.start + 1
+        cur = next
+      }
+    }
+    sum += cur.end - cur.start + 1
+    return sum
+  }
+
   let headingMin = Infinity
   let headingMax = -Infinity
 
@@ -178,14 +204,9 @@ function countQuestionRangeFromHeadings(
     const start = Number(match[1])
     const end = Number(match[2])
     if (!Number.isFinite(start) || !Number.isFinite(end) || start > end) continue
-    if (rangeStart !== null && rangeEnd !== null) {
-      if (end < rangeStart || start > rangeEnd) continue
-      headingMin = Math.min(headingMin, Math.max(start, rangeStart))
-      headingMax = Math.max(headingMax, Math.min(end, rangeEnd))
-    } else {
-      headingMin = Math.min(headingMin, start)
-      headingMax = Math.max(headingMax, end)
-    }
+    if (end < rangeStart || start > rangeEnd) continue
+    headingMin = Math.min(headingMin, Math.max(start, rangeStart))
+    headingMax = Math.max(headingMax, Math.min(end, rangeEnd))
   }
 
   if (!Number.isFinite(headingMin) || headingMax < headingMin) return 0
@@ -210,7 +231,9 @@ function countReadingAnswerSlotsInHtml(html: string): number {
             /* malformed drag-drop data */
           }
         })
-        count += root.querySelectorAll('[data-type="radio-group"]').length
+        count += root.querySelectorAll(
+          '[data-type="radio-group"], .rte-radio-group, [data-type="checkbox-group"], .rte-checkbox-group',
+        ).length
       }
     } catch {
       /* DOM parse failed */
@@ -232,7 +255,9 @@ function countReadingAnswerSlotsInHtml(html: string): number {
   }
   if (count > 0) return count
 
-  count = (html.match(/data-type="radio-group"/g) ?? []).length
+  count =
+    (html.match(/data-type="radio-group"/g) ?? []).length +
+    (html.match(/data-type="checkbox-group"/g) ?? []).length
   if (count > 0) return count
 
   count = (html.match(/_{4,}/g) ?? []).length
@@ -300,8 +325,8 @@ export function countReadingPartAnswerSlots(ordered: BackendQuestion[]): number 
   const normalized = normalizeListeningContentForSlotCount(combinedRaw)
   const fromSlots = countReadingAnswerSlotsInHtml(normalized)
   const fromHeadings = countQuestionRangeFromHeadings(normalized)
-  const best = Math.max(fromSlots, fromHeadings)
-  return best > 0 ? best : fallback
+  if (fromSlots > 0) return fromSlots
+  return fromHeadings > 0 ? fromHeadings : fallback
 }
 
 export function countListeningQuestions(item: BackendQuestion, partNumber = 1): number {

@@ -127,6 +127,7 @@ export function ExamDetailsPage() {
 
             <EnrolledStudentsTable
               examId={exam._id}
+              isArchived={exam.isCompleted}
               studentExams={studentExamsData?.findAllStudentExams ?? []}
               users={usersData?.findAllUsers ?? []}
               loading={studentExamsLoading || usersLoading}
