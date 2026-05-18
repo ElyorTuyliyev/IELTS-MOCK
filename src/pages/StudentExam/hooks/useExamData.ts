@@ -3,12 +3,14 @@ import { useQuery } from '@apollo/client/react'
 import { useSearchParams } from 'react-router-dom'
 import { FIND_ALL_QUESTIONS_QUERY, type FindAllQuestionsResponse, flattenGroupedQuestions } from '../../Questions/api/findAllQuestionsQuery'
 import { MODULE_ORDER, MODULE_PART_COUNTS, type ModuleName } from '../constants'
+import { expandAssignedQuestionIds } from '../../ExamDetails/utils/examQuestionGroups'
 import {
-  normalizeModule,
   parsePartNumber,
+  resolveStudentExamModule,
   resolveAudioUrl,
   resolveQuestionText,
   resolveQuestionContent,
+  resolveListeningQuestionsHtml,
   resolveReadingQuestionsHtml,
   stripLeadingPartHeading,
   stripEditorAnswerMarksFromHtml,
@@ -33,28 +35,34 @@ export function useExamData(assignedQuestionIds?: string[] | null) {
     { fetchPolicy: 'network-only' },
   )
 
-  const assignedIdSet = useMemo(() => {
-    const ids = assignedQuestionIds?.map(String).filter(Boolean) ?? []
-    return ids.length > 0 ? new Set(ids) : null
-  }, [assignedQuestionIds])
-
   const examQuestions = useMemo(() => {
     const all = flattenGroupedQuestions(data?.findAllQuestions ?? []) as BackendQuestion[]
     if (!examId) {
       return []
     }
 
-    return all.filter((item) => {
-      if (assignedIdSet?.has(String(item._id))) {
-        return true
-      }
-      const qExam = item.examId?.trim() ?? ''
-      return qExam !== '' && String(qExam) === examId
-    })
-  }, [assignedIdSet, data?.findAllQuestions, examId])
+    const forExam = all.filter(
+      (item) => !item.examId?.trim() || String(item.examId) === examId,
+    )
+
+    const assignedIds = assignedQuestionIds?.map(String).filter(Boolean) ?? []
+    if (assignedIds.length === 0) {
+      return forExam.filter((item) => String(item.examId ?? '').trim() === examId)
+    }
+
+    const expandedIds = new Set(
+      expandAssignedQuestionIds(examId, forExam, assignedIds),
+    )
+    return forExam.filter((item) => expandedIds.has(String(item._id)))
+  }, [assignedQuestionIds, data?.findAllQuestions, examId])
 
   const moduleData = useMemo((): ModuleDataResult => {
-    const grouped: Record<ModuleName, ModulePart[]> = { listening: [], reading: [], writing: [] }
+    const grouped: Record<ModuleName, ModulePart[]> = {
+      listening: [],
+      reading: [],
+      writing: [],
+      speaking: [],
+    }
     const audioByModule: Partial<Record<ModuleName, string>> = {}
     const durationByModule: Partial<Record<ModuleName, number>> = {}
 
@@ -62,18 +70,21 @@ export function useExamData(assignedQuestionIds?: string[] | null) {
       listening: {},
       reading: {},
       writing: {},
+      speaking: {},
     }
 
     for (const item of examQuestions) {
-      const module =
-        normalizeModule(item.ieltsModule, item.type) ??
-        (item.listeningPart ? 'listening' : null)
+      const module = resolveStudentExamModule(item)
       if (!module) continue
 
       const partNumber = parsePartNumber(item, module)
       ;(questionsByModuleAndPart[module][partNumber] ??= []).push(item)
 
-      if (!audioByModule[module] && item.listeningAudio?.trim()) {
+      if (module === 'speaking') {
+        if (!audioByModule.speaking && item.speakingAudio?.trim()) {
+          audioByModule.speaking = resolveAudioUrl(item.speakingAudio.trim())
+        }
+      } else if (!audioByModule[module] && item.listeningAudio?.trim()) {
         audioByModule[module] = resolveAudioUrl(item.listeningAudio.trim())
       }
       const placementMinutes = Number(item.placementNumber)
@@ -113,10 +124,12 @@ export function useExamData(assignedQuestionIds?: string[] | null) {
 
         if (module === 'listening') {
           const source = ordered[0]
-          const contentHtml = ordered
-            .map((q) => resolveQuestionContent(q))
-            .filter(Boolean)
-            .join('')
+          const contentHtml = stripLeadingPartHeading(
+            ordered
+              .map((q) => resolveListeningQuestionsHtml(q) || resolveQuestionContent(q))
+              .filter(Boolean)
+              .join(''),
+          )
           const partStart = listeningPartQuestionStart(partNumber)
           const count = countListeningPartAnswerSlots(ordered, partNumber)
           partQuestions = Array.from({ length: count }, (_, idx) => ({
@@ -141,6 +154,14 @@ export function useExamData(assignedQuestionIds?: string[] | null) {
             questionDbId: source._id,
           }))
           globalQuestionNumber = partStart + count
+        } else if (module === 'writing' || module === 'speaking') {
+          partQuestions = ordered.map((q, idx) => ({
+            id: String(globalQuestionNumber + idx),
+            text: resolveQuestionText(q, idx + 1),
+            html: resolveQuestionContent(q) || undefined,
+            questionDbId: q._id,
+          }))
+          globalQuestionNumber += ordered.length
         } else {
           partQuestions = ordered.map((q, idx) => ({
             id: String(globalQuestionNumber + idx),
@@ -159,7 +180,7 @@ export function useExamData(assignedQuestionIds?: string[] | null) {
                   ? stripEditorAnswerMarksFromHtml(stripLeadingPartHeading(raw))
                   : undefined
               })()
-            : module === 'writing'
+            : module === 'writing' || module === 'speaking'
               ? ordered.find((q) => (q.passageHtml ?? '').trim())?.passageHtml?.trim() ||
                 ordered.find((q) => (q.sourceMaterial ?? '').trim())?.sourceMaterial?.trim() ||
                 undefined
@@ -179,7 +200,10 @@ export function useExamData(assignedQuestionIds?: string[] | null) {
   }, [examQuestions])
 
   const hasAnyQuestions = useMemo(
-    () => MODULE_ORDER.some((m) => moduleData.grouped[m].length > 0),
+    () =>
+      MODULE_ORDER.some((m) =>
+        moduleData.grouped[m].some((part) => part.questions.length > 0),
+      ),
     [moduleData],
   )
 

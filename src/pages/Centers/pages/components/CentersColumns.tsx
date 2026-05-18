@@ -108,6 +108,19 @@ export function createCentersColumns(handlers: CenterColumnHandlers): GridColDef
       sortable: false,
     },
     {
+      field: 'availableExamCredits',
+      headerName: 'Available exams',
+      minWidth: 140,
+      sortable: false,
+      align: 'center',
+      headerAlign: 'center',
+      renderCell: (params) => (
+        <Box component="span" sx={{ fontWeight: 600 }}>
+          {Number(params.value ?? 0)}
+        </Box>
+      ),
+    },
+    {
       field: 'actions',
       headerName: 'Action',
       minWidth: 148,
@@ -125,6 +138,7 @@ export function createCentersColumns(handlers: CenterColumnHandlers): GridColDef
           address: String(params.row.address ?? ''),
           logo: String(params.row.logo ?? ''),
           establishedAt: String(params.row.establishedAt ?? ''),
+          availableExamCredits: Number(params.row.availableExamCredits ?? 0),
         }
         return (
           <Box

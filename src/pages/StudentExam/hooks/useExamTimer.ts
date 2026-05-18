@@ -52,6 +52,17 @@ export function useExamTimer({
     if (secondsLeft > 0) return
 
     if (activeModule === 'writing') {
+      const speakingIndex = MODULE_ORDER.indexOf('speaking')
+      const hasSpeaking = moduleData.grouped.speaking.some((p) => p.questions.length > 0)
+      if (speakingIndex >= 0 && hasSpeaking) {
+        onAdvanceModule(speakingIndex)
+        return
+      }
+      if (!finishModalOpen) onFinishExam()
+      return
+    }
+
+    if (activeModule === 'speaking') {
       if (!finishModalOpen) onFinishExam()
       return
     }
@@ -60,7 +71,15 @@ export function useExamTimer({
     if (nextIdx < MODULE_ORDER.length) {
       onAdvanceModule(nextIdx)
     }
-  }, [secondsLeft, activeModule, moduleIndex, finishModalOpen, onAdvanceModule, onFinishExam])
+  }, [
+    secondsLeft,
+    activeModule,
+    moduleIndex,
+    moduleData.grouped.speaking,
+    finishModalOpen,
+    onAdvanceModule,
+    onFinishExam,
+  ])
 
   return { secondsLeft } as const
 }

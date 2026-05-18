@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useMutation } from '@apollo/client/react'
+import { useMutation, useQuery } from '@apollo/client/react'
 import { Box, IconButton, Typography } from '@mui/material'
 import { ROUTES_PATH } from '../../../routes/paths'
 import { selectUserName } from '../../../store'
 import { useAppSelector } from '../../../store/hooks'
 import { StudentExamPlayerRoot } from './StudentExamPlayerPage.style'
-import { MODULE_ORDER, type ModuleName } from '../constants'
+import { FIND_ALL_EXAMS_QUERY } from '../../CreateExam/api/findAllExamsQuery'
+import { MODULE_DURATION_SECONDS, MODULE_ORDER, type ModuleName } from '../constants'
 import { collectAnsweredQuestionIds, formatRemainingTime } from '../utils'
 import {
   COMPLETE_MY_STUDENT_EXAM_MUTATION,
@@ -14,8 +15,17 @@ import {
   type CompleteMyStudentExamResponse,
   type SubmitMyStudentExamResponse,
 } from '../api/studentExamMutations'
-import { collectExamAnswersFromDom } from '../utils/collectExamAnswers'
-import { buildSubmitAnswersFromStores, mergeSubmitAnswers } from '../utils/buildSubmitAnswers'
+import {
+  collectExamAnswersFromRoots,
+  flushBlankValuesFromDom,
+  flushChoiceValuesFromDom,
+} from '../utils/collectExamAnswers'
+import {
+  buildSubmitAnswersFromStores,
+  buildSpeakingSubmitAnswers,
+  buildWritingSubmitAnswers,
+  mergeSubmitAnswers,
+} from '../utils/buildSubmitAnswers'
 import {
   useActiveQuestionSync,
   useExamData,
@@ -40,6 +50,7 @@ import {
   StudentExamFooter,
   StudentExamPlayerHeader,
   StudentExamUnavailable,
+  SpeakingModuleContent,
   WritingModuleContent,
 } from '../components'
 
@@ -59,7 +70,11 @@ export function StudentExamPlayerPage() {
   const { examId, denyState, accessLoading, access, enrollment } = useStudentExamAccess({
     noQuestions: false,
   })
-  const { examQuestions, moduleData, hasAnyQuestions, loading, error } = useExamData(
+  const { data: examsData } = useQuery<{ findAllExams: Array<{ _id: string; title: string }> }>(
+    FIND_ALL_EXAMS_QUERY,
+    { skip: !examId },
+  )
+  const { moduleData, hasAnyQuestions, loading, error } = useExamData(
     enrollment?.questionIds,
   )
 
@@ -90,6 +105,7 @@ export function StudentExamPlayerPage() {
   const [writingAnswers, setWritingAnswers] = useState<Record<string, string>>(
     () => sessionInitial?.writingAnswers ?? {},
   )
+  const [speakingAnswers, setSpeakingAnswers] = useState<Record<string, string>>({})
   const [listeningPlayed, setListeningPlayed] = useState(
     () => sessionInitial?.listeningPlayed ?? false,
   )
@@ -151,7 +167,7 @@ export function StudentExamPlayerPage() {
     handleMoveQuestion,
     handleSelectPart,
     handleSelectQuestion,
-  } = useExamNavigation(moduleData, sessionInitial?.navigation)
+  } = useExamNavigation(moduleData, sessionInitial?.navigation, sessionInitial !== undefined)
 
   const { listeningHtml, readingHtml, blankValues, choiceValues } = useBlankInputSync(
     activeModule,
@@ -222,24 +238,41 @@ export function StudentExamPlayerPage() {
 
     if (examId) {
       let finishedOk = false
+      let submitAnswers: ReturnType<typeof mergeSubmitAnswers> = []
       try {
-        const answers = mergeSubmitAnswers(
-          buildSubmitAnswersFromStores(blankValues, dragDropValues, choiceValues, moduleData),
-          collectExamAnswersFromDom(examMainRef.current),
+        const flushRoots = [
+          examMainRef.current,
+          listeningContentRef.current,
+          moduleContentRef.current,
+        ]
+        const flushedBlanks = flushBlankValuesFromDom(flushRoots, blankValues)
+        const flushedChoices = flushChoiceValuesFromDom(flushRoots, choiceValues)
+        submitAnswers = mergeSubmitAnswers(
+          buildSubmitAnswersFromStores(
+            flushedBlanks,
+            dragDropValues,
+            flushedChoices,
+            moduleData,
+          ),
+          buildWritingSubmitAnswers(writingAnswers, moduleData),
+          buildSpeakingSubmitAnswers(speakingAnswers, moduleData),
+          collectExamAnswersFromRoots(flushRoots),
         )
-        if (answers.length > 0) {
-          await submitMyStudentExam({ variables: { examId, answers } })
+        if (submitAnswers.length > 0) {
+          await submitMyStudentExam({ variables: { examId, answers: submitAnswers } })
           finishedOk = true
         } else {
           await completeMyStudentExam({ variables: { examId } })
           finishedOk = true
         }
       } catch {
-        try {
-          await completeMyStudentExam({ variables: { examId } })
-          finishedOk = true
-        } catch {
-          // Modal still opens; access check on next visit will block retake if saved
+        if (submitAnswers.length === 0) {
+          try {
+            await completeMyStudentExam({ variables: { examId } })
+            finishedOk = true
+          } catch {
+            // Modal still opens; access check on next visit will block retake if saved
+          }
         }
       }
 
@@ -249,7 +282,17 @@ export function StudentExamPlayerPage() {
     }
 
     setFinishModalOpen(true)
-  }, [blankValues, choiceValues, completeMyStudentExam, dragDropValues, examId, moduleData, submitMyStudentExam])
+  }, [
+    blankValues,
+    choiceValues,
+    completeMyStudentExam,
+    dragDropValues,
+    examId,
+    moduleData,
+    submitMyStudentExam,
+    writingAnswers,
+    speakingAnswers,
+  ])
 
   const { splitLeftWidth, startResize } = useSplitResize(splitContainerRef)
 
@@ -288,13 +331,30 @@ export function StudentExamPlayerPage() {
       }
     }
     if (activeModule === 'writing') {
+      const speakingIndex = MODULE_ORDER.indexOf('speaking')
+      const hasSpeaking = moduleData.grouped.speaking.some((p) => p.questions.length > 0)
+      if (speakingIndex >= 0 && hasSpeaking) {
+        goToModuleIndex(speakingIndex)
+        return
+      }
+      handleFinishExam()
+      return
+    }
+    if (activeModule === 'speaking') {
       handleFinishExam()
       return
     }
     if (canGoToNextModule) {
       goToModuleIndex(moduleIndex + 1)
     }
-  }, [activeModule, canGoToNextModule, moduleIndex, goToModuleIndex, handleFinishExam])
+  }, [
+    activeModule,
+    canGoToNextModule,
+    goToModuleIndex,
+    handleFinishExam,
+    moduleData.grouped.speaking,
+    moduleIndex,
+  ])
 
   const currentWritingKey = `writing-part-${part}`
   const currentWritingAnswer = writingAnswers[currentWritingKey] ?? ''
@@ -312,18 +372,34 @@ export function StudentExamPlayerPage() {
     [currentWritingKey],
   )
 
+  const currentSpeakingKey = `speaking-part-${part}`
+  const currentSpeakingAnswer = speakingAnswers[currentSpeakingKey] ?? ''
+
+  const handleSpeakingChange = useCallback(
+    (value: string) => {
+      setSpeakingAnswers((prev) =>
+        prev[currentSpeakingKey] === value ? prev : { ...prev, [currentSpeakingKey]: value },
+      )
+    },
+    [currentSpeakingKey],
+  )
+
   const summaryCandidateName = userName?.trim() || 'Test Taker'
   const summaryTestName = useMemo(() => {
-    const firstTitle = examQuestions.find((item) => (item.title ?? '').trim())?.title?.trim() ?? ''
-    return firstTitle ? firstTitle.split('—')[0]?.trim() || firstTitle : 'IELTS Mock'
-  }, [examQuestions])
+    const examTitle = examsData?.findAllExams?.find((item) => item._id === examId)?.title?.trim()
+    if (examTitle) return examTitle
+    return 'IELTS Mock Exam'
+  }, [examId, examsData?.findAllExams])
   const summaryDuration = useMemo(() => {
-    const placement = examQuestions.find((item) => Number(item.placementNumber) > 0)?.placementNumber
-    if (placement && Number.isFinite(Number(placement))) {
-      return `${Math.floor(Number(placement))}:00`
+    let totalSeconds = 0
+    for (const mod of MODULE_ORDER) {
+      const hasModuleQuestions = moduleData.grouped[mod]?.some((p) => p.questions.length > 0)
+      if (!hasModuleQuestions) continue
+      totalSeconds +=
+        moduleData.durationByModule[mod] ?? MODULE_DURATION_SECONDS[mod]
     }
-    return formatRemainingTime(0)
-  }, [examQuestions])
+    return formatRemainingTime(totalSeconds)
+  }, [moduleData.durationByModule, moduleData.grouped])
 
   const answeredQuestionIds = useMemo(
     () =>
@@ -342,7 +418,9 @@ export function StudentExamPlayerPage() {
       ? 'Listen and answer questions'
       : activeModule === 'reading'
         ? 'Read and answer questions'
-        : 'Write responses for questions'
+        : activeModule === 'writing'
+          ? 'Write responses for questions'
+          : 'Complete the speaking tasks'
 
   const handleListeningPlay = useCallback(() => {
     void handleStartListening()
@@ -431,6 +509,16 @@ export function StudentExamPlayerPage() {
             currentWritingAnswer={currentWritingAnswer}
             onStartResize={startResize}
             onChangeWritingAnswer={handleWritingChange}
+          />
+        ) : activeModule === 'speaking' ? (
+          <SpeakingModuleContent
+            splitContainerRef={splitContainerRef}
+            splitLeftWidth={splitLeftWidth}
+            currentPartPassage={currentPartPassage}
+            speakingAudioUrl={moduleData.audioByModule.speaking}
+            currentSpeakingAnswer={currentSpeakingAnswer}
+            onStartResize={startResize}
+            onChangeSpeakingAnswer={handleSpeakingChange}
           />
         ) : (
           <Box ref={moduleContentRef} className="student-exam-player__module-stack">

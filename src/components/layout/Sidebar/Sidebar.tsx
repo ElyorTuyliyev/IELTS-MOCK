@@ -37,6 +37,7 @@ const ME_CENTER_QUERY = gql`
       _id
       name
       logo
+      availableExamCredits
     }
   }
 `;
@@ -81,10 +82,19 @@ export function Sidebar() {
     }
   });
   const { data: meCenterData } = useQuery<{
-    meCenter?: { _id: string; name?: string | null; logo?: string | null } | null;
+    meCenter?: {
+      _id: string;
+      name?: string | null;
+      logo?: string | null;
+      availableExamCredits?: number;
+    } | null;
   }>(ME_CENTER_QUERY, {
     skip: !authToken,
   });
+
+  const showExamCredits =
+    role === "center" || role === "super_admin";
+  const availableExamCredits = meCenterData?.meCenter?.availableExamCredits ?? 0;
 
   const visibleGroups = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -455,6 +465,16 @@ export function Sidebar() {
       </Box>
 
       <Box component="footer" className="sidebar__footer">
+        {showExamCredits && role === "center" ? (
+          <Box className="sidebar__credits" sx={{ mb: 1.5, px: 0.5 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+              Available exams
+            </Typography>
+            <Typography sx={{ fontWeight: 700, fontSize: '1.125rem' }}>
+              {availableExamCredits}
+            </Typography>
+          </Box>
+        ) : null}
         {wrapWithTooltip(
           "Sign out",
           <Button

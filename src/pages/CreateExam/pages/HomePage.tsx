@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useMutation, useQuery } from '@apollo/client/react'
-import { Box, IconButton, Tooltip, Typography } from '@mui/material'
+import { Box, Typography } from '@mui/material'
+import { DataGrid, type GridCellParams, type GridPaginationModel } from '@mui/x-data-grid'
+import type { KeyboardEvent } from 'react'
 import { Button } from '../../../components/common/Button'
 import { dateInputValueToIso, isoToDateInputValue } from '../../../components/common/DateInput'
 import { useNavigate } from 'react-router-dom'
@@ -23,25 +25,13 @@ import { FIND_ALL_EXAMS_QUERY } from '../api/findAllExamsQuery'
 import { REMOVE_EXAM_MUTATION } from '../api/removeExamMutation'
 import { UPDATE_EXAM_MUTATION } from '../api/updateExamMutation'
 import { HomePageRoot } from './HomePage.style'
-import { ExamFormDialog } from '../components'
+import { createExamsColumns } from '../components/ExamsColumns'
+import { ExamFormDialog, ExamRowActionsMenu, ExamsViewToggle } from '../components'
+import { useExamsViewMode } from '../hooks/useExamsViewMode'
 
 type ExamFormDialog = null | { mode: 'create' } | { mode: 'edit'; examId: string }
 
-function ExamEditIcon() {
-  return (
-    <Box component="svg" viewBox="0 0 24 24" className="exam-card__icon-svg" fill="currentColor" aria-hidden>
-      <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
-    </Box>
-  )
-}
-
-function ExamDeleteIcon() {
-  return (
-    <Box component="svg" viewBox="0 0 24 24" className="exam-card__icon-svg" fill="currentColor" aria-hidden>
-      <path d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z" />
-    </Box>
-  )
-}
+const EXAM_PAGE_SIZE_OPTIONS = [6, 12, 24] as const
 
 function normalizeTimeForInput(t: string) {
   const trimmed = t.trim()
@@ -87,6 +77,11 @@ export function HomePage({ archiveOnly = false }: HomePageProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('All statuses')
   const [categoryFilter, setCategoryFilter] = useState('All categories')
+  const { viewMode, setViewMode } = useExamsViewMode()
+  const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
+    page: 0,
+    pageSize: 12,
+  })
   const [examFormDialog, setExamFormDialog] = useState<ExamFormDialog>(null)
   const [pendingDeleteExam, setPendingDeleteExam] = useState<ExamCard | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
@@ -317,6 +312,74 @@ export function HomePage({ archiveOnly = false }: HomePageProps) {
     if (!deleteLoading) setPendingDeleteExam(null)
   }, [deleteLoading])
 
+  const navigateToExamDetails = useCallback(
+    (exam: ExamCard) => {
+      navigate(ROUTES_PATH.examDetails.replace(':examId', exam.id), {
+        state: {
+          exam: {
+            _id: exam.id,
+            title: exam.title,
+            examiner: exam.examiner,
+            examType: exam.examType,
+            examDate: exam.examDateIso,
+            startTime: exam.startTime,
+            endTime: exam.endTime,
+            price: exam.price,
+            isActive: exam.status === 'Active',
+            isCompleted: exam.status === 'Archived',
+          },
+        },
+      })
+    },
+    [navigate],
+  )
+
+  const handleExamCardKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLElement>, exam: ExamCard) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault()
+        navigateToExamDetails(exam)
+      }
+    },
+    [navigateToExamDetails],
+  )
+
+  const handleExamCellClick = useCallback(
+    (params: GridCellParams<ExamCard>) => {
+      if (params.field === 'actions') {
+        return
+      }
+      navigateToExamDetails(params.row)
+    },
+    [navigateToExamDetails],
+  )
+
+  const examColumns = useMemo(
+    () =>
+      createExamsColumns({
+        canManageExams,
+        getStatusClassName,
+        onView: navigateToExamDetails,
+        onEdit: openEditExamModal,
+        onDelete: handleRequestDeleteExam,
+      }),
+    [
+      canManageExams,
+      navigateToExamDetails,
+      openEditExamModal,
+      handleRequestDeleteExam,
+    ],
+  )
+
+  const totalPages = Math.max(1, Math.ceil(filteredExams.length / paginationModel.pageSize))
+  const gridPaginationModel = useMemo(
+    () => ({
+      ...paginationModel,
+      page: Math.min(paginationModel.page, Math.max(0, totalPages - 1)),
+    }),
+    [paginationModel, totalPages],
+  )
+
   return (
     <Layout>
       <HomePageRoot>
@@ -338,7 +401,10 @@ export function HomePage({ archiveOnly = false }: HomePageProps) {
               showIcon={false}
               aria-label="Search exams"
               value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
+              onChange={(event) => {
+                setSearchTerm(event.target.value)
+                setPaginationModel((current) => ({ ...current, page: 0 }))
+              }}
             />
 
             <Box className="content__toolbar-filter-group">
@@ -347,7 +413,10 @@ export function HomePage({ archiveOnly = false }: HomePageProps) {
                   className="content__toolbar-select"
                   aria-label="Exam status"
                   value={statusFilter}
-                  onChange={(event) => setStatusFilter(event.target.value)}
+                  onChange={(event) => {
+                    setStatusFilter(event.target.value)
+                    setPaginationModel((current) => ({ ...current, page: 0 }))
+                  }}
                   options={[
                     { value: 'All statuses', label: 'All statuses' },
                     { value: 'Active', label: 'Active' },
@@ -360,7 +429,10 @@ export function HomePage({ archiveOnly = false }: HomePageProps) {
                 className="content__toolbar-select"
                 aria-label="Exam category"
                 value={categoryFilter}
-                onChange={(event) => setCategoryFilter(event.target.value)}
+                onChange={(event) => {
+                  setCategoryFilter(event.target.value)
+                  setPaginationModel((current) => ({ ...current, page: 0 }))
+                }}
               >
                 <MenuItem value="All categories">All categories</MenuItem>
                 {categories.map((category) => (
@@ -379,120 +451,132 @@ export function HomePage({ archiveOnly = false }: HomePageProps) {
           </Typography>
 
           <Box className="content__results-summary">
-            <Typography component="span">{filteredExams.length} exams found</Typography>
-            <Typography component="span" className="content__results-meta">
-              {categoryFilter === 'All categories' ? 'Across all categories' : categoryFilter}
-            </Typography>
+            <Box className="content__results-summary-text">
+              <Typography component="span">{filteredExams.length} exams found</Typography>
+              <Typography component="span" className="content__results-meta">
+                {categoryFilter === 'All categories' ? 'Across all categories' : categoryFilter}
+              </Typography>
+            </Box>
+            <ExamsViewToggle value={viewMode} onChange={setViewMode} />
           </Box>
 
           {filteredExams.length > 0 ? (
+            viewMode === 'table' ? (
+              <Box className="content__table-wrap">
+                <DataGrid
+                  rows={filteredExams}
+                  columns={examColumns}
+                  getRowId={(row) => row.id}
+                  pagination
+                  paginationMode="client"
+                  paginationModel={gridPaginationModel}
+                  onPaginationModelChange={setPaginationModel}
+                  pageSizeOptions={[...EXAM_PAGE_SIZE_OPTIONS]}
+                  disableRowSelectionOnClick
+                  disableColumnMenu
+                  disableColumnResize
+                  rowHeight={72}
+                  columnHeaderHeight={52}
+                  onCellClick={handleExamCellClick}
+                  localeText={{
+                    noRowsLabel:
+                      archiveOnly
+                        ? 'No archived exams yet, or no results match the current filter.'
+                        : 'No exams matched this filter. Try another status, category, or search phrase.',
+                  }}
+                  slotProps={{
+                    pagination: {
+                      labelRowsPerPage: 'Rows per page:',
+                      labelDisplayedRows: ({
+                        from,
+                        to,
+                        count,
+                      }: {
+                        from: number
+                        to: number
+                        count: number
+                      }) =>
+                        `${from}–${to} of ${count !== -1 ? count : `more than ${to}`}`,
+                    },
+                  }}
+                />
+              </Box>
+            ) : (
             <Box className="content__grid">
               {filteredExams.map((exam) => (
-                <Box key={exam.id} component="article" className="exam-card">
-                  <Box className="exam-card__visual" sx={{ background: exam.gradient }}>
-                    <Box component="span" className="exam-card__orb exam-card__orb--large" />
-                    <Box component="span" className="exam-card__orb exam-card__orb--small" />
-                    <Box className="exam-card__monitor" aria-hidden="true" />
-                    <Box className="exam-card__desk" aria-hidden="true" />
-                  </Box>
+                <Box key={exam.id} component="article" className="exam-card exam-card--interactive">
+                  <Box
+                    className="exam-card__click-zone"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`View ${exam.title}`}
+                    onClick={() => navigateToExamDetails(exam)}
+                    onKeyDown={(event) => handleExamCardKeyDown(event, exam)}
+                  >
+                    <Box className="exam-card__visual" sx={{ background: exam.gradient }}>
+                      <Box component="span" className="exam-card__orb exam-card__orb--large" />
+                      <Box component="span" className="exam-card__orb exam-card__orb--small" />
+                      <Box className="exam-card__monitor" aria-hidden="true" />
+                      <Box className="exam-card__desk" aria-hidden="true" />
+                    </Box>
 
-                  <Box className="exam-card__body">
-                    <Box component="header" className="exam-card__header">
-                      <Box>
-                        <Typography component="h3" className="exam-card__title">
-                          {exam.title}
-                        </Typography>
-                        <Typography component="span" className="exam-card__category">
-                          {exam.category}
+                    <Box className="exam-card__body">
+                      <Box component="header" className="exam-card__header">
+                        <Box>
+                          <Typography component="h3" className="exam-card__title">
+                            {exam.title}
+                          </Typography>
+                          <Typography component="span" className="exam-card__category">
+                            {exam.category}
+                          </Typography>
+                        </Box>
+
+                        <Typography component="span" className={getStatusClassName(exam.status)}>
+                          {exam.status}
                         </Typography>
                       </Box>
 
-                      <Typography component="span" className={getStatusClassName(exam.status)}>
-                        {exam.status}
+                      <Box component="ul" className="exam-card__meta">
+                        {exam.meta.map((item) => (
+                          <Box key={item} component="li" className="exam-card__meta-item">
+                            {item}
+                          </Box>
+                        ))}
+                      </Box>
+
+                      <Typography component="p" className="exam-card__date">
+                        {exam.date}
                       </Typography>
                     </Box>
+                  </Box>
 
-                    <Box component="ul" className="exam-card__meta">
-                      {exam.meta.map((item) => (
-                        <Box key={item} component="li" className="exam-card__meta-item">
-                          {item}
-                        </Box>
-                      ))}
-                    </Box>
-
-                    <Typography component="p" className="exam-card__date">
-                      {exam.date}
-                    </Typography>
-
-                    <Box className="exam-card__actions">
-                      <Button
-                        className="exam-card__action"
-                        variant="secondary"
-                        type="button"
-                        onClick={() =>
-                          navigate(ROUTES_PATH.examDetails.replace(':examId', exam.id), {
-                            state: {
-                              exam: {
-                                _id: exam.id,
-                                title: exam.title,
-                                examiner: exam.examiner,
-                                examType: exam.examType,
-                                examDate: exam.examDateIso,
-                                startTime: exam.startTime,
-                                endTime: exam.endTime,
-                                price: exam.price,
-                                isActive: exam.status === 'Active',
-                                isCompleted: exam.status === 'Archived',
-                              },
-                            },
-                          })
-                        }
+                  <Box className="exam-card__actions">
+                    <Button
+                      className="exam-card__action exam-card__action--full"
+                      variant="secondary"
+                      type="button"
+                      onClick={() => navigateToExamDetails(exam)}
+                    >
+                      View More
+                    </Button>
+                    {canManageExams ? (
+                      <Box
+                        className="exam-card__actions-menu"
+                        onClick={(event) => event.stopPropagation()}
+                        onKeyDown={(event) => event.stopPropagation()}
                       >
-                        View More
-                      </Button>
-                      {canManageExams ? (
-                        <>
-                          <Tooltip
-                            title={
-                              exam.status === 'Archived'
-                                ? 'Archived exams cannot be edited'
-                                : 'Edit'
-                            }
-                          >
-                            <span>
-                              <IconButton
-                                className="exam-card__icon-action"
-                                size="small"
-                                type="button"
-                                aria-label="Edit exam"
-                                disabled={exam.status === 'Archived'}
-                                onClick={() => openEditExamModal(exam)}
-                              >
-                                <ExamEditIcon />
-                              </IconButton>
-                            </span>
-                          </Tooltip>
-                          <Tooltip title="Delete">
-                            <span>
-                              <IconButton
-                                className="exam-card__icon-action exam-card__icon-action--danger"
-                                size="small"
-                                type="button"
-                                aria-label="Delete exam"
-                                disabled={isRemovingExam}
-                                onClick={() => handleRequestDeleteExam(exam)}
-                              >
-                                <ExamDeleteIcon />
-                              </IconButton>
-                            </span>
-                          </Tooltip>
-                        </>
-                      ) : null}
-                    </Box>
+                        <ExamRowActionsMenu
+                          exam={exam}
+                          onEdit={openEditExamModal}
+                          onDelete={handleRequestDeleteExam}
+                        />
+                      </Box>
+                    ) : null}
                   </Box>
                 </Box>
               ))}
             </Box>
+            )
           ) : (
             <Box className="content__empty-state">
               {archiveOnly

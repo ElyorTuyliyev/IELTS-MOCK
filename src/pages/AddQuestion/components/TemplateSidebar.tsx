@@ -6,6 +6,7 @@ import { QUESTION_TEMPLATES, type IeltsModule } from "../AddQuestionPage.constan
 
 type TemplateSidebarProps = {
   isEditMode: boolean;
+  lockedModule?: IeltsModule | null;
   selectedModule: IeltsModule;
   selectedTemplateId: string;
   onTemplateChange: (templateId: string) => void;
@@ -13,6 +14,7 @@ type TemplateSidebarProps = {
 
 export const TemplateSidebar = memo(function TemplateSidebar({
   isEditMode,
+  lockedModule = null,
   selectedModule,
   selectedTemplateId,
   onTemplateChange,
@@ -28,7 +30,9 @@ export const TemplateSidebar = memo(function TemplateSidebar({
         <Typography component="p" className="add-question-page__rail-copy">
           {isEditMode
             ? "Update the details and save."
-            : "Select a template and create a question."}
+            : lockedModule
+              ? `Create a ${lockedModule} question. Choose a template below.`
+              : "Select a template and create a question."}
         </Typography>
       </Box>
       <Box className="add-question-page__module-list">

@@ -3,12 +3,30 @@ import { Alert, Snackbar } from '@mui/material'
 
 import { tokens } from '../../../theme/tokens'
 
+export const ToastStack = styled.div`
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 1400;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  pointer-events: none;
+
+  & > * {
+    pointer-events: auto;
+  }
+`
+
 export const ToastSnackbar = styled(Snackbar)`
   &.MuiSnackbar-root {
-    top: 24px;
-    right: 24px;
+    position: relative;
+    top: auto;
+    right: auto;
     left: auto;
     bottom: auto;
+    transform: none;
   }
 `
 

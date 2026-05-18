@@ -5,11 +5,12 @@ import { Button } from '../../../components/common/Button'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import { Layout } from '../../../components/layout'
+import { ROUTES_PATH } from '../../../routes/paths'
 import { useToast } from '../../../components/common/Toast'
 import { selectUserRole } from '../../../store'
 import { useAppSelector } from '../../../store/hooks'
 import { USER_ROLES } from '../../../store/slices/authSlice'
-import { FIND_ALL_EXAMS_QUERY } from '../../HomePage/api/findAllExamsQuery'
+import { FIND_ALL_EXAMS_QUERY } from '../../CreateExam/api/findAllExamsQuery'
 import { ExamDetailsRoot } from './ExamDetailsPage.style'
 import {
   FIND_ALL_USERS_QUERY,
@@ -69,7 +70,10 @@ export function ExamDetailsPage() {
     void refetchStudentExams()
   }, [refetchStudentExams])
 
-  const handleGoBack = useCallback(() => navigate(-1), [navigate])
+  const handleGoBack = useCallback(() => {
+    const isArchived = exam?.isCompleted ?? locationState?.exam?.isCompleted ?? false
+    navigate(isArchived ? ROUTES_PATH.examsArchive : ROUTES_PATH.allExams)
+  }, [exam?.isCompleted, locationState?.exam?.isCompleted, navigate])
 
   useEffect(() => {
     const message = error?.message ?? usersError?.message ?? studentExamsError?.message
@@ -108,7 +112,13 @@ export function ExamDetailsPage() {
 
         {exam && (
           <>
-            <ExamInfoCard exam={exam} />
+            <ExamInfoCard
+              exam={exam}
+              studentExams={studentExamsData?.findAllStudentExams ?? []}
+              isArchived={exam.isCompleted}
+              canStart={canAssign}
+              onExamStarted={handleEnrolled}
+            />
 
             {canAssign ? (
               <StudentEnrollSection

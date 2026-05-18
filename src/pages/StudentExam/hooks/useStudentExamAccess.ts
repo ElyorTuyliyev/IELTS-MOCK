@@ -36,6 +36,16 @@ function resolveDenyState(
     const completed = Boolean(access.enrollment?.isCompleted)
 
     if (
+      reasonText.toLowerCase().includes('credit') ||
+      reasonText.toLowerCase().includes('purchase a plan')
+    ) {
+      return {
+        reason: 'no_credits',
+        description: reasonText || undefined,
+      }
+    }
+
+    if (
       completed ||
       reasonText.includes('ended') ||
       reasonText.includes('submitted') ||

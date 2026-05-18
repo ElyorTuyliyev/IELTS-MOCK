@@ -29,6 +29,7 @@ export function useCentersData({ centersData }: UseCentersDataParams) {
             manager: c.manager?.trim() ? c.manager : 'N/A',
             logo: c.logo ?? '',
             establishedAt: c.establishedAt ?? '',
+            availableExamCredits: c.availableExamCredits ?? 0,
           }))
         : CENTERS.map((c) => ({
             id: c.id,
@@ -39,6 +40,7 @@ export function useCentersData({ centersData }: UseCentersDataParams) {
             manager: 'N/A',
             logo: '',
             establishedAt: '',
+            availableExamCredits: 0,
           }))
 
     const normalizedSearch = searchTerm.trim().toLowerCase()

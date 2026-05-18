@@ -11,6 +11,7 @@ export const GET_ALL_CENTERS_QUERY = gql`
       email
       logo
       establishedAt
+      availableExamCredits
       createdAt
       updatedAt
     }

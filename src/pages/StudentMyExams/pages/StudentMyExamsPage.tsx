@@ -7,7 +7,7 @@ import { Button } from '../../../components/common/Button'
 import { Layout } from '../../../components/layout'
 import { useToast } from '../../../components/common/Toast'
 import { ROUTES_PATH } from '../../../routes/paths'
-import { FIND_ALL_EXAMS_QUERY } from '../../HomePage/api/findAllExamsQuery'
+import { FIND_ALL_EXAMS_QUERY } from '../../CreateExam/api/findAllExamsQuery'
 import { FIND_MY_STUDENT_EXAMS_QUERY, type FindMyStudentExamsResponse } from '../api/findMyStudentExamsQuery'
 import { StudentMyExamsPageRoot } from './StudentMyExamsPage.style'
 

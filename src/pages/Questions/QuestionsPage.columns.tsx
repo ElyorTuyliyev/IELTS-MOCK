@@ -10,26 +10,30 @@ type CreateQuestionColumnsOptions = {
   onDelete?: (row: QuestionGridRow) => void
   onEdit?: (row: QuestionGridRow) => void
   onView?: (row: QuestionGridRow) => void
+  hideModuleColumn?: boolean
 }
 
 export function createQuestionColumns({
   onDelete,
   onEdit,
   onView,
+  hideModuleColumn = false,
 }: CreateQuestionColumnsOptions): GridColDef<QuestionGridRow>[] {
+  const moduleColumn: GridColDef<QuestionGridRow> = {
+    field: 'questionType',
+    headerName: 'Module',
+    flex: 1,
+    sortable: false,
+    headerAlign: 'left',
+    renderCell: (params) => (
+      <Box className="question-table__module-cell">
+        <span className="question-table__module-text">{params.row.questionType}</span>
+      </Box>
+    ),
+  }
+
   return [
-    {
-      field: 'questionType',
-      headerName: 'Module',
-      flex: 1,
-      sortable: false,
-      headerAlign: 'left',
-      renderCell: (params) => (
-        <Box className="question-table__module-cell">
-          <span className="question-table__module-text">{params.row.questionType}</span>
-        </Box>
-      ),
-    },
+    ...(hideModuleColumn ? [] : [moduleColumn]),
     {
       field: 'title',
       headerName: 'Title',

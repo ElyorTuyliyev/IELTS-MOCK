@@ -12,20 +12,41 @@ const panelSurface = `
 export const LayoutRoot = styled(Box)`
   display: grid;
   grid-template-columns: 288px minmax(0, 1fr);
-  min-height: 100vh;
+  height: 100dvh;
+  min-height: 0;
   gap: ${theme.spacing(2)};
   padding: 16px;
+  overflow: hidden;
+
+  .dashboard__sidebar {
+    min-height: 0;
+    max-height: 100%;
+    overflow: hidden;
+  }
 
   .dashboard__content {
     ${panelSurface};
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
     overflow: hidden;
   }
 
   .content__main {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    width: 100%;
+    direction: ltr;
+  }
+
+  .content__main-inner {
     max-width: 1600px;
     width: 100%;
     margin: 0 auto;
     padding: 28px;
+    box-sizing: border-box;
   }
 
   @media (max-width: 1120px) {
@@ -33,7 +54,7 @@ export const LayoutRoot = styled(Box)`
     gap: ${theme.spacing(1.5)};
     padding: 12px;
 
-    .content__main {
+    .content__main-inner {
       padding: 20px 16px;
     }
   }

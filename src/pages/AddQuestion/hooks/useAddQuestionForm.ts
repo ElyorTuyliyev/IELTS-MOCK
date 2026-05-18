@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@apollo/client/react";
 import type { InternalRefetchQueryDescriptor } from "@apollo/client";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import { selectAuthToken } from "../../../store";
 import { useAppSelector } from "../../../store/hooks";
 import { useToast } from "../../../components/common/Toast";
-import { ROUTES_PATH } from "../../../routes/paths";
+import { getQuestionsListPath, ROUTES_PATH } from "../../../routes/paths";
 import { QUESTION_TEMPLATES, type IeltsModule } from "../AddQuestionPage.constants";
 import { CREATE_QUESTION_MUTATION } from "../api/createQuestionMutation";
 import { FIND_ALL_MODULES_FOR_QUESTION_QUERY, type FindAllModulesResponse } from "../api/findAllModulesForQuestionQuery";
@@ -44,11 +44,12 @@ import {
   WRITING_PART_LABELS,
 } from "../utils";
 import { getMutationErrorMessage, type ApolloMutationResultLike } from "../../../helpers";
+import { resolveExamModuleId } from "../../../utils/examModules";
 
 const STABLE_EMPTY_EXAMS: ExamItem[] = [];
 const STABLE_EMPTY_PARTS: PartItem[] = [];
 
-/** API / DB module `type` (listening, …) vs UI IELTS modul nomi */
+/** API / DB module `type` (listening, …) vs UI IELTS module name */
 function apiModuleTypeMatches(
   apiType: string | null | undefined,
   uiModule: IeltsModule,
@@ -164,8 +165,12 @@ export function useAddQuestionForm() {
   const navigate = useNavigate();
   const toast = useToast();
   const params = useParams<{ questionId?: string }>();
+  const [searchParams] = useSearchParams();
   const questionId = params.questionId?.trim() || undefined;
   const isEditMode = Boolean(questionId);
+  const moduleFromQuery = searchParams.get("module");
+  const lockedModule =
+    !isEditMode && moduleFromQuery ? validateModule(moduleFromQuery) : null;
 
   const authToken = useAppSelector(selectAuthToken);
 
@@ -198,10 +203,22 @@ export function useAddQuestionForm() {
   );
 
   // ── Form state ──
-  const [selectedModule, setSelectedModule] = useState<IeltsModule>("Listening");
+  const [selectedModule, setSelectedModule] = useState<IeltsModule>(() =>
+    !isEditMode && moduleFromQuery ? validateModule(moduleFromQuery) : "Listening",
+  );
   const [selectedTemplateId, setSelectedTemplateId] = useState(
     QUESTION_TEMPLATES[0]?.id ?? "",
   );
+
+  useEffect(() => {
+    if (isEditMode || !moduleFromQuery) return;
+    const nextModule = validateModule(moduleFromQuery);
+    setSelectedModule(nextModule);
+    const firstTemplate = QUESTION_TEMPLATES.find((t) => t.module === nextModule);
+    if (firstTemplate) {
+      setSelectedTemplateId(firstTemplate.id);
+    }
+  }, [isEditMode, moduleFromQuery]);
   const [title, setTitle] = useState("");
   const [timeLimit, setTimeLimit] = useState("45");
   const [instruction, setInstruction] = useState(EMPTY_HTML);
@@ -222,11 +239,9 @@ export function useAddQuestionForm() {
   const [explanation, setExplanation] = useState(EMPTY_HTML);
   const [acceptedAnswers, setAcceptedAnswers] = useState("");
   const [listeningAudioFile, setListeningAudioFile] = useState<File | null>(null);
-  const [speakingAudioFile, setSpeakingAudioFile] = useState<File | null>(null);
   const [supportingImageFile, setSupportingImageFile] = useState<File | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   const [existingListeningAudio, setExistingListeningAudio] = useState<string | null>(null);
-  const [existingSpeakingAudio, setExistingSpeakingAudio] = useState<string | null>(null);
   const [existingSupportingImage, setExistingSupportingImage] = useState<string | null>(null);
   const [, setEditPartSlotIndex] = useState<number | null>(null);
 
@@ -250,13 +265,27 @@ export function useAddQuestionForm() {
 
   const answerMode = selectedTemplate.answerMode;
 
+  const linkedExam = useMemo(() => {
+    if (!isEditMode || !oneQuestionData?.findOneQuestion?.examId?.trim()) {
+      return null;
+    }
+    return (
+      exams.find(
+        (e) => String(e._id) === String(oneQuestionData.findOneQuestion?.examId),
+      ) ?? null
+    );
+  }, [exams, isEditMode, oneQuestionData?.findOneQuestion?.examId]);
+
   const selectedModuleId = useMemo(() => {
+    const fromExam = resolveExamModuleId(linkedExam, selectedModule);
+    if (fromExam) return fromExam;
+
     const fromList = modules.find((x) => apiModuleTypeMatches(x.type, selectedModule));
     if (fromList) return fromList._id;
 
     const fromPart = allParts.find((p) => apiModuleTypeMatches(p.moduleType, selectedModule));
     return fromPart?.moduleId ?? null;
-  }, [modules, selectedModule, allParts]);
+  }, [linkedExam, modules, selectedModule, allParts]);
 
   const selectedModuleParts = useMemo(() => {
     if (!selectedModuleId) return [];
@@ -365,7 +394,7 @@ export function useAddQuestionForm() {
 
     const module = validateModule(q.ieltsModule ?? "Listening");
     const moduleIdFilter =
-      examItem?.moduleId ??
+      resolveExamModuleId(examItem, module) ??
       modules.find((m) => apiModuleTypeMatches(m.type, module))?._id ??
       allParts.find((p) => apiModuleTypeMatches(p.moduleType, module))?.moduleId ??
       null;
@@ -383,12 +412,10 @@ export function useAddQuestionForm() {
       q.placementNumber != null && q.placementNumber > 0 ? String(q.placementNumber) : "45",
     );
     setExistingListeningAudio(q.listeningAudio?.trim() || null);
-    setExistingSpeakingAudio(q.speakingAudio?.trim() || null);
     setExistingSupportingImage(
       module === "Reading" ? null : q.supportingImage?.trim() || null,
     );
     setListeningAudioFile(null);
-    setSpeakingAudioFile(null);
     setSupportingImageFile(null);
     setInstruction(q.instruction?.trim() ? (q.instruction ?? EMPTY_HTML) : EMPTY_HTML);
     setSourceMaterial(q.sourceMaterial?.trim() ? (q.sourceMaterial ?? EMPTY_HTML) : EMPTY_HTML);
@@ -403,7 +430,6 @@ export function useAddQuestionForm() {
       }));
     const makeEmptyWriting = () =>
       Array.from({ length: WRITING_PART_LABELS.length }, () => EMPTY_HTML);
-
     if (module === "Listening") {
       setEditPartSlotIndex(null);
       const filled = makeEmptyListening();
@@ -460,23 +486,9 @@ export function useAddQuestionForm() {
     };
   }, [listeningBlobUrl]);
 
-  const speakingBlobUrl = useMemo(
-    () => (speakingAudioFile ? URL.createObjectURL(speakingAudioFile) : null),
-    [speakingAudioFile],
-  );
-  useEffect(() => {
-    return () => {
-      if (speakingBlobUrl) URL.revokeObjectURL(speakingBlobUrl);
-    };
-  }, [speakingBlobUrl]);
-
   const listeningAudioPreviewSrc =
     listeningBlobUrl ??
     (isEditMode && existingListeningAudio ? resolveMediaUrl(existingListeningAudio) : null);
-
-  const speakingAudioPreviewSrc =
-    speakingBlobUrl ??
-    (isEditMode && existingSpeakingAudio ? resolveMediaUrl(existingSpeakingAudio) : null);
 
   // ── Actions ──
   const uploadAsset = useCallback(
@@ -519,13 +531,22 @@ export function useAddQuestionForm() {
     setErrors([]);
   }, []);
 
-  const handleModuleChange = useCallback((module: IeltsModule) => {
-    setSelectedModule(module);
-    const moduleTemplates = QUESTION_TEMPLATES.filter((t) => t.module === module);
-    if (moduleTemplates[0]) {
-      setSelectedTemplateId(moduleTemplates[0].id);
-    }
-  }, []);
+  const handleModuleChange = useCallback(
+    (module: IeltsModule) => {
+      if (lockedModule) return;
+      setSelectedModule(module);
+      const moduleTemplates = QUESTION_TEMPLATES.filter((t) => t.module === module);
+      if (moduleTemplates[0]) {
+        setSelectedTemplateId(moduleTemplates[0].id);
+      }
+    },
+    [lockedModule],
+  );
+
+  const returnPath = useMemo(
+    () => getQuestionsListPath(lockedModule ?? selectedModule),
+    [lockedModule, selectedModule],
+  );
 
   const setListeningPartContent = useCallback((index: number, html: string) => {
     setListeningPartContents((cur) => cur.map((c, i) => (i === index ? html : c)));
@@ -591,10 +612,6 @@ export function useAddQuestionForm() {
       nextErrors.push("Source material required.");
     }
 
-    if (selectedModule === "Speaking" && !speakingAudioFile && !existingSpeakingAudio?.trim()) {
-      nextErrors.push("Speaking audio required.");
-    }
-
     if (nextErrors.length > 0) {
       setErrors(nextErrors);
       toast.error(nextErrors.join(" "));
@@ -602,12 +619,10 @@ export function useAddQuestionForm() {
     }
 
     try {
-      const [uploadedListeningAudio, uploadedSpeakingAudio, uploadedSupportingImage] =
-        await Promise.all([
-          uploadAsset(listeningAudioFile),
-          uploadAsset(speakingAudioFile),
-          uploadAsset(supportingImageFile),
-        ]);
+      const [uploadedListeningAudio, uploadedSupportingImage] = await Promise.all([
+        uploadAsset(listeningAudioFile),
+        uploadAsset(supportingImageFile),
+      ]);
 
       const normalizedPlacement =
         Number.isFinite(Number(timeLimit)) && Number(timeLimit) > 0
@@ -621,7 +636,6 @@ export function useAddQuestionForm() {
 
       if (isEditMode && questionId) {
         const listeningUrl = uploadedListeningAudio ?? existingListeningAudio ?? null;
-        const speakingUrl = uploadedSpeakingAudio ?? existingSpeakingAudio ?? null;
         const imageUrl = uploadedSupportingImage ?? existingSupportingImage ?? null;
 
         if (selectedModule === "Listening") {
@@ -638,7 +652,7 @@ export function useAddQuestionForm() {
               question: `${trimmedTitle} (${entry.label})`,
               sourceMaterial: buildPartContentBlock(entry.label, entry.content),
               passageHtml: buildPartContentBlock(entry.label, entry.content),
-              questionsHtml: null,
+              questionsHtml: entry.content,
               instruction: null,
               explanation: null,
               listeningAudio: listeningUrl,
@@ -732,7 +746,7 @@ export function useAddQuestionForm() {
             questionsHtml: null,
             explanation,
             listeningAudio: listeningUrl,
-            speakingAudio: speakingUrl,
+            speakingAudio: null,
             supportingImage: imageUrl,
             type: questionType,
             ieltsModule: selectedModule,
@@ -745,7 +759,7 @@ export function useAddQuestionForm() {
 
         setErrors([]);
         toast.success('Question updated successfully.');
-        navigate(ROUTES_PATH.allQuestions);
+        navigate(returnPath);
         return;
       }
 
@@ -758,6 +772,8 @@ export function useAddQuestionForm() {
             label: e.label,
             partId: e.partId,
             content: e.content,
+            questionsHtml: e.content,
+            optionsSource: e.content,
             listeningPart: String(i + 1),
           })),
           createQuestion,
@@ -810,12 +826,13 @@ export function useAddQuestionForm() {
               questionsHtml: null,
               explanation,
               listeningAudio: uploadedListeningAudio,
-              speakingAudio: uploadedSpeakingAudio,
+              speakingAudio: null,
               supportingImage: uploadedSupportingImage,
               question: trimmedTitle,
               type: questionType,
               ieltsModule: selectedModule,
               placementNumber: normalizedPlacement,
+              ...(selectedModule === "Speaking" && { groupId: newGroupId }),
               options: extractOptionsFromHtml(sourceMaterial),
               answerKey: extractAnswerKeyFromHtml(sourceMaterial),
             },
@@ -828,7 +845,7 @@ export function useAddQuestionForm() {
 
       setErrors([]);
       toast.success('Question created successfully.');
-      navigate(ROUTES_PATH.allQuestions);
+      navigate(returnPath);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Question save failed.";
       setErrors([message]);
@@ -843,8 +860,6 @@ export function useAddQuestionForm() {
     existingListeningAudio,
     readingPartEntries,
     writingPartEntries,
-    speakingAudioFile,
-    existingSpeakingAudio,
     sourceMaterial,
     uploadAsset,
     supportingImageFile,
@@ -858,19 +873,21 @@ export function useAddQuestionForm() {
     explanation,
     createQuestion,
     navigate,
+    returnPath,
     siblingQuestions,
     selectedModuleParts,
     toast,
   ]);
 
   const handleCancel = useCallback(() => {
-    navigate(ROUTES_PATH.allQuestions);
-  }, [navigate]);
+    navigate(returnPath);
+  }, [navigate, returnPath]);
 
   return {
     // identity
     isEditMode,
     questionId,
+    lockedModule,
 
     // form state
     selectedModule,
@@ -885,7 +902,6 @@ export function useAddQuestionForm() {
     readingPartContents,
     writingPartContents,
     listeningAudioFile,
-    speakingAudioFile,
     errors,
 
     // derived
@@ -895,7 +911,6 @@ export function useAddQuestionForm() {
     readingPartEntries,
     writingPartEntries,
     listeningAudioPreviewSrc,
-    speakingAudioPreviewSrc,
     isSaving,
     isUpdating,
     oneQuestionLoading,
@@ -910,7 +925,6 @@ export function useAddQuestionForm() {
     setExplanation,
     setAcceptedAnswers,
     setListeningAudioFile,
-    setSpeakingAudioFile,
     setSupportingImageFile,
     setListeningPartContent,
     setReadingPartPassage,

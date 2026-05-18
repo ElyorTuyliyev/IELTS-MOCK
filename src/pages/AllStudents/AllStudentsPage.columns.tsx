@@ -17,7 +17,6 @@ export function createStudentColumns(): GridColDef<StudentGridRow>[] {
 type StudentColumnActionHandlers = {
   onDelete?: (row: StudentGridRow) => void
   onEdit?: (row: StudentGridRow) => void
-  onView?: (row: StudentGridRow) => void
 }
 
 export function createStudentColumnsWithActions(
@@ -120,7 +119,6 @@ export function createStudentColumnsWithActions(
             row={params.row}
             onDelete={handlers.onDelete}
             onEdit={handlers.onEdit}
-            onView={handlers.onView}
           />
         </MenuActionCell>
       ),

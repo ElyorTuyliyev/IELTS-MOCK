@@ -1,0 +1,15 @@
+mongosh exam: 6a0723d0e4aca1d22286a46c Azam Mock test
+enrollment inserted: 6a073bef5f7ab0dd38f587cc for user 6a0471003dc85c920ce26535
+login: el@gmail.com
+Initial URL: http://localhost:5173/sign-in
+LOGIN OK
+After login URL: http://localhost:5173/student/exam-player?examId=6a0723d0e4aca1d22286a46c
+body snippet: IELTS Test taker ID Listening module Time Left 45:00 Part 1 Listen and answer questions 1–1. 🎧 You will be hearing to an audio clip during this test. You will not be permitted to pause or rew
+Listening overlay visible — clicking Play
+Waiting 15s on exam player (headed)
+Header: 🔊 Audio is Playing
+Banner: Listen and answer questions 1–1.
+Listening prose chars: 12, blank inputs: 1
+WARN: listening content sparse
+Screenshot saved
+DONE

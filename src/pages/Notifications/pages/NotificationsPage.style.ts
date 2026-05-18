@@ -51,10 +51,31 @@ export const NotificationsPageRoot = styled.div`
   }
 
   .notifications-page__subtitle {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
     margin: 6px 0 0;
     color: ${c.text.secondary};
     font-size: 0.95rem;
     line-height: 1.5;
+  }
+
+  .notifications-page__role {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: ${c.primary.tintStrong};
+    color: ${c.primary.main};
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .notifications-page__subtitle-text {
+    display: block;
   }
 
   .notifications-page__stats {

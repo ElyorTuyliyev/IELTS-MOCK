@@ -125,7 +125,7 @@ export const RadioGroup = Node.create({
   },
 
   addNodeView() {
-    return ({ node }) => {
+    return ({ node, editor, getPos }) => {
       const dom = document.createElement('div')
       dom.className = 'rte-radio-group'
       dom.setAttribute('data-type', 'radio-group')
@@ -160,6 +160,18 @@ export const RadioGroup = Node.create({
           span.textContent = opt.label
           label.appendChild(input)
           label.appendChild(span)
+          input.addEventListener('change', () => {
+            if (!input.checked || typeof getPos !== 'function') return
+            const pos = getPos()
+            if (pos === undefined) return
+            editor.commands.command(({ tr }) => {
+              tr.setNodeMarkup(pos, undefined, {
+                ...current.attrs,
+                checkedValue: opt.value,
+              })
+              return true
+            })
+          })
           dom.appendChild(label)
         })
       }

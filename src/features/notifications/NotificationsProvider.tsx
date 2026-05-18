@@ -1,12 +1,14 @@
 import {
   useCallback,
+  useEffect,
   useMemo,
   type ReactNode,
 } from 'react'
-import { useMutation, useQuery } from '@apollo/client/react'
+import { useLazyQuery, useMutation } from '@apollo/client/react'
 
+import { tryGetGraphQLErrorMessage } from '../../helpers/graphql'
 import { useAppSelector } from '../../store/hooks'
-import { selectAuthToken } from '../../store'
+import { selectAuthToken, selectUserRole } from '../../store'
 import {
   FIND_MY_NOTIFICATIONS_QUERY,
   type FindMyNotificationsResponse,
@@ -47,21 +49,30 @@ function mapNotification(record: FindMyNotificationsResponse['findMyNotification
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const authToken = useAppSelector(selectAuthToken)
+  const userRole = useAppSelector(selectUserRole)
 
-  const { data, loading, error, refetch } = useQuery<FindMyNotificationsResponse>(
-    FIND_MY_NOTIFICATIONS_QUERY,
-    {
-      skip: !authToken,
+  const [fetchNotifications, { data, loading, error, refetch }] =
+    useLazyQuery<FindMyNotificationsResponse>(FIND_MY_NOTIFICATIONS_QUERY, {
       fetchPolicy: 'cache-and-network',
-    },
-  )
+    })
+
+  useEffect(() => {
+    if (!authToken || !userRole) {
+      return
+    }
+
+    void fetchNotifications()
+  }, [authToken, userRole, fetchNotifications])
 
   const [markNotificationAsRead] = useMutation(MARK_NOTIFICATION_AS_READ_MUTATION)
   const [markAllNotificationsAsRead] = useMutation(MARK_ALL_NOTIFICATIONS_AS_READ_MUTATION)
 
   const notifications = useMemo(
-    () => (data?.findMyNotifications ?? []).map(mapNotification),
-    [data],
+    () =>
+      authToken && userRole
+        ? (data?.findMyNotifications ?? []).map(mapNotification)
+        : [],
+    [authToken, userRole, data],
   )
 
   const unreadCount = useMemo(
@@ -94,7 +105,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       notifications,
       unreadCount,
       loading,
-      error: error?.message ?? null,
+      error: tryGetGraphQLErrorMessage(error),
       markAsRead,
       markAllAsRead,
       refetch: handleRefetch,

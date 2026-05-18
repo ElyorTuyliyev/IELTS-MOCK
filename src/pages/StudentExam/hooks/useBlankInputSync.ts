@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type RefObject, type SetStateAction } from 'react'
-import { formatExamHtmlForPlayer } from '../utils'
+import { compositeAnswerStorageKey } from '../utils/answerStorageKeys'
+import { examPlayerBlankKeyPrefix, formatExamHtmlForPlayer } from '../utils'
 import { c } from '../../../theme'
 import type { DisplayQuestion } from '../utils'
 import type { ModuleName } from '../constants'
@@ -28,7 +29,24 @@ function bindBlankInputs(
 
     const handleInput = () => {
       const value = input.value
-      setBlankValues((prev) => (prev[key] === value ? prev : { ...prev, [key]: value }))
+      const questionId =
+        input.getAttribute('data-question-id')?.trim() ||
+        input.closest('[data-question-id]')?.getAttribute('data-question-id')?.trim() ||
+        ''
+      const slotKey = input.getAttribute('data-slot-key')?.trim() || ''
+      const compositeKey =
+        questionId && slotKey ? compositeAnswerStorageKey(questionId, slotKey) : ''
+
+      setBlankValues((prev) => {
+        if (prev[key] === value && (!compositeKey || prev[compositeKey] === value)) {
+          return prev
+        }
+        const next: Record<string, string> = { ...prev, [key]: value }
+        if (compositeKey) {
+          next[compositeKey] = value
+        }
+        return next
+      })
     }
 
     input.addEventListener('input', handleInput)
@@ -48,7 +66,8 @@ function applySavedChoiceValue(
   const inputType = (inputs[0].getAttribute('type') || inputs[0].type || 'radio').toLowerCase()
   if (inputType === 'radio') {
     inputs.forEach((input) => {
-      input.checked = input.value === savedValue
+      input.checked =
+        readChoiceLabel(input) === savedValue || input.value === savedValue
     })
     return
   }
@@ -58,16 +77,41 @@ function applySavedChoiceValue(
   })
 }
 
+function readChoiceLabel(input: HTMLInputElement): string {
+  const fromSpan = input.closest('label')?.querySelector('.rte-radio-label')?.textContent?.trim()
+  if (fromSpan) return fromSpan
+  const fromLabel = input.closest('label')?.textContent?.trim()
+  if (fromLabel) return fromLabel
+  return input.value
+}
+
 function readChoiceValue(inputs: HTMLInputElement[]): string {
   if (inputs.length === 0) return ''
   const inputType = (inputs[0].getAttribute('type') || inputs[0].type || 'radio').toLowerCase()
   if (inputType === 'radio') {
-    return inputs.find((input) => input.checked)?.value ?? ''
+    const checked = inputs.find((input) => input.checked)
+    return checked ? readChoiceLabel(checked) : ''
   }
   return inputs
     .filter((input) => input.checked)
     .map((input) => input.value)
     .join(',')
+}
+
+function scheduleInputBinding(bind: () => Array<() => void>): () => void {
+  let cleanups: Array<() => void> = []
+  let cancelled = false
+  const run = () => {
+    if (cancelled) return
+    cleanups.forEach((fn) => fn())
+    cleanups = bind()
+  }
+  const frameId = requestAnimationFrame(run)
+  return () => {
+    cancelled = true
+    cancelAnimationFrame(frameId)
+    cleanups.forEach((fn) => fn())
+  }
 }
 
 function bindChoiceInputs(
@@ -103,7 +147,24 @@ function bindChoiceInputs(
 
       const handleChange = () => {
         const value = readChoiceValue(inputs)
-        setChoiceValues((prev) => (prev[choiceKey] === value ? prev : { ...prev, [choiceKey]: value }))
+        const questionId =
+          group.getAttribute('data-question-id')?.trim() ||
+          group.closest('[data-question-id]')?.getAttribute('data-question-id')?.trim() ||
+          ''
+        const slotKey = group.getAttribute('data-slot-key')?.trim() || ''
+        const compositeKey =
+          questionId && slotKey ? compositeAnswerStorageKey(questionId, slotKey) : ''
+
+        setChoiceValues((prev) => {
+          if (prev[choiceKey] === value && (!compositeKey || prev[compositeKey] === value)) {
+            return prev
+          }
+          const next: Record<string, string> = { ...prev, [choiceKey]: value }
+          if (compositeKey) {
+            next[compositeKey] = value
+          }
+          return next
+        })
       }
 
       inputs.forEach((input) => {
@@ -182,12 +243,13 @@ export function useBlankInputSync(
       .map((q) => q.html?.trim())
       .filter((v): v is string => Boolean(v))
     if (chunks.length === 0) return null
+    const questionDbId = currentPartQuestions[0]?.questionDbId
     return chunks
       .map((chunk, idx) =>
         formatExamHtmlForPlayer(
           chunk,
-          `part-${part}-chunk-${idx}`,
-          currentPartQuestions[0]?.questionDbId,
+          examPlayerBlankKeyPrefix(questionDbId, part, idx, 'listening'),
+          questionDbId,
         ),
       )
       .join(`<hr style="border:none;border-top:1px solid ${c.examPlayer.border};margin:12px 0;" />`)
@@ -196,12 +258,11 @@ export function useBlankInputSync(
 
   useEffect(() => {
     const container = listeningContentRef.current
-    if (!container) return
-    const cleanups = [
+    if (!container || !listeningHtml) return
+    return scheduleInputBinding(() => [
       ...bindBlankInputs(container, blankValuesRef, setBlankValues),
       ...bindChoiceInputs(container, choiceValuesRef, setChoiceValues),
-    ]
-    return () => cleanups.forEach((fn) => fn())
+    ])
   }, [listeningHtml, listeningContentRef])
 
   const readingHtmlSourceKey = useMemo(() => {
@@ -215,12 +276,13 @@ export function useBlankInputSync(
       .map((q) => q.html?.trim())
       .filter((v): v is string => Boolean(v))
     if (chunks.length === 0) return null
+    const questionDbId = currentPartQuestions[0]?.questionDbId
     return chunks
       .map((chunk, idx) =>
         formatExamHtmlForPlayer(
           chunk,
-          `reading-part-${part}-chunk-${idx}`,
-          currentPartQuestions[0]?.questionDbId,
+          examPlayerBlankKeyPrefix(questionDbId, part, idx, 'reading'),
+          questionDbId,
         ),
       )
       .join('')
@@ -230,12 +292,11 @@ export function useBlankInputSync(
   useEffect(() => {
     if (activeModule !== 'reading') return
     const container = moduleContentRef.current
-    if (!container) return
-    const cleanups = [
+    if (!container || !readingHtml) return
+    return scheduleInputBinding(() => [
       ...bindBlankInputs(container, blankValuesRef, setBlankValues),
       ...bindChoiceInputs(container, choiceValuesRef, setChoiceValues),
-    ]
-    return () => cleanups.forEach((fn) => fn())
+    ])
   }, [activeModule, moduleContentRef, readingHtml])
 
   useEffect(() => {

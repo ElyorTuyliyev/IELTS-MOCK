@@ -5,7 +5,7 @@ import { Button } from '../../../components/common/Button'
 import { ROUTES_PATH } from '../../../routes/paths'
 import { StudentExamPlayerRoot } from '../pages/StudentExamPlayerPage.style'
 
-export type StudentExamUnavailableReason = 'ended' | 'no_exam'
+export type StudentExamUnavailableReason = 'ended' | 'no_exam' | 'no_credits'
 
 const COPY: Record<
   StudentExamUnavailableReason,
@@ -18,6 +18,11 @@ const COPY: Record<
   no_exam: {
     title: 'No exam assigned',
     description: 'No active exam is currently assigned to you.',
+  },
+  no_credits: {
+    title: 'Exam unavailable',
+    description:
+      'Your center has no exam credits remaining. Please contact your center to purchase a plan.',
   },
 }
 

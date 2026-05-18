@@ -38,10 +38,17 @@ export function StudentExamFooter({
       {visibleParts.map((partItem) => {
         const isCurrent = partItem.partNumber === activePart
         const hasQuestions = partItem.questions.length > 0
+        const lastSpeakingPart = visibleParts
+          .filter((p) => p.questions.length > 0)
+          .map((p) => p.partNumber)
+          .sort((a, b) => b - a)[0]
+
         const isCompletionPart =
           (activeModule === 'listening' && partItem.partNumber === 4) ||
           (activeModule === 'reading' && partItem.partNumber === 3) ||
-          (activeModule === 'writing' && partItem.partNumber === 2)
+          (activeModule === 'writing' && partItem.partNumber === 2) ||
+          (activeModule === 'speaking' &&
+            partItem.partNumber === (lastSpeakingPart ?? 3))
 
         const showQuestionChips = hasQuestions && isCurrent
 
@@ -104,7 +111,13 @@ export function StudentExamFooter({
                     event.stopPropagation()
                     onCompleteModule()
                   }}
-                  disabled={activeModule === 'writing' && partItem.partNumber === 2 ? false : !canGoToNextModule}
+                  disabled={
+                    (activeModule === 'writing' && partItem.partNumber === 2) ||
+                    (activeModule === 'speaking' &&
+                      partItem.partNumber === (lastSpeakingPart ?? 3))
+                      ? false
+                      : !canGoToNextModule
+                  }
                 >
                   <Typography className="student-exam-player__complete-check">✓</Typography>
                 </IconButton>

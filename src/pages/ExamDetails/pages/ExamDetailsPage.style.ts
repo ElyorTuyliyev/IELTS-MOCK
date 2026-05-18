@@ -84,6 +84,27 @@ export const ExamDetailsRoot = styled.div`
     flex-wrap: wrap;
   }
 
+  .exam-details__info-header-actions {
+    display: flex;
+    align-items: center;
+    gap: ${theme.spacing(1)};
+    flex-wrap: wrap;
+  }
+
+  .exam-details__start-exam-btn.MuiButton-root {
+    min-height: 34px;
+    padding: 0 16px;
+    border-radius: 10px;
+    text-transform: none;
+    font-weight: 700;
+    font-size: 13px;
+    box-shadow: 0 4px 12px ${tokens.rgba.primary_20};
+  }
+
+  .exam-details__start-exam-btn.MuiButton-root:hover {
+    box-shadow: 0 6px 16px ${tokens.rgba.primary_28};
+  }
+
   .exam-details__info-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -266,5 +287,10 @@ export const ExamDetailsRoot = styled.div`
     font-size: 13px;
     font-weight: 700;
     color: ${c.text.primary};
+  }
+
+  .exam-details__score-cell--overall {
+    color: ${c.primary.main};
+    font-size: 14px;
   }
 `

@@ -8,6 +8,7 @@ export type FindAllCentersQueryResponse = {
     email: string
     logo?: string | null
     establishedAt?: string | null
+    availableExamCredits?: number | null
     createdAt: string
     updatedAt: string
   }>
@@ -81,6 +82,7 @@ export type EditableCenter = {
   address: string
   logo: string
   establishedAt?: string
+  availableExamCredits: number
 }
 
 export type MappedCenterRow = EditableCenter

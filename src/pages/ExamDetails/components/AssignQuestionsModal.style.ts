@@ -48,6 +48,41 @@ export const AssignQuestionsRoot = styled(Dialog)`
     margin-top: 2px;
   }
 
+  .aq__assigned-banner {
+    margin: 0 28px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    border: 1px solid ${c.indigo.bg};
+    background: linear-gradient(180deg, ${c.background.soft} 0%, ${c.background.subtle} 100%);
+  }
+
+  .aq__assigned-banner-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: ${c.text.disabled};
+    margin-bottom: 8px;
+  }
+
+  .aq__assigned-list {
+    display: grid;
+    gap: 4px;
+  }
+
+  .aq__assigned-list-row {
+    font-size: 13px;
+    font-weight: 600;
+    color: ${c.text.primary};
+    line-height: 1.45;
+  }
+
+  .aq__assigned-empty {
+    font-size: 13px;
+    color: ${c.text.disabled};
+    font-style: italic;
+  }
+
   .aq__tabs {
     padding: 0 28px;
     border-bottom: 1px solid ${c.background.subtle};
@@ -64,6 +99,19 @@ export const AssignQuestionsRoot = styled(Dialog)`
     padding: 20px 28px;
     overflow-y: auto;
     max-height: 50vh;
+  }
+
+  .aq__toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: ${theme.spacing(1.5)};
+  }
+
+  .aq__random-btn.MuiButton-root {
+    border-radius: 10px;
+    text-transform: none;
+    font-weight: 700;
+    font-size: 13px;
   }
 
   .aq__question-list {

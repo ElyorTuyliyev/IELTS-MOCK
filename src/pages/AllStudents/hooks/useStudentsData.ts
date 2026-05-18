@@ -18,10 +18,9 @@ type UseStudentsDataParams = {
   usersData: FindAllUsersQueryResponse | undefined
   onDelete: (row: StudentRow) => void
   onEdit: (row: StudentRow) => void
-  onView?: (row: StudentRow) => void
 }
 
-export function useStudentsData({ usersData, onDelete, onEdit, onView }: UseStudentsDataParams) {
+export function useStudentsData({ usersData, onDelete, onEdit }: UseStudentsDataParams) {
   const [searchTerm, setSearchTerm] = useState('')
   const [sortOption, setSortOption] = useState<SortOption>('Name')
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
@@ -83,8 +82,8 @@ export function useStudentsData({ usersData, onDelete, onEdit, onView }: UseStud
   )
 
   const columns = useMemo(
-    () => createStudentColumnsWithActions({ onDelete, onEdit, onView }),
-    [onDelete, onEdit, onView],
+    () => createStudentColumnsWithActions({ onDelete, onEdit }),
+    [onDelete, onEdit],
   )
 
   const handleSearchChange = useCallback((value: string) => {

@@ -7,6 +7,7 @@ import { IELTS_MODULE_OPTIONS, type IeltsModule } from "../AddQuestionPage.const
 
 type QuestionFormHeaderProps = {
   isEditMode: boolean;
+  moduleLocked?: boolean;
   title: string;
   selectedModule: IeltsModule;
   timeLimit: string;
@@ -17,6 +18,7 @@ type QuestionFormHeaderProps = {
 
 export const QuestionFormHeader = memo(function QuestionFormHeader({
   isEditMode,
+  moduleLocked = false,
   title,
   selectedModule,
   timeLimit,
@@ -40,7 +42,7 @@ export const QuestionFormHeader = memo(function QuestionFormHeader({
           <label className="add-question-form__label">IELTS module</label>
           <Select
             fullWidth
-            disabled={isEditMode}
+            disabled={isEditMode || moduleLocked}
             value={selectedModule}
             onChange={(e) => onModuleChange(e.target.value as IeltsModule)}
           >

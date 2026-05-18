@@ -74,6 +74,7 @@ export function AddQuestionPage() {
           <Box className="add-question-page__hero">
             <TemplateSidebar
               isEditMode={form.isEditMode}
+              lockedModule={form.lockedModule}
               selectedModule={form.selectedModule}
               selectedTemplateId={form.selectedTemplateId}
               onTemplateChange={form.handleTemplateChange}
@@ -93,6 +94,7 @@ export function AddQuestionPage() {
                 )}
                 <QuestionFormHeader
                   isEditMode={form.isEditMode}
+                  moduleLocked={Boolean(form.lockedModule)}
                   title={form.title}
                   selectedModule={form.selectedModule}
                   timeLimit={form.timeLimit}
@@ -104,11 +106,8 @@ export function AddQuestionPage() {
                 <AudioUploadSection
                   selectedModule={form.selectedModule}
                   listeningAudioFileName={form.listeningAudioFile?.name ?? null}
-                  speakingAudioFileName={form.speakingAudioFile?.name ?? null}
                   listeningAudioPreviewSrc={form.listeningAudioPreviewSrc}
-                  speakingAudioPreviewSrc={form.speakingAudioPreviewSrc}
                   onListeningFileChange={form.setListeningAudioFile}
-                  onSpeakingFileChange={form.setSpeakingAudioFile}
                 />
 
                 {moduleEditor}

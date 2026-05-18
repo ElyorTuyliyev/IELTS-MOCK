@@ -1,1 +1,6 @@
-export { QuestionsPage } from './pages/QuestionsPage'
+export {
+  ListeningQuestionsPage,
+  ReadingQuestionsPage,
+  WritingQuestionsPage,
+  SpeakingQuestionsPage,
+} from './pages/ModuleQuestionsPages'

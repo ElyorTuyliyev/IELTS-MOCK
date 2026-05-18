@@ -48,6 +48,19 @@ export function normalizeModule(
   }
   if (value.includes('reading')) return 'reading'
   if (value.includes('writing')) return 'writing'
+  if (value.includes('speaking')) return 'speaking'
+  return null
+}
+
+export function resolveStudentExamModule(
+  question: BackendQuestion,
+): ModuleName | null {
+  const fromFields = normalizeModule(question.ieltsModule, question.type)
+  if (fromFields) return fromFields
+  if (question.listeningPart) return 'listening'
+  const hasSpeakingAudio = Boolean(question.speakingAudio?.trim())
+  const hasListeningAudio = Boolean(question.listeningAudio?.trim())
+  if (hasSpeakingAudio && !hasListeningAudio) return 'speaking'
   return null
 }
 
@@ -289,9 +302,25 @@ export function resolveReadingQuestionsHtml(item: BackendQuestion): string {
   return ''
 }
 
+/** Prefer questionsHtml for listening sheets (sourceMaterial may be a short preview). */
+export function resolveListeningQuestionsHtml(item: BackendQuestion): string {
+  const questionsOnly = (item.questionsHtml ?? '').trim()
+  if (questionsOnly) return questionsOnly
+
+  const combined = (item.sourceMaterial ?? '').trim()
+  const passage = (item.passageHtml ?? '').trim()
+  if (combined && passage && combined.startsWith(passage)) {
+    const rest = combined.slice(passage.length).trim()
+    if (rest) return rest
+  }
+
+  if (combined && combined !== passage) return combined
+  return (item.passageHtml ?? '').trim()
+}
+
 /** Number of answer slots in a listening part (not from Q ids in HTML). */
 export function countListeningAnswerSlots(item: BackendQuestion, partNumber: number): number {
-  const html = resolveQuestionContent(item)
+  const html = resolveListeningQuestionsHtml(item) || resolveQuestionContent(item)
   if (!html) return Math.max(1, item.options?.length ?? 0)
   const normalized = normalizeListeningContentForSlotCount(html)
   const fromSlots = countAnswerSlotsInHtml(normalized, partNumber)
@@ -305,7 +334,10 @@ export function countListeningPartAnswerSlots(
   ordered: BackendQuestion[],
   partNumber: number,
 ): number {
-  const combinedRaw = ordered.map((q) => resolveQuestionContent(q)).filter(Boolean).join('')
+  const combinedRaw = ordered
+    .map((q) => resolveListeningQuestionsHtml(q) || resolveQuestionContent(q))
+    .filter(Boolean)
+    .join('')
   const fallback = Math.max(1, ...ordered.map((q) => Math.max(1, q.options?.length ?? 0)))
   if (!combinedRaw) return fallback
 
@@ -430,23 +462,30 @@ function questionNumberBeforeChoiceGroup(group: HTMLElement): string {
   return ''
 }
 
-function assignChoiceGroupKeys(root: HTMLElement, keyPrefix: string): void {
+function assignChoiceGroupKeys(root: HTMLElement, keyPrefix: string, questionDbId?: string): void {
   let radioSeq = 0
+  const qid = questionDbId?.trim() ?? ''
   root
     .querySelectorAll<HTMLElement>(
       '[data-type="radio-group"], .rte-radio-group, [data-type="checkbox-group"], .rte-checkbox-group',
     )
     .forEach((group) => {
-      const questionSlot = questionNumberBeforeChoiceGroup(group)
-      const storageKey = questionSlot
-        ? `${keyPrefix}:choice:${questionSlot}`
-        : `${keyPrefix}:choice:radio:${radioSeq}`
+      const storageKey = `${keyPrefix}:choice:radio:${radioSeq}`
+      const slotKey = `radio-${radioSeq + 1}`
       radioSeq += 1
       group.setAttribute('data-choice-key', storageKey)
+      group.setAttribute('data-slot-key', slotKey)
+      if (qid) {
+        group.setAttribute('data-question-id', qid)
+      }
       group
         .querySelectorAll<HTMLInputElement>('input[type="radio"], input[type="checkbox"]')
         .forEach((input) => {
           input.setAttribute('data-choice-key', storageKey)
+          if (qid) {
+            input.setAttribute('data-question-id', qid)
+          }
+          input.setAttribute('data-slot-key', slotKey)
         })
     })
 }
@@ -461,8 +500,21 @@ export function stripEditorAnswerMarksFromHtml(html: string): string {
   return root.innerHTML
 }
 
+export function examPlayerBlankKeyPrefix(
+  questionDbId: string | undefined,
+  part: number,
+  chunkIndex: number,
+  module: 'listening' | 'reading',
+): string {
+  const dbId = questionDbId?.trim()
+  if (dbId) return `q-${dbId}-c${chunkIndex}`
+  return module === 'reading'
+    ? `reading-part-${part}-chunk-${chunkIndex}`
+    : `part-${part}-chunk-${chunkIndex}`
+}
+
 export function prepareExamQuestionHtml(html: string, questionDbId?: string): string {
-  const keyPrefix = questionDbId?.trim() ? `q-${questionDbId.trim()}` : 'exam'
+  const keyPrefix = questionDbId?.trim() ? `q-${questionDbId.trim()}-c0` : 'exam'
   return formatExamHtmlForPlayer(html, keyPrefix, questionDbId)
 }
 
@@ -607,13 +659,22 @@ export function formatExamHtmlForPlayer(
   const toFieldIdentity = (storageKey: string) => {
     return `${identityPrefix}_${storageKey.replace(/[^a-zA-Z0-9_-]+/g, '_')}`
   }
-  const toBlankInput = (label: string, storageKey: string) => {
+  const normalizeSlotKey = (raw: string): string => {
+    const trimmed = (raw || '').trim() || 'Q1'
+    if (/^Q\d+/i.test(trimmed)) {
+      return trimmed.toUpperCase().replace(/^q/, 'Q')
+    }
+    const digits = trimmed.replace(/[^\d]/g, '')
+    return digits ? `Q${digits}` : trimmed
+  }
+  const toBlankInput = (label: string, storageKey: string, slotKey: string) => {
     const cleanLabel = (label || '').trim() || 'Answer'
     const questionNumber = cleanLabel.match(/\d+/)?.[0] ?? cleanLabel
     const safeLabel = escapeAttr(questionNumber)
     const safeKey = escapeAttr(storageKey)
+    const safeSlotKey = escapeAttr(normalizeSlotKey(slotKey))
     const identity = escapeAttr(toFieldIdentity(storageKey))
-    return `<span class="ielts-blank-inline"><input class="ielts-blank-input" data-blank-key="${safeKey}"${questionAttr} id="${identity}" name="${identity}" type="text" placeholder="${safeLabel}" aria-label="Question ${safeLabel} answer" /></span>`
+    return `<span class="ielts-blank-inline"><input class="ielts-blank-input" data-blank-key="${safeKey}" data-slot-key="${safeSlotKey}"${questionAttr} id="${identity}" name="${identity}" type="text" placeholder="${safeLabel}" aria-label="Question ${safeLabel} answer" /></span>`
   }
 
   let html = repairDragDropHtml(rawHtml)
@@ -633,7 +694,7 @@ export function formatExamHtmlForPlayer(
         const idSlug = id.replace(/[^a-zA-Z0-9_-]+/g, '_')
         const storageKey = `${keyPrefix}:blank:${spanIndex}:${idSlug}`
         const wrapper = doc.createElement('span')
-        wrapper.innerHTML = toBlankInput(id, storageKey)
+        wrapper.innerHTML = toBlankInput(id, storageKey, id)
         node.replaceWith(wrapper)
       })
       root.querySelectorAll('input').forEach((node, index) => {
@@ -650,9 +711,16 @@ export function formatExamHtmlForPlayer(
         asInput.disabled = false
         asInput.readOnly = false
 
+        const rawLabel =
+          asInput.getAttribute('placeholder') ||
+          asInput.getAttribute('aria-label') ||
+          `${index + 1}`
+        const onlyNumber = rawLabel.match(/\d+/)?.[0] ?? `${index + 1}`
+
         const existingKey = asInput.getAttribute('data-blank-key')?.trim()
         if (!isChoiceInput && !existingKey) {
-          asInput.setAttribute('data-blank-key', `${keyPrefix}:dom:${index}`)
+          const idSlug = onlyNumber.replace(/[^a-zA-Z0-9_-]+/g, '_') || 'Q1'
+          asInput.setAttribute('data-blank-key', `${keyPrefix}:blank:${index}:${idSlug}`)
         }
         const fieldKey = asInput.getAttribute('data-blank-key')?.trim()
         if (!isChoiceInput && fieldKey) {
@@ -660,12 +728,9 @@ export function formatExamHtmlForPlayer(
           if (!asInput.id) asInput.id = identity
           if (!asInput.name) asInput.name = identity
         }
-
-        const rawLabel =
-          asInput.getAttribute('placeholder') ||
-          asInput.getAttribute('aria-label') ||
-          `${index + 1}`
-        const onlyNumber = rawLabel.match(/\d+/)?.[0] ?? `${index + 1}`
+        if (!isChoiceInput && !asInput.getAttribute('data-slot-key')?.trim()) {
+          asInput.setAttribute('data-slot-key', normalizeSlotKey(onlyNumber))
+        }
         if (!isChoiceInput) {
           asInput.setAttribute('placeholder', onlyNumber)
           asInput.setAttribute('aria-label', `Question ${onlyNumber} answer`)
@@ -673,7 +738,7 @@ export function formatExamHtmlForPlayer(
       })
       boldRadioQuestionPrefixes(root)
       sanitizeExamChoiceGroups(root)
-      assignChoiceGroupKeys(root, keyPrefix)
+      assignChoiceGroupKeys(root, keyPrefix, questionDbId)
       html = root.innerHTML
     }
   }
@@ -684,12 +749,12 @@ export function formatExamHtmlForPlayer(
     bracketOccurrence[n] = nextOcc
     const storageKey =
       nextOcc === 1 ? `${keyPrefix}:slot:${n}` : `${keyPrefix}:slot:${n}:x${nextOcc}`
-    return toBlankInput(n, storageKey)
+    return toBlankInput(n, storageKey, `Q${n}`)
   })
   let underlineSeq = 0
   html = html.replace(/_{4,}/g, () => {
     underlineSeq += 1
-    return toBlankInput(String(underlineSeq), `${keyPrefix}:line:${underlineSeq}`)
+    return toBlankInput(String(underlineSeq), `${keyPrefix}:line:${underlineSeq}`, `Q${underlineSeq}`)
   })
 
   dragDropPlaceholders.forEach((block, index) => {
@@ -747,11 +812,26 @@ export function collectAnsweredQuestionIds(
     if (blankMatch) {
       const num = digitsFromAnswerKeyTail(blankMatch[1])
       if (num) answered.add(num)
+      continue
+    }
+    const lineMatch = key.match(/:line:(\d+)/)
+    if (lineMatch) {
+      answered.add(lineMatch[1])
+      continue
+    }
+    const domMatch = key.match(/:dom:(\d+)/)
+    if (domMatch) {
+      answered.add(String(Number(domMatch[1]) + 1))
     }
   }
 
   for (const [key, value] of Object.entries(choiceValues ?? {})) {
     if (!value.trim()) continue
+    const radioChoiceMatch = key.match(/:choice:radio:(\d+)$/)
+    if (radioChoiceMatch) {
+      answered.add(String(Number(radioChoiceMatch[1]) + 1))
+      continue
+    }
     const choiceMatch = key.match(/:choice:(\d+)$/)
     if (choiceMatch) {
       answered.add(choiceMatch[1])

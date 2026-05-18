@@ -56,8 +56,8 @@ export const ASSIGN_QUESTIONS_MUTATION = gql`
 `
 
 export const INITIALIZE_RANDOM_QUESTIONS_MUTATION = gql`
-  mutation InitializeRandomQuestionsForStudentExam($_id: ID!) {
-    initializeRandomQuestionsForStudentExam(_id: $_id) {
+  mutation InitializeRandomQuestionsForStudentExam($_id: ID!, $force: Boolean) {
+    initializeRandomQuestionsForStudentExam(_id: $_id, force: $force) {
       _id
       questionIds
     }
@@ -78,6 +78,7 @@ export const FIND_ALL_STUDENT_EXAMS_QUERY = gql`
       listeningScore
       readingScore
       writingScore
+      speakingScore
       totalScore
     }
   }

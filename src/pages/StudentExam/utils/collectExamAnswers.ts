@@ -1,3 +1,5 @@
+import { compositeAnswerStorageKey } from './answerStorageKeys'
+
 export type SubmitExamAnswerItem = {
   questionId: string
   slotKey: string
@@ -8,6 +10,73 @@ function slotKeyFromLabel(raw: string): string {
   const digits = raw.replace(/[^\d]/g, '')
   if (digits) return `Q${digits}`
   return raw.trim() || 'Q1'
+}
+
+export function flushBlankValuesFromDom(
+  roots: Array<HTMLElement | null | undefined>,
+  stored: Record<string, string>,
+): Record<string, string> {
+  const next = { ...stored }
+  for (const root of roots) {
+    if (!root) continue
+    root.querySelectorAll<HTMLInputElement>('input.ielts-blank-input').forEach((input) => {
+      const key = input.dataset.blankKey?.trim()
+      if (!key) return
+      next[key] = input.value
+
+      const questionId =
+        input.getAttribute('data-question-id')?.trim() ||
+        input.closest('[data-question-id]')?.getAttribute('data-question-id')?.trim() ||
+        ''
+      const slotKey = input.getAttribute('data-slot-key')?.trim() || ''
+      const compositeKey =
+        questionId && slotKey ? compositeAnswerStorageKey(questionId, slotKey) : ''
+      if (compositeKey) {
+        next[compositeKey] = input.value
+      }
+    })
+  }
+  return next
+}
+
+export function flushChoiceValuesFromDom(
+  roots: Array<HTMLElement | null | undefined>,
+  stored: Record<string, string>,
+): Record<string, string> {
+  const next = { ...stored }
+  for (const root of roots) {
+    if (!root) continue
+    root
+      .querySelectorAll<HTMLElement>(
+        '[data-type="radio-group"][data-choice-key], .rte-radio-group[data-choice-key]',
+      )
+      .forEach((group) => {
+        const choiceKey = group.getAttribute('data-choice-key')?.trim()
+        if (!choiceKey) return
+        const inputs = Array.from(
+          group.querySelectorAll<HTMLInputElement>('input[type="radio"]'),
+        )
+        const checked = inputs.find((input) => input.checked)
+        if (!checked) return
+        const label =
+          checked.closest('label')?.querySelector('.rte-radio-label')?.textContent?.trim() ||
+          checked.closest('label')?.textContent?.trim() ||
+          checked.value
+        next[choiceKey] = label
+
+        const questionId =
+          group.getAttribute('data-question-id')?.trim() ||
+          group.closest('[data-question-id]')?.getAttribute('data-question-id')?.trim() ||
+          ''
+        const slotKey = group.getAttribute('data-slot-key')?.trim() || ''
+        const compositeKey =
+          questionId && slotKey ? compositeAnswerStorageKey(questionId, slotKey) : ''
+        if (compositeKey) {
+          next[compositeKey] = label
+        }
+      })
+  }
+  return next
 }
 
 export function collectExamAnswersFromDom(root: HTMLElement | null): SubmitExamAnswerItem[] {
@@ -32,9 +101,22 @@ export function collectExamAnswersFromDom(root: HTMLElement | null): SubmitExamA
       input.getAttribute('data-question-id') ??
       input.closest('[data-question-id]')?.getAttribute('data-question-id') ??
       ''
-    const placeholder = input.getAttribute('placeholder') ?? ''
-    const aria = input.getAttribute('aria-label') ?? ''
-    const slotKey = slotKeyFromLabel(placeholder || aria)
+    const blankKey = input.getAttribute('data-blank-key') ?? input.dataset.blankKey ?? ''
+    const slotFromAttr = input.getAttribute('data-slot-key')?.trim()
+    const blankIdMatch = blankKey.match(/:blank:\d+:([^:]+)/)
+    const slotMatch = blankKey.match(/:slot:(\d+)/)
+    const lineMatch = blankKey.match(/:line:(\d+)/)
+    const slotKey = slotFromAttr
+      ? slotKeyFromLabel(slotFromAttr)
+      : blankIdMatch
+        ? slotKeyFromLabel(blankIdMatch[1])
+        : slotMatch
+          ? slotKeyFromLabel(slotMatch[1])
+          : lineMatch
+            ? slotKeyFromLabel(lineMatch[1])
+            : slotKeyFromLabel(
+                input.getAttribute('placeholder') ?? input.getAttribute('aria-label') ?? '',
+              )
     push(questionId, slotKey, input.value)
   })
 
@@ -98,4 +180,16 @@ export function collectExamAnswersFromDom(root: HTMLElement | null): SubmitExamA
   })
 
   return answers.filter((item) => item.questionId && item.studentAnswer)
+}
+
+export function collectExamAnswersFromRoots(
+  roots: Array<HTMLElement | null | undefined>,
+): SubmitExamAnswerItem[] {
+  const map = new Map<string, SubmitExamAnswerItem>()
+  for (const root of roots) {
+    for (const item of collectExamAnswersFromDom(root)) {
+      map.set(`${item.questionId}\u0000${item.slotKey}`, item)
+    }
+  }
+  return [...map.values()]
 }

@@ -91,6 +91,45 @@ export const HomePageRoot = styled.div`
     font-weight: 600;
   }
 
+  .content__results-summary-text {
+    display: flex;
+    align-items: center;
+    gap: ${theme.spacing(1.5)};
+    flex-wrap: wrap;
+  }
+
+  .content__view-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid ${c.border.medium};
+    border-radius: 14px;
+    background: ${c.surface.default};
+  }
+
+  .content__view-toggle-btn.MuiIconButton-root {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    color: ${c.text.secondary};
+  }
+
+  .content__view-toggle-btn.MuiIconButton-root:hover {
+    background: ${c.surface.muted};
+    color: ${c.text.primary};
+  }
+
+  .content__view-toggle-btn--active.MuiIconButton-root {
+    background: ${c.gradient.primary};
+    color: ${c.surface.default};
+  }
+
+  .content__view-toggle-btn--active.MuiIconButton-root:hover {
+    background: ${c.gradient.primary};
+    color: ${c.surface.default};
+  }
+
   .content__results-meta,
   .exam-card__category {
     color: ${c.text.secondary};
@@ -109,6 +148,27 @@ export const HomePageRoot = styled.div`
     border: 1px solid ${c.border.medium};
     border-radius: 20px;
     background: ${c.surface.muted};
+    display: flex;
+    flex-direction: column;
+  }
+
+  .exam-card--interactive {
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .exam-card--interactive:hover {
+    border-color: ${c.border.strong};
+    box-shadow: 0 10px 28px ${tokens.rgba.slate900_08};
+  }
+
+  .exam-card__click-zone {
+    flex: 1;
+    cursor: pointer;
+  }
+
+  .exam-card__click-zone:focus-visible {
+    outline: 2px solid ${c.primary.main};
+    outline-offset: -2px;
   }
 
   .exam-card__visual {
@@ -166,7 +226,7 @@ export const HomePageRoot = styled.div`
     display: flex;
     flex-direction: column;
     gap: ${theme.spacing(2)};
-    padding: 0 16px 16px;
+    padding: 0 16px 12px;
   }
 
   .exam-card__header {
@@ -241,9 +301,9 @@ export const HomePageRoot = styled.div`
 
   .exam-card__actions {
     display: flex;
-    flex-wrap: wrap;
-    gap: ${theme.spacing(1.25)};
     align-items: center;
+    gap: ${theme.spacing(1.25)};
+    padding: 0 16px 16px;
   }
 
   .exam-card__action {
@@ -253,6 +313,15 @@ export const HomePageRoot = styled.div`
     background: ${c.surface.default};
     color: ${c.text.primary};
     text-transform: none;
+  }
+
+  .exam-card__action--full {
+    flex: 1;
+    width: 100%;
+  }
+
+  .exam-card__actions-menu {
+    flex-shrink: 0;
   }
 
   .exam-card__action--danger {
@@ -297,6 +366,21 @@ export const HomePageRoot = styled.div`
     height: 20px;
   }
 
+  .exam-card__menu-action .menu-action__trigger.MuiIconButton-root {
+    width: 42px;
+    height: 42px;
+    border: 1px solid ${c.border.soft};
+    border-radius: 12px;
+    background: ${c.surface.default};
+    color: ${c.text.secondary};
+  }
+
+  .exam-card__menu-action .menu-action__trigger.MuiIconButton-root:hover {
+    background: ${c.surface.muted};
+    border-color: ${c.border.strong};
+    color: ${c.text.primary};
+  }
+
   .content__empty-state {
     padding: 28px;
     border: 1px dashed ${c.border.strong};
@@ -304,6 +388,113 @@ export const HomePageRoot = styled.div`
     background: ${tokens.rgba.white_92};
     color: ${c.text.muted};
     text-align: center;
+  }
+
+  .content__table-wrap {
+    overflow: hidden;
+    border: 1px solid ${c.border.medium};
+    border-radius: 20px;
+    background: ${c.surface.default};
+    box-shadow: 0 12px 30px ${tokens.rgba.slate900_04};
+  }
+
+  .content__table-wrap .MuiDataGrid-root {
+    border: 0;
+    background: transparent;
+    height: min(70vh, 640px);
+  }
+
+  .content__table-wrap .MuiDataGrid-columnHeaders {
+    background: ${c.surface.muted};
+    border-bottom: 1px solid ${c.background.subtle};
+  }
+
+  .content__table-wrap .MuiDataGrid-columnHeader,
+  .content__table-wrap .MuiDataGrid-cell {
+    padding: 0 14px;
+  }
+
+  .content__table-wrap .MuiDataGrid-columnHeader:focus,
+  .content__table-wrap .MuiDataGrid-columnHeader:focus-within,
+  .content__table-wrap .MuiDataGrid-cell:focus,
+  .content__table-wrap .MuiDataGrid-cell:focus-within {
+    outline: none;
+  }
+
+  .content__table-wrap .MuiDataGrid-columnHeaderTitle {
+    color: ${c.text.secondary};
+    font-weight: 700;
+    font-size: 0.82rem;
+  }
+
+  .content__table-wrap .MuiDataGrid-row {
+    cursor: pointer;
+  }
+
+  .content__table-wrap .MuiDataGrid-row:hover {
+    background: ${c.surface.muted};
+  }
+
+  .exam-table__title {
+    width: 100%;
+    font-weight: 700;
+    color: ${c.text.primary};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .exam-table__meta {
+    color: ${c.text.muted};
+    font-weight: 500;
+  }
+
+  .exam-table__center-cell {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
+    height: 100%;
+  }
+
+  .exam-table__actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: ${theme.spacing(1)};
+    width: 100%;
+    height: 100%;
+  }
+
+  .exam-table__view-btn {
+    min-height: 36px;
+    padding: 0 12px;
+    border-radius: 10px;
+    display: none;
+    text-transform: none;
+  }
+
+  .exam-table__menu-action .menu-action__trigger.MuiIconButton-root {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid ${c.border.soft};
+    border-radius: 10px;
+    background: ${c.surface.default};
+    color: ${c.text.secondary};
+  }
+
+  .exam-table__menu-action .menu-action__trigger.MuiIconButton-root:hover {
+    background: ${c.surface.hover};
+    color: ${c.text.primary};
+  }
+
+  .content__table-wrap .exam-card__status {
+    display: inline-flex;
+    padding: 6px 12px;
+    border-radius: 10px;
+    font-size: 0.82rem;
+    font-weight: 600;
   }
 
   @media (max-width: 1380px) {

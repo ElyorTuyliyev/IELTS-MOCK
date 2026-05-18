@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useMutation } from '@apollo/client/react'
 import { Box, IconButton, Tooltip, Typography } from '@mui/material'
-import { Button } from '../../../components/common/Button'
+import { useNavigate } from 'react-router-dom'
+import { ROUTES_PATH } from '../../../routes/paths'
 import { DataGrid, type GridColDef } from '@mui/x-data-grid'
 import { ConfirmDialog } from '../../../components/common/ConfirmDialog/ConfirmDialog'
 import { useToast } from '../../../components/common/Toast'
-import { REMOVE_STUDENT_EXAM_MUTATION, START_STUDENT_EXAM_MUTATION } from '../api/queries'
+import { REMOVE_STUDENT_EXAM_MUTATION } from '../api/queries'
 import type { StudentExam, User } from '../api'
 import { AssignQuestionsModal } from './AssignQuestionsModal'
 
@@ -33,11 +34,18 @@ type EnrolledStudentsTableProps = {
   onDeleted?: () => void
 }
 import { formatShortDate } from '../../../helpers/dateFormat'
+import { computeOverallModuleScore, formatModuleScore } from '../../../helpers/scores'
+
 function formatOverallScore(item: StudentExam) {
   if (!item.isCompleted) return '-'
-  const total = item.totalScore
-  if (total == null) return '-'
-  return String(total)
+  return formatModuleScore(
+    computeOverallModuleScore(
+      item.listeningScore,
+      item.readingScore,
+      item.writingScore,
+      item.speakingScore,
+    ),
+  )
 }
 
 function ActionIcon({ children }: { children: ReactNode }) {
@@ -68,11 +76,14 @@ function DeleteIcon() {
   )
 }
 
-function ViewIcon() {
+/** Clipboard + lines — assign / change exam questions (not “view only”). */
+function AssignQuestionsIcon() {
   return (
     <ActionIcon>
-      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-      <circle cx="12" cy="12" r="3" />
+      <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+      <path d="M9 3h6v4H9z" />
+      <path d="M9 12h6" />
+      <path d="M9 16h4" />
     </ActionIcon>
   )
 }
@@ -86,16 +97,13 @@ export function EnrolledStudentsTable({
   error,
   onDeleted,
 }: EnrolledStudentsTableProps) {
+  const navigate = useNavigate()
   const toast = useToast()
   const [removeStudentExam] = useMutation<{ removeStudentExam: boolean }>(
     REMOVE_STUDENT_EXAM_MUTATION,
   )
-  const [startStudentExam] = useMutation<{
-    startStudentExam: { _id: string; isReleased: boolean }
-  }>(START_STUDENT_EXAM_MUTATION)
   const [pendingDelete, setPendingDelete] = useState<EnrolledRow | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
-  const [startingId, setStartingId] = useState<string | null>(null)
   const [assignRow, setAssignRow] = useState<EnrolledRow | null>(null)
 
   useEffect(() => {
@@ -150,25 +158,15 @@ export function EnrolledStudentsTable({
     onDeleted?.()
   }, [onDeleted])
 
-  const handleStartExam = useCallback(
-    async (row: EnrolledRow) => {
-      if (row.isReleased || startingId) return
-      setStartingId(row.id)
-      try {
-        const res = await startStudentExam({ variables: { _id: row.id } })
-        if (res.error || !res.data?.startStudentExam?._id) {
-          toast.error(res.error?.message ?? 'Start failed.')
-        } else {
-          onDeleted?.()
-          toast.success('Exam started for student.')
-        }
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Start failed.')
-      } finally {
-        setStartingId(null)
-      }
+  const handleRowClick = useCallback(
+    (row: EnrolledRow) => {
+      navigate(
+        ROUTES_PATH.examStudentReview
+          .replace(':examId', examId)
+          .replace(':studentExamId', row.id),
+      )
     },
-    [onDeleted, startStudentExam, startingId, toast],
+    [examId, navigate],
   )
 
   const columns = useMemo<GridColDef<EnrolledRow>[]>(
@@ -185,38 +183,9 @@ export function EnrolledStudentsTable({
         align: 'center',
         headerAlign: 'center',
         renderCell: (params) => (
-          <Typography className="exam-details__score-cell">{params.row.overallScore}</Typography>
-        ),
-      },
-      {
-        field: 'start',
-        headerName: 'Start',
-        width: 100,
-        sortable: false,
-        filterable: false,
-        disableColumnMenu: true,
-        renderCell: (params) => (
-          <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
-            {params.row.isCompleted ? (
-              <Typography className="exam-details__end-label">Ended</Typography>
-            ) : params.row.isReleased ? (
-              <Typography className="exam-details__start-label">Started</Typography>
-            ) : (
-              <Button
-                size="sm"
-                variant="primary"
-                className="exam-details__start-btn"
-                disabled={startingId === params.row.id}
-                onClick={(event) => {
-                  event.stopPropagation()
-                  event.preventDefault()
-                  void handleStartExam(params.row)
-                }}
-              >
-                {startingId === params.row.id ? '...' : 'Start'}
-              </Button>
-            )}
-          </Box>
+          <Typography className="exam-details__score-cell exam-details__score-cell--overall">
+            {params.row.overallScore}
+          </Typography>
         ),
       },
       {
@@ -247,19 +216,21 @@ export function EnrolledStudentsTable({
                 </IconButton>
               </span>
             </Tooltip>
-            <IconButton
-              size="small"
-              className="exam-details__action-btn"
-              aria-label={`Assign questions to ${params.row.fullName}`}
-              onClick={() => handleOpenAssign(params.row)}
-            >
-              <ViewIcon />
-            </IconButton>
+            <Tooltip title={`Assign questions for ${params.row.fullName}`}>
+              <IconButton
+                size="small"
+                className="exam-details__action-btn"
+                aria-label={`Assign questions for ${params.row.fullName}`}
+                onClick={() => handleOpenAssign(params.row)}
+              >
+                <AssignQuestionsIcon />
+              </IconButton>
+            </Tooltip>
           </Box>
         ),
       },
     ],
-    [handleRequestDelete, handleOpenAssign, handleStartExam, isArchived, startingId],
+    [handleRequestDelete, handleOpenAssign, isArchived],
   )
 
   const rows = useMemo(() => {
@@ -313,6 +284,14 @@ export function EnrolledStudentsTable({
           autoHeight
           loading={loading}
           disableRowSelectionOnClick
+          onRowClick={(params, event) => {
+            const target = event.target as HTMLElement
+            if (target.closest('button')) return
+            handleRowClick(params.row)
+          }}
+          sx={{
+            '& .MuiDataGrid-row': { cursor: 'pointer' },
+          }}
           slotProps={{
             cell: {
               onMouseDown: (event) => {

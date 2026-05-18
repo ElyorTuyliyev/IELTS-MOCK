@@ -28,6 +28,10 @@ export const CREATE_EXAM_MUTATION = gql`
       endTime
       price
       centerId
+      listeningId
+      readingId
+      writingId
+      speakingId
     }
   }
 `

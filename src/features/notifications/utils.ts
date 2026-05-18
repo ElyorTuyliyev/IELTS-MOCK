@@ -6,7 +6,52 @@ import PeopleOutlinedIcon from '@mui/icons-material/PeopleOutlined'
 import type { SvgIconComponent } from '@mui/icons-material'
 
 import { c } from '../../theme'
+import { USER_ROLES, type UserRole } from '@/store/slices/authSlice'
 import type { NotificationCategory } from '@/types/notifications'
+
+export const NOTIFICATION_ROLE_LABELS: Record<UserRole, string> = {
+  [USER_ROLES.superAdmin]: 'Super Admin',
+  [USER_ROLES.center]: 'Center',
+  [USER_ROLES.student]: 'Student',
+}
+
+export function getNotificationRoleCopy(role: UserRole | null) {
+  switch (role) {
+    case USER_ROLES.superAdmin:
+      return {
+        title: 'Platform notifications',
+        subtitle:
+          'Billing, plan purchases, signup leads, and platform updates for super admins.',
+        emptyAll:
+          'Platform-wide updates about centers, payments, and signups will appear here.',
+        emptyUnread: 'Unread platform updates will appear in this list.',
+      }
+    case USER_ROLES.center:
+      return {
+        title: 'Center notifications',
+        subtitle:
+          'Student signups, exams, credits, and plan updates for your center.',
+        emptyAll:
+          'Updates about your students, exams, and plan purchases will show up here.',
+        emptyUnread: 'Unread center updates will appear in this list.',
+      }
+    case USER_ROLES.student:
+      return {
+        title: 'Your notifications',
+        subtitle: 'Exam assignments, reminders, and results for your account.',
+        emptyAll:
+          'Exam assignments, reminders, and result updates will show up here.',
+        emptyUnread: 'Unread exam and result updates will appear in this list.',
+      }
+    default:
+      return {
+        title: 'Notifications',
+        subtitle: 'Updates for your account.',
+        emptyAll: 'New updates will show up here.',
+        emptyUnread: 'Unread notifications will appear in this list.',
+      }
+  }
+}
 
 export const NOTIFICATION_CATEGORY_ICONS: Record<NotificationCategory, SvgIconComponent> = {
   exam: AssignmentOutlinedIcon,

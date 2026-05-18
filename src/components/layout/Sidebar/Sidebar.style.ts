@@ -5,6 +5,8 @@ import theme, { tokens, c } from '@/theme'
 export const SidebarRoot = styled(Box)`
   display: flex;
   flex-direction: column;
+  height: 100%;
+  min-height: 0;
   gap: ${theme.spacing(3)};
   padding: 22px;
   border: 1px solid ${tokens.rgba.border_24};
@@ -96,6 +98,8 @@ export const SidebarRoot = styled(Box)`
     flex: 1;
     flex-direction: column;
     gap: ${theme.spacing(3)};
+    min-height: 0;
+    overflow-y: auto;
   }
 
   .sidebar__section {

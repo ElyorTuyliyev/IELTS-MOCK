@@ -10,14 +10,15 @@ import { Layout } from '../../../components/layout'
 import { useToast } from '../../../components/common/Toast'
 import {
   formatNotificationTime,
+  getNotificationRoleCopy,
   NOTIFICATION_CATEGORY_ICONS,
   NOTIFICATION_CATEGORY_LABELS,
   NOTIFICATION_CATEGORY_STYLES,
+  NOTIFICATION_ROLE_LABELS,
   useNotifications,
 } from '../../../features/notifications'
 import { useAppSelector } from '../../../store/hooks'
 import { selectUserRole } from '../../../store'
-import { USER_ROLES } from '../../../store/slices/authSlice'
 import { NotificationsPageRoot } from './NotificationsPage.style'
 
 type NotificationFilter = 'all' | 'unread'
@@ -29,7 +30,8 @@ export function NotificationsPage() {
   const { notifications, unreadCount, markAsRead, markAllAsRead, loading, error } =
     useNotifications()
   const [filter, setFilter] = useState<NotificationFilter>('all')
-  const isStudent = userRole === USER_ROLES.student
+  const roleCopy = getNotificationRoleCopy(userRole)
+  const roleLabel = userRole ? NOTIFICATION_ROLE_LABELS[userRole] : null
   const readCount = notifications.length - unreadCount
 
   const visibleNotifications = useMemo(() => {
@@ -67,12 +69,19 @@ export function NotificationsPage() {
             </Box>
             <Box className="notifications-page__hero-copy">
               <Typography component="h1" className="notifications-page__title">
-                Notifications
+                {roleCopy.title}
               </Typography>
               <Typography component="p" className="notifications-page__subtitle">
-                {unreadCount > 0
-                  ? `You have ${unreadCount} unread update${unreadCount === 1 ? '' : 's'} waiting for you.`
-                  : 'You are all caught up. No new updates right now.'}
+                {roleLabel ? (
+                  <Box component="span" className="notifications-page__role">
+                    {roleLabel}
+                  </Box>
+                ) : null}
+                <Box component="span" className="notifications-page__subtitle-text">
+                  {unreadCount > 0
+                    ? `You have ${unreadCount} unread update${unreadCount === 1 ? '' : 's'} for this role.`
+                    : roleCopy.subtitle}
+                </Box>
               </Typography>
             </Box>
           </Box>
@@ -205,11 +214,7 @@ export function NotificationsPage() {
                 </Box>
                 <Typography component="h2">No notifications here</Typography>
                 <Typography component="p">
-                  {filter === 'unread'
-                    ? 'Unread notifications will appear in this list.'
-                    : isStudent
-                      ? 'Exam assignments, reminders, and result updates will show up here.'
-                      : 'New updates about exams, students, and payments will show up here.'}
+                  {filter === 'unread' ? roleCopy.emptyUnread : roleCopy.emptyAll}
                 </Typography>
               </Box>
             )}

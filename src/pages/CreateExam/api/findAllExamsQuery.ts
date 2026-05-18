@@ -15,6 +15,10 @@ export const FIND_ALL_EXAMS_QUERY = gql`
       isActive
       isCompleted
       createdAt
+      listeningId
+      readingId
+      writingId
+      speakingId
     }
   }
 `

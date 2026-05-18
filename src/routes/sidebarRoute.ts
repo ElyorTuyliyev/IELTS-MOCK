@@ -71,14 +71,29 @@ export const SIDEBAR_ROUTE_GROUPS: SidebarRouteGroup[] = [
         ],
       },
       {
-        label: 'Questions',
+        label: 'Modules',
         icon: 'questions',
-        path: ROUTES_PATH.questions,
+        path: ROUTES_PATH.listeningQuestions,
         allowedRoles: [USER_ROLES.center, USER_ROLES.superAdmin],
         children: [
           {
-            label: 'All Questions',
-            path: ROUTES_PATH.allQuestions,
+            label: 'Listening',
+            path: ROUTES_PATH.listeningQuestions,
+            allowedRoles: [USER_ROLES.center, USER_ROLES.superAdmin],
+          },
+          {
+            label: 'Reading',
+            path: ROUTES_PATH.readingQuestions,
+            allowedRoles: [USER_ROLES.center, USER_ROLES.superAdmin],
+          },
+          {
+            label: 'Writing',
+            path: ROUTES_PATH.writingQuestions,
+            allowedRoles: [USER_ROLES.center, USER_ROLES.superAdmin],
+          },
+          {
+            label: 'Speaking',
+            path: ROUTES_PATH.speakingQuestions,
             allowedRoles: [USER_ROLES.center, USER_ROLES.superAdmin],
           },
         ],
@@ -130,6 +145,24 @@ export const SIDEBAR_ROUTE_GROUPS: SidebarRouteGroup[] = [
         icon: 'payments',
         path: ROUTES_PATH.payments,
         allowedRoles: [USER_ROLES.superAdmin],
+        children: [
+          {
+            label: 'Billing overview',
+            path: ROUTES_PATH.payments,
+            allowedRoles: [USER_ROLES.superAdmin],
+          },
+          {
+            label: 'Exam plans',
+            path: ROUTES_PATH.examPlans,
+            allowedRoles: [USER_ROLES.superAdmin],
+          },
+        ],
+      },
+      {
+        label: 'Buy exam plan',
+        icon: 'payments',
+        path: ROUTES_PATH.buyPlan,
+        allowedRoles: [USER_ROLES.center],
       },
     ],
   },

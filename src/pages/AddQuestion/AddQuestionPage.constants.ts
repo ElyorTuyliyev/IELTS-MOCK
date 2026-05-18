@@ -143,5 +143,5 @@ export const PART_OPTIONS: Record<IeltsModule, string[]> = {
   Listening: ['Part 1', 'Part 2', 'Part 3', 'Part 4'],
   Reading: ['Passage 1', 'Passage 2', 'Passage 3'],
   Writing: ['Task 1', 'Task 2'],
-  Speaking: ['Part 1', 'Part 2', 'Part 3'],
+  Speaking: ['Part 1'],
 }

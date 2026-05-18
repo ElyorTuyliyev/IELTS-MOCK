@@ -1,7 +1,6 @@
 import {
   useCallback,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -13,34 +12,23 @@ import type { ToastItem, ToastOptions, ToastSeverity } from '@/types/toast'
 const DEFAULT_DURATION = 4500
 
 export function ToastProvider({ children }: { children: ReactNode }) {
-  const queueRef = useRef<ToastItem[]>([])
-  const activeRef = useRef<ToastItem | null>(null)
-  const [activeToast, setActiveToast] = useState<ToastItem | null>(null)
-  const [pendingCount, setPendingCount] = useState(0)
+  const [toasts, setToasts] = useState<ToastItem[]>([])
 
-  const pumpQueue = useCallback(() => {
-    if (activeRef.current) {
-      return
-    }
-
-    const next = queueRef.current.shift() ?? null
-    setPendingCount(queueRef.current.length)
-    activeRef.current = next
-    setActiveToast(next)
+  const dismiss = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id))
   }, [])
 
   const enqueue = useCallback(
     (message: string, severity: ToastSeverity, options?: ToastOptions) => {
-      queueRef.current.push({
+      const item: ToastItem = {
         id: createToastId(),
         message,
         severity,
         duration: options?.duration ?? DEFAULT_DURATION,
-      })
-      setPendingCount(queueRef.current.length)
-      pumpQueue()
+      }
+      setToasts((prev) => [...prev, item])
     },
-    [pumpQueue],
+    [],
   )
 
   const show = useCallback(
@@ -70,12 +58,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     [enqueue],
   )
 
-  const dismissActive = useCallback(() => {
-    activeRef.current = null
-    setActiveToast(null)
-    window.setTimeout(pumpQueue, 150)
-  }, [pumpQueue])
-
   const value = useMemo(
     () => ({
       show,
@@ -90,7 +72,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <ToastContainer toast={activeToast} onClose={dismissActive} pendingCount={pendingCount} />
+      <ToastContainer toasts={toasts} onDismiss={dismiss} />
     </ToastContext.Provider>
   )
 }

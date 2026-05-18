@@ -30,6 +30,7 @@ export type StudentExam = {
   listeningScore?: number | null
   readingScore?: number | null
   writingScore?: number | null
+  speakingScore?: number | null
   totalScore?: number | null
 }
 
@@ -73,4 +74,5 @@ export type InitializeRandomQuestionsMutationResponse = {
 
 export type InitializeRandomQuestionsMutationVariables = {
   _id: string
+  force?: boolean
 }

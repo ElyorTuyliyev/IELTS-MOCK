@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { useMemo, useState } from 'react'
 
+import { gql } from '@apollo/client'
 import { useQuery } from '@apollo/client/react'
 import { Alert, Box, Typography } from '@mui/material'
 
@@ -16,6 +17,14 @@ import {
   type StudentDashboardStatsResponse,
 } from '../api/studentDashboardStatsQuery'
 import { DashboardPageRoot } from './DashboardPage.style'
+
+const ME_CENTER_CREDITS_QUERY = gql`
+  query MeCenterCredits {
+    meCenter {
+      availableExamCredits
+    }
+  }
+`
 
 type ChartRow = { monthLabel: string; yearLabel: string; bars: number; line: number }
 
@@ -207,7 +216,14 @@ export function DashboardPage() {
     skip: !loadStudentStats,
   })
 
+  const { data: meCenterData } = useQuery<{
+    meCenter?: { availableExamCredits?: number } | null
+  }>(ME_CENTER_CREDITS_QUERY, {
+    skip: !token || role !== USER_ROLES.center,
+  })
+
   const stats = statsData?.studentDashboardStats
+  const availableExamCredits = meCenterData?.meCenter?.availableExamCredits ?? 0
 
   const aggregatedMonthly = useMemo(() => {
     if (!stats?.centers?.length) {
@@ -318,6 +334,11 @@ export function DashboardPage() {
     <Layout>
       <DashboardPageRoot>
         <Box className="dashboard-screen">
+          {role === USER_ROLES.center ? (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Available exam credits: <strong>{availableExamCredits}</strong>
+            </Alert>
+          ) : null}
           <Box className="dashboard-screen__stats">
             <Box
               className="dashboard-stat"

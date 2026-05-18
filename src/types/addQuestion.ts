@@ -3,7 +3,10 @@ import type { AnswerMode, IeltsModule } from '@/pages/AddQuestion/AddQuestionPag
 export type ExamItem = {
   _id: string
   title: string
-  moduleId?: string | null
+  listeningId?: string | null
+  readingId?: string | null
+  writingId?: string | null
+  speakingId?: string | null
   isActive?: boolean
   isCompleted?: boolean
 }
@@ -121,11 +124,9 @@ export type AddQuestionFormState = {
   readingPartContents: ReadingPartContent[]
   writingPartContents: string[]
   listeningAudioFile: File | null
-  speakingAudioFile: File | null
   supportingImageFile: File | null
   errors: string[]
   existingListeningAudio: string | null
-  existingSpeakingAudio: string | null
   existingSupportingImage: string | null
   editPartSlotIndex: number | null
 }
@@ -144,7 +145,6 @@ export type AddQuestionFormActions = {
   setReadingPartQuestions: (index: number, html: string) => void
   setWritingPartContent: (index: number, html: string) => void
   setListeningAudioFile: (file: File | null) => void
-  setSpeakingAudioFile: (file: File | null) => void
   setSupportingImageFile: (file: File | null) => void
   handleTemplateChange: (templateId: string) => void
   handleModuleChange: (module: IeltsModule) => void
@@ -159,7 +159,6 @@ export type AddQuestionFormDerived = {
   readingPartEntries: ReadingPartEntry[]
   writingPartEntries: WritingPartEntry[]
   listeningAudioPreviewSrc: string | null
-  speakingAudioPreviewSrc: string | null
   isSaving: boolean
   isUpdating: boolean
   oneQuestionLoading: boolean

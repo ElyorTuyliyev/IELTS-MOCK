@@ -11,13 +11,16 @@ const DashboardPage = lazy(() =>
   import('../pages/Dashboard').then((m) => ({ default: m.DashboardPage })),
 )
 const HomePage = lazy(() =>
-  import('../pages/HomePage').then((m) => ({ default: m.HomePage })),
+  import('../pages/CreateExam').then((m) => ({ default: m.HomePage })),
 )
 const ArchivedExamsPage = lazy(() =>
   import('../pages/ArchivedExams').then((m) => ({ default: m.ArchivedExamsPage })),
 )
 const ExamDetailsPage = lazy(() =>
   import('../pages/ExamDetails').then((m) => ({ default: m.ExamDetailsPage })),
+)
+const StudentExamReviewPage = lazy(() =>
+  import('../pages/StudentExamReview').then((m) => ({ default: m.StudentExamReviewPage })),
 )
 const CentersPage = lazy(() =>
   import('../pages/Centers').then((m) => ({ default: m.CentersPage })),
@@ -26,8 +29,17 @@ const AddCenterPage = lazy(() =>
   import('../pages/AddCenter').then((m) => ({ default: m.AddCenterPage })),
 )
 
-const QuestionsPage = lazy(() =>
-  import('../pages/Questions').then((m) => ({ default: m.QuestionsPage })),
+const ListeningQuestionsPage = lazy(() =>
+  import('../pages/Questions').then((m) => ({ default: m.ListeningQuestionsPage })),
+)
+const ReadingQuestionsPage = lazy(() =>
+  import('../pages/Questions').then((m) => ({ default: m.ReadingQuestionsPage })),
+)
+const WritingQuestionsPage = lazy(() =>
+  import('../pages/Questions').then((m) => ({ default: m.WritingQuestionsPage })),
+)
+const SpeakingQuestionsPage = lazy(() =>
+  import('../pages/Questions').then((m) => ({ default: m.SpeakingQuestionsPage })),
 )
 const AddQuestionPage = lazy(() =>
   import('../pages/AddQuestion').then((m) => ({ default: m.AddQuestionPage })),
@@ -40,6 +52,15 @@ const StatisticsPage = lazy(() =>
 )
 const PaymentsPage = lazy(() =>
   import('../pages/Payments').then((m) => ({ default: m.PaymentsPage })),
+)
+const ExamPlansPage = lazy(() =>
+  import('../pages/ExamPlans').then((m) => ({ default: m.ExamPlansPage })),
+)
+const BuyPlanPage = lazy(() =>
+  import('../pages/BuyPlan').then((m) => ({ default: m.BuyPlanPage })),
+)
+const PurchaseHistoryRedirect = lazy(() =>
+  import('../pages/PurchaseHistory').then((m) => ({ default: m.PurchaseHistoryRedirect })),
 )
 const SignInPage = lazy(() =>
   import('../pages/Auth/SignInPage').then((m) => ({ default: m.SignInPage })),
@@ -58,6 +79,9 @@ const StudentExamPlayerPage = lazy(() =>
 )
 const StudentMyExamsPage = lazy(() =>
   import('../pages/StudentMyExams').then((m) => ({ default: m.StudentMyExamsPage })),
+)
+const CertificatesPage = lazy(() =>
+  import('../pages/Certificates').then((m) => ({ default: m.CertificatesPage })),
 )
 const NotFoundPage = lazy(() =>
   import('../pages/NotFound').then((m) => ({ default: m.NotFoundPage })),
@@ -133,6 +157,11 @@ const appRoutes: AppRouteConfig[] = [
     allowedRoles: examRoles,
   },
   {
+    path: ROUTES_PATH.examStudentReview,
+    element: <StudentExamReviewPage />,
+    allowedRoles: examRoles,
+  },
+  {
     path: ROUTES_PATH.studentMyExams,
     element: <StudentMyExamsPage />,
     allowedRoles: studentOnly,
@@ -165,12 +194,32 @@ const appRoutes: AppRouteConfig[] = [
   },
   {
     path: ROUTES_PATH.questions,
-    element: <Navigate to={ROUTES_PATH.allQuestions} replace />,
+    element: <Navigate to={ROUTES_PATH.listeningQuestions} replace />,
     allowedRoles: centerRoles,
   },
   {
-    path: ROUTES_PATH.allQuestions,
-    element: <QuestionsPage />,
+    path: '/questions/all',
+    element: <Navigate to={ROUTES_PATH.listeningQuestions} replace />,
+    allowedRoles: centerRoles,
+  },
+  {
+    path: ROUTES_PATH.listeningQuestions,
+    element: <ListeningQuestionsPage />,
+    allowedRoles: centerRoles,
+  },
+  {
+    path: ROUTES_PATH.readingQuestions,
+    element: <ReadingQuestionsPage />,
+    allowedRoles: centerRoles,
+  },
+  {
+    path: ROUTES_PATH.writingQuestions,
+    element: <WritingQuestionsPage />,
+    allowedRoles: centerRoles,
+  },
+  {
+    path: ROUTES_PATH.speakingQuestions,
+    element: <SpeakingQuestionsPage />,
     allowedRoles: centerRoles,
   },
   {
@@ -215,13 +264,28 @@ const appRoutes: AppRouteConfig[] = [
   },
   {
     path: ROUTES_PATH.certificates,
-    element: <NotFoundPage />,
+    element: <CertificatesPage />,
     allowedRoles: studentFeatureRoles,
   },
   {
     path: ROUTES_PATH.payments,
     element: <PaymentsPage />,
     allowedRoles: superAdminOnly,
+  },
+  {
+    path: ROUTES_PATH.examPlans,
+    element: <ExamPlansPage />,
+    allowedRoles: superAdminOnly,
+  },
+  {
+    path: ROUTES_PATH.buyPlan,
+    element: <BuyPlanPage />,
+    allowedRoles: [USER_ROLES.center],
+  },
+  {
+    path: ROUTES_PATH.purchaseHistory,
+    element: <PurchaseHistoryRedirect />,
+    allowedRoles: centerRoles,
   },
   {
     path: ROUTES_PATH.surveys,

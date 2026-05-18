@@ -26,7 +26,6 @@ export function AllStudentsPage() {
     usersData,
     onDelete: form.handleDelete,
     onEdit: form.openEditModal,
-    onView: form.openEditModal,
   })
 
   return (

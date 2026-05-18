@@ -31,6 +31,13 @@ import type {
   InitializeRandomQuestionsMutationVariables,
 } from '@/types/examDetails'
 import { AssignQuestionsRoot } from './AssignQuestionsModal.style'
+import {
+  buildQuestionGroupsForExam,
+  getAssignedGroups,
+  sortGroupsByModule,
+  type ExamQuestionGroup,
+} from '../utils/examQuestionGroups'
+import { AssignedQuestionsSummary } from './AssignedQuestionsSummary'
 
 const MODULES = ['Listening', 'Reading', 'Writing', 'Speaking'] as const
 type ModuleName = (typeof MODULES)[number]
@@ -40,17 +47,11 @@ const SINGLE_SELECT_MODULES: ReadonlySet<ModuleName> = new Set([
   'Listening',
   'Reading',
   'Writing',
+  'Speaking',
 ])
 
 type FlatQuestion = GroupedQuestionItem['questions'][number]
-
-type QuestionGroup = {
-  groupId: string
-  module: ModuleName
-  title: string
-  questionIds: string[]
-  partsCount: number
-}
+type QuestionGroup = ExamQuestionGroup
 
 type AssignQuestionsModalProps = {
   open: boolean
@@ -60,12 +61,6 @@ type AssignQuestionsModalProps = {
   existingQuestionIds: string[]
   onClose: () => void
   onSaved: () => void
-}
-
-function resolveModule(q: FlatQuestion): ModuleName {
-  const raw = q.ieltsModule?.trim()
-  if (raw && MODULES.includes(raw as ModuleName)) return raw as ModuleName
-  return 'Listening'
 }
 
 export function AssignQuestionsModal({
@@ -81,6 +76,7 @@ export function AssignQuestionsModal({
   const [activeTab, setActiveTab] = useState(0)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [initPending, setInitPending] = useState(false)
+  const [rerandomizing, setRerandomizing] = useState(false)
 
   const { data: rawData, loading } = useQuery<FindAllQuestionsResponse>(
     FIND_ALL_QUESTIONS_QUERY,
@@ -117,7 +113,7 @@ export function AssignQuestionsModal({
     void (async () => {
       try {
         const res = await initializeMutation({
-          variables: { _id: studentExamId },
+          variables: { _id: studentExamId, force: false },
         })
         if (cancelled) return
         if (res.error) {
@@ -147,30 +143,43 @@ export function AssignQuestionsModal({
     }
   }, [open, studentExamId, existingSortedKey, initializeMutation, onSaved, existingQuestionIds, toast])
 
-  const showQuestionsLoading = loading || initPending
-
-  const questionGroups = useMemo(() => {
-    const allFlat = flattenGroupedQuestions(rawData?.findAllQuestions ?? []) as FlatQuestion[]
-    const forThisExam = allFlat.filter(
-      (q) => !q.examId?.trim() || String(q.examId) === String(examId),
-    )
-
-    const gMap = new Map<string, QuestionGroup>()
-    for (const q of forThisExam) {
-      const mod = resolveModule(q)
-      const examKey = q.examId?.trim() || "pool"
-      const gid = q.groupId?.trim() || `legacy::${examKey}::${mod}`
-      if (!gMap.has(gid)) {
-        const baseTitle = (q.title ?? '').split(' — ')[0]?.trim() || mod
-        gMap.set(gid, { groupId: gid, module: mod, title: baseTitle, questionIds: [], partsCount: 0 })
+  const handlePickRandomAgain = useCallback(async () => {
+    setRerandomizing(true)
+    try {
+      const res = await initializeMutation({
+        variables: { _id: studentExamId, force: true },
+      })
+      if (res.error) {
+        toast.error(res.error.message ?? 'Failed to pick random questions.')
+        return
       }
-      const entry = gMap.get(gid)!
-      entry.questionIds.push(q._id)
-      entry.partsCount = entry.questionIds.length
+      const ids =
+        res.data?.initializeRandomQuestionsForStudentExam?.questionIds ?? []
+      setSelectedIds(new Set(ids.map(String)))
+      onSaved()
+      toast.success('New random questions assigned. Adjust manually if needed, then save.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to pick random questions.')
+    } finally {
+      setRerandomizing(false)
     }
+  }, [initializeMutation, onSaved, studentExamId, toast])
 
-    return Array.from(gMap.values())
-  }, [rawData, examId])
+  const showQuestionsLoading = loading || initPending || rerandomizing
+
+  const questionGroups = useMemo(
+    () =>
+      buildQuestionGroupsForExam(
+        examId,
+        flattenGroupedQuestions(rawData?.findAllQuestions ?? []) as FlatQuestion[],
+      ),
+    [rawData, examId],
+  )
+
+  const selectedGroupSummaries = useMemo(
+    () => sortGroupsByModule(getAssignedGroups(Array.from(selectedIds), questionGroups)),
+    [questionGroups, selectedIds],
+  )
 
   const groupedByModule = useMemo(() => {
     const map: Record<ModuleName, QuestionGroup[]> = {
@@ -253,16 +262,16 @@ export function AssignQuestionsModal({
   return (
     <AssignQuestionsRoot
       open={open}
-      onClose={saving || initPending ? undefined : onClose}
+      onClose={saving || initPending || rerandomizing ? undefined : onClose}
       maxWidth="sm"
       fullWidth
     >
       <DialogTitle className="aq__header" component="div">
         <Box className="aq__header-icon">📋</Box>
         <Box>
-          <Typography className="aq__header-title">Select questions</Typography>
+          <Typography className="aq__header-title">Assign questions</Typography>
           <Typography className="aq__header-sub">
-            Choose exam questions for {studentName}
+            Random sets are chosen per module for {studentName}. Change any module manually if needed.
           </Typography>
         </Box>
       </DialogTitle>
@@ -295,7 +304,26 @@ export function AssignQuestionsModal({
 
       <Divider />
 
+      {selectedGroupSummaries.length > 0 && (
+        <Box className="aq__assigned-banner">
+          <Typography className="aq__assigned-banner-title">Assigned to this student</Typography>
+          <AssignedQuestionsSummary groups={selectedGroupSummaries} />
+        </Box>
+      )}
+
       <DialogContent className="aq__content">
+        <Box className="aq__toolbar">
+          <Button
+            variant="secondary"
+            size="sm"
+            className="aq__random-btn"
+            disabled={showQuestionsLoading || saving}
+            onClick={() => void handlePickRandomAgain()}
+          >
+            {rerandomizing ? 'Picking...' : 'Pick random again'}
+          </Button>
+        </Box>
+
         {showQuestionsLoading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
             <CircularProgress size={28} />
@@ -377,7 +405,7 @@ export function AssignQuestionsModal({
           variant="secondary"
           className="aq__cancel-btn"
           onClick={onClose}
-          disabled={saving || initPending}
+          disabled={saving || initPending || rerandomizing}
         >
           Cancel
         </Button>
@@ -385,7 +413,7 @@ export function AssignQuestionsModal({
           variant="primary"
           className="aq__save-btn"
           onClick={() => void handleSave()}
-          disabled={saving || initPending}
+          disabled={saving || initPending || rerandomizing}
         >
           {saving ? 'Saving...' : 'Save'}
         </Button>

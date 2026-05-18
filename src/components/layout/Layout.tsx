@@ -17,7 +17,7 @@ export function Layout({ children }: LayoutProps) {
       <Box className="dashboard__content content">
         <Header />
         <Box component="main" className="content__main">
-          {children}
+          <Box className="content__main-inner">{children}</Box>
         </Box>
       </Box>
     </LayoutRoot>

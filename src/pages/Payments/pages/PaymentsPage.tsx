@@ -1,226 +1,375 @@
-import { useMemo, useState } from 'react'
-import { Box, Typography } from '@mui/material'
-import { Button } from '../../../components/common/Button'
+import { useCallback, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useMutation, useQuery } from '@apollo/client/react'
+import { Box, Tab, Tabs, Typography } from '@mui/material'
+import { DataGrid } from '@mui/x-data-grid'
 
-import { SearchField } from '../../../components/common/SearchField'
 import { Layout } from '../../../components/layout'
+import { Button } from '../../../components/common/Button'
+import { ConfirmDialog } from '../../../components/common/ConfirmDialog/ConfirmDialog'
+import { useToast } from '../../../components/common/Toast'
+import { getGraphQLErrorMessage } from '../../../helpers/graphql'
+import { ROUTES_PATH } from '../../../routes/paths'
+import {
+  CREATE_PAYMENT_MUTATION,
+  FIND_ALL_CENTERS_BILLING_QUERY,
+  FIND_ALL_PAYMENTS_QUERY,
+  FIND_PENDING_PLAN_PURCHASES_QUERY,
+  REMOVE_PAYMENT_MUTATION,
+  REVIEW_PLAN_PURCHASE_MUTATION,
+  UPDATE_PAYMENT_MUTATION,
+  type PaymentRecord,
+  type PendingPlanPurchase,
+} from '../../Billing/api/billingQueries'
+import { PaymentFormDialog, type PaymentFormValues } from '../components/PaymentFormDialog'
+import { ReviewPurchaseDialog } from '../components/ReviewPurchaseDialog'
+import { resolveCenterName } from '../components/paymentUtils'
+import {
+  createPaymentColumns,
+  createPendingColumns,
+  type PaymentRow,
+  type PendingRow,
+} from './PaymentsPage.columns'
+import {
+  PAYMENTS_TABS,
+  usePaymentsTab,
+  type PaymentsTabKey,
+} from '../hooks/usePaymentsTab'
 import { PaymentsPageRoot } from './PaymentsPage.style'
 
-type InvoiceStatus = 'Paid' | 'Unpaid' | 'Overdue'
-
-type InvoiceRow = {
-  id: string
-  issueDate: string
-  clientName: string
-  status: InvoiceStatus
-  assignedStaff: string
-  service: string
-  price: string
+function parseCredits(value: string) {
+  if (!value.trim()) return undefined
+  const parsed = Number(value)
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : undefined
 }
 
-const invoiceStats = [
-  { label: 'In Transit', value: '$2,307.40', meta: 'Last update: Jan 24' },
-  { label: 'Total Paid', value: '$34,307.40', meta: 'Last update: Jan 24' },
-  { label: 'Total Unpaid', value: '$34,307.40', meta: 'Last update: Jan 24' },
-  { label: 'Total Overdue', value: '$256.87', meta: 'Last update: Jan 24' },
-]
-
-const invoiceRows: InvoiceRow[] = [
-  {
-    id: 'P10001',
-    issueDate: 'Feb 14, 2025',
-    clientName: 'James Anderson',
-    status: 'Paid',
-    assignedStaff: 'Bessie Cooper',
-    service: 'Diagnostic Evaluation',
-    price: '$160.00',
-  },
-  {
-    id: 'P10002',
-    issueDate: 'Apr 22, 2025',
-    clientName: 'Alexander Ivanov',
-    status: 'Paid',
-    assignedStaff: 'Leslie Alexander',
-    service: 'Company ITD Solution',
-    price: '$267.00',
-  },
-  {
-    id: 'P10003',
-    issueDate: 'Apr 22, 2024',
-    clientName: 'Hugo Fernandez',
-    status: 'Overdue',
-    assignedStaff: 'Ralph Edwards',
-    service: 'Appointment Add-on',
-    price: '$267.18',
-  },
-  {
-    id: 'P10004',
-    issueDate: 'Jun 18, 2025',
-    clientName: 'Savannah Nguyen',
-    status: 'Unpaid',
-    assignedStaff: 'Savannah Nguyen',
-    service: 'Standard Appointment',
-    price: '$153.30',
-  },
-  {
-    id: 'P10005',
-    issueDate: 'Jul 4, 2025',
-    clientName: 'Hiroshi Takahashi',
-    status: 'Paid',
-    assignedStaff: 'Eleanor Pena',
-    service: 'Company ITD Solution',
-    price: '$178.45',
-  },
-  {
-    id: 'P10006',
-    issueDate: 'Sep 5, 2024',
-    clientName: 'Christopher Miller',
-    status: 'Unpaid',
-    assignedStaff: 'Dianne Russell',
-    service: 'Diagnostic Evaluation',
-    price: '$235.20',
-  },
-  {
-    id: 'P10007',
-    issueDate: 'Oct 20, 2024',
-    clientName: 'Emily Roberts',
-    status: 'Paid',
-    assignedStaff: 'Wade Warren',
-    service: 'Company ITD Solution',
-    price: '$432.12',
-  },
-]
-
-const statusFilters: Array<'All' | InvoiceStatus> = ['All', 'Paid', 'Unpaid', 'Overdue']
-
 export function PaymentsPage() {
-  const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'All' | InvoiceStatus>('All')
+  const navigate = useNavigate()
+  const toast = useToast()
+  const { tab, setTab } = usePaymentsTab()
+  const [paymentDialog, setPaymentDialog] = useState<{
+    open: boolean
+    mode: 'create' | 'edit'
+    payment: PaymentRecord | null
+  }>({ open: false, mode: 'create', payment: null })
+  const [reviewPurchase, setReviewPurchase] = useState<PendingPlanPurchase | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<PaymentRecord | null>(null)
 
-  const filteredRows = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase()
+  const {
+    data: pendingData,
+    loading: pendingLoading,
+    refetch: refetchPending,
+  } = useQuery<{ findPendingPlanPurchases: PendingPlanPurchase[] }>(
+    FIND_PENDING_PLAN_PURCHASES_QUERY,
+    { fetchPolicy: 'network-only' },
+  )
 
-    return invoiceRows.filter((row) => {
-      const matchesStatus = statusFilter === 'All' || row.status === statusFilter
-      const matchesSearch =
-        normalizedSearch.length === 0 ||
-        row.id.toLowerCase().includes(normalizedSearch) ||
-        row.clientName.toLowerCase().includes(normalizedSearch) ||
-        row.service.toLowerCase().includes(normalizedSearch) ||
-        row.assignedStaff.toLowerCase().includes(normalizedSearch)
+  const {
+    data: paymentsData,
+    loading: paymentsLoading,
+    refetch: refetchPayments,
+  } = useQuery<{ findAllPayments: PaymentRecord[] }>(FIND_ALL_PAYMENTS_QUERY, {
+    fetchPolicy: 'network-only',
+  })
 
-      return matchesStatus && matchesSearch
-    })
-  }, [searchTerm, statusFilter])
+  const { data: centersData } = useQuery<{
+    findAllCenters: Array<{ _id: string; name: string }>
+  }>(FIND_ALL_CENTERS_BILLING_QUERY)
 
-  const getStatusClassName = (status: InvoiceStatus) =>
-    `payments-page__status payments-page__status--${status.toLowerCase()}`
+  const [reviewPurchaseMutation, { loading: reviewing }] = useMutation(REVIEW_PLAN_PURCHASE_MUTATION)
+  const [createPayment, { loading: creatingPayment }] = useMutation(CREATE_PAYMENT_MUTATION)
+  const [updatePayment, { loading: updatingPayment }] = useMutation(UPDATE_PAYMENT_MUTATION)
+  const [removePayment, { loading: removingPayment }] = useMutation<{ removePayment: boolean }>(
+    REMOVE_PAYMENT_MUTATION,
+  )
+
+  const centers = centersData?.findAllCenters ?? []
+  const pending = pendingData?.findPendingPlanPurchases ?? []
+  const payments = paymentsData?.findAllPayments ?? []
+
+  const pendingRows = useMemo<PendingRow[]>(
+    () =>
+      pending.map((item) => ({
+        ...item,
+        centerName: resolveCenterName(centers, item.centerId),
+      })),
+    [pending, centers],
+  )
+
+  const paymentRows = useMemo<PaymentRow[]>(
+    () =>
+      [...payments]
+        .sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime())
+        .map((item) => ({
+          ...item,
+          centerName: resolveCenterName(centers, item.centerId),
+          source: item.planPurchaseId ? 'Plan approval' : 'Manual',
+        })),
+    [payments, centers],
+  )
+
+  const refreshAll = useCallback(async () => {
+    await Promise.all([refetchPending(), refetchPayments()])
+  }, [refetchPending, refetchPayments])
+
+  const handleReviewConfirm = useCallback(
+    async (approve: boolean, adminNote: string) => {
+      if (!reviewPurchase) return
+      try {
+        await reviewPurchaseMutation({
+          variables: {
+            input: {
+              _id: reviewPurchase._id,
+              approve,
+              adminNote: adminNote.trim() || (approve ? 'Approved' : 'Rejected'),
+            },
+          },
+        })
+        toast.success(
+          approve ? 'Purchase approved and credits added.' : 'Purchase rejected.',
+        )
+        setReviewPurchase(null)
+        await refreshAll()
+      } catch (error) {
+        toast.error(getGraphQLErrorMessage(error, 'Could not review purchase.'))
+      }
+    },
+    [reviewPurchase, reviewPurchaseMutation, refreshAll, toast],
+  )
+
+  const handlePaymentSubmit = useCallback(
+    async (values: PaymentFormValues) => {
+      const amount = Number(values.amount)
+      const examCreditsAdded = parseCredits(values.examCreditsAdded)
+      if (!values.centerId || !Number.isFinite(amount) || amount <= 0) {
+        toast.error('Center and amount are required.')
+        return
+      }
+
+      try {
+        if (paymentDialog.mode === 'create') {
+          await createPayment({
+            variables: {
+              centerId: values.centerId,
+              amount,
+              method: values.method,
+              note: values.note.trim() || undefined,
+              paidAt: new Date(values.paidAt).toISOString(),
+              examCreditsAdded,
+            },
+          })
+          toast.success('Payment recorded.')
+        } else if (paymentDialog.payment) {
+          await updatePayment({
+            variables: {
+              _id: paymentDialog.payment._id,
+              centerId: values.centerId,
+              amount,
+              method: values.method,
+              note: values.note.trim() || undefined,
+              paidAt: new Date(values.paidAt).toISOString(),
+              examCreditsAdded: examCreditsAdded ?? 0,
+            },
+          })
+          toast.success('Payment updated.')
+        }
+        setPaymentDialog({ open: false, mode: 'create', payment: null })
+        await refreshAll()
+      } catch (error) {
+        toast.error(getGraphQLErrorMessage(error, 'Could not save payment.'))
+      }
+    },
+    [createPayment, paymentDialog, refreshAll, toast, updatePayment],
+  )
+
+  const handleDeletePayment = useCallback(async () => {
+    if (!deleteTarget) return
+    try {
+      const result = await removePayment({ variables: { _id: deleteTarget._id } })
+      if (result.data?.removePayment !== true) {
+        toast.error('Delete failed.')
+        return
+      }
+      toast.success('Payment deleted.')
+      setDeleteTarget(null)
+      await refreshAll()
+    } catch (error) {
+      toast.error(getGraphQLErrorMessage(error, 'Could not delete payment.'))
+    }
+  }, [deleteTarget, refreshAll, removePayment, toast])
+
+  const pendingColumns = useMemo(
+    () => createPendingColumns({ onReview: setReviewPurchase }),
+    [],
+  )
+
+  const paymentColumns = useMemo(
+    () =>
+      createPaymentColumns({
+        onEdit: (row) =>
+          setPaymentDialog({ open: true, mode: 'edit', payment: row }),
+        onDelete: setDeleteTarget,
+      }),
+    [],
+  )
+
+  const savingPayment = creatingPayment || updatingPayment
 
   return (
     <Layout>
       <PaymentsPageRoot>
-        <Box className="payments-page">
-          <Box className="payments-page__header">
-            <Typography component="h1" className="payments-page__title">
-              Invoices
+        <Box className="payments-page" sx={{ p: 3 }}>
+          <Box className="payments-page__header" sx={{ mb: 2, flexWrap: 'wrap' }}>
+            <Typography className="payments-page__title" variant="h5">
+              Payments & Billing
             </Typography>
-
             <Box className="payments-page__actions">
-              <Button className="payments-page__button" variant="secondary">
-                Export
+              <Button variant="secondary" onClick={() => navigate(ROUTES_PATH.examPlans)}>
+                Exam plans & history
               </Button>
-              <Button className="payments-page__button" variant="secondary">
-                Import
-              </Button>
-              <Button className="payments-page__button" variant="primary">
-                + New Invoice
+              <Button
+                variant="primary"
+                onClick={() =>
+                  setPaymentDialog({ open: true, mode: 'create', payment: null })
+                }
+              >
+                + Record payment
               </Button>
             </Box>
           </Box>
 
-          <Box className="payments-page__stats">
-            {invoiceStats.map((stat) => (
-              <Box key={stat.label} className="payments-page__stat">
-                <Typography component="p" className="payments-page__stat-label">
-                  {stat.label}
-                </Typography>
-                <Typography component="h2" className="payments-page__stat-value">
-                  {stat.value}
-                </Typography>
-                <Typography component="p" className="payments-page__stat-meta">
-                  {stat.meta}
-                </Typography>
-              </Box>
-            ))}
+          <Box className="payments-page__stats" sx={{ mb: 3 }}>
+            <Box className="payments-page__stat">
+              <Typography className="payments-page__stat-label">Pending approvals</Typography>
+              <Typography className="payments-page__stat-value">{pending.length}</Typography>
+              <Typography className="payments-page__stat-meta">Plan purchase requests</Typography>
+            </Box>
+            <Box className="payments-page__stat">
+              <Typography className="payments-page__stat-label">Recorded payments</Typography>
+              <Typography className="payments-page__stat-value">{payments.length}</Typography>
+              <Typography className="payments-page__stat-meta">Manual and approved plan payments</Typography>
+            </Box>
+            <Box className="payments-page__stat">
+              <Typography className="payments-page__stat-label">Centers</Typography>
+              <Typography className="payments-page__stat-value">{centers.length}</Typography>
+              <Typography className="payments-page__stat-meta">Active billing accounts</Typography>
+            </Box>
+            <Box className="payments-page__stat">
+              <Typography className="payments-page__stat-label">Credits issued (page)</Typography>
+              <Typography className="payments-page__stat-value">
+                {payments.reduce((sum, row) => sum + Number(row.examCreditsAdded ?? 0), 0)}
+              </Typography>
+              <Typography className="payments-page__stat-meta">From listed payment records</Typography>
+            </Box>
           </Box>
 
-          <Box className="payments-page__panel">
-            <Box className="payments-page__filters">
-              <Box className="payments-page__chips">
-                {statusFilters.map((item) => (
-                  <Button
-                    key={item}
-                    className={`payments-page__chip ${statusFilter === item ? 'payments-page__chip--active' : ''}`}
-                    variant={statusFilter === item ? 'primary' : 'secondary'}
-                    onClick={() => setStatusFilter(item)}
-                  >
-                    {item}
-                  </Button>
-                ))}
-              </Box>
+          <Tabs
+            value={tab}
+            onChange={(_event, value) => setTab(value as PaymentsTabKey)}
+            sx={{ mb: 2 }}
+          >
+            <Tab
+              value={PAYMENTS_TABS.pending}
+              label={`Pending approvals (${pending.length})`}
+            />
+            <Tab
+              value={PAYMENTS_TABS.payments}
+              label={`Recorded payments (${payments.length})`}
+            />
+          </Tabs>
 
-              <Box className="payments-page__tools">
-                <SearchField
-                  className="payments-page__search"
-                  size="small"
-                  showIcon={false}
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
+          {tab === PAYMENTS_TABS.pending ? (
+            <Box className="payments-page__panel">
+              <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+                <Typography sx={{ fontWeight: 600 }}>Plan purchase requests</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Approve to add exam credits to the center, or reject to decline the request.
+                </Typography>
+              </Box>
+              <Box sx={{ width: '100%' }}>
+                <DataGrid
+                  rows={pendingRows}
+                  columns={pendingColumns}
+                  loading={pendingLoading}
+                  autoHeight
+                  disableRowSelectionOnClick
+                  pageSizeOptions={[5, 10, 25]}
+                  initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
+                  getRowId={(row) => row._id}
+                  sx={{ border: 'none' }}
+                  localeText={{
+                    noRowsLabel: pendingLoading
+                      ? 'Loading…'
+                      : 'No pending purchase requests.',
+                  }}
                 />
-                <Button className="payments-page__button" variant="secondary">
-                  Filter
-                </Button>
               </Box>
             </Box>
-
-            <Box className="payments-page__table-wrap">
-              <table className="payments-page__table">
-                <thead>
-                  <tr>
-                    <th>Invoice ID</th>
-                    <th>Issue Date</th>
-                    <th>Client Name</th>
-                    <th>Status</th>
-                    <th>Assigned Staff</th>
-                    <th>Services</th>
-                    <th>Price</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRows.map((row) => (
-                    <tr key={row.id}>
-                      <td>{row.id}</td>
-                      <td>{row.issueDate}</td>
-                      <td>{row.clientName}</td>
-                      <td>
-                        <span className={getStatusClassName(row.status)}>{row.status}</span>
-                      </td>
-                      <td>{row.assignedStaff}</td>
-                      <td>{row.service}</td>
-                      <td>{row.price}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          ) : (
+            <Box className="payments-page__panel">
+              <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+                <Typography sx={{ fontWeight: 600 }}>Payment records</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Edit manual payments or delete records. Deleting a manual payment reverses
+                  credits that were added with it.
+                </Typography>
+              </Box>
+              <Box sx={{ width: '100%' }}>
+                <DataGrid
+                  rows={paymentRows}
+                  columns={paymentColumns}
+                  loading={paymentsLoading}
+                  autoHeight
+                  disableRowSelectionOnClick
+                  pageSizeOptions={[5, 10, 25]}
+                  initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
+                  getRowId={(row) => row._id}
+                  sx={{ border: 'none' }}
+                  localeText={{
+                    noRowsLabel: paymentsLoading ? 'Loading…' : 'No payment records yet.',
+                  }}
+                />
+              </Box>
             </Box>
-
-            <Box className="payments-page__footer">
-              <span>Showing {filteredRows.length} invoices</span>
-              <span>Super Admin finance view</span>
-            </Box>
-          </Box>
+          )}
         </Box>
       </PaymentsPageRoot>
+
+      <ReviewPurchaseDialog
+        open={Boolean(reviewPurchase)}
+        purchase={reviewPurchase}
+        centers={centers}
+        loading={reviewing}
+        onClose={() => setReviewPurchase(null)}
+        onConfirm={handleReviewConfirm}
+      />
+
+      <PaymentFormDialog
+        open={paymentDialog.open}
+        mode={paymentDialog.mode}
+        payment={paymentDialog.payment}
+        centers={centers}
+        loading={savingPayment}
+        onClose={() => setPaymentDialog({ open: false, mode: 'create', payment: null })}
+        onSubmit={handlePaymentSubmit}
+      />
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete payment record?"
+        description={
+          deleteTarget?.planPurchaseId
+            ? 'This payment is linked to an approved plan purchase. Deleting it only removes the audit record; credits already granted will stay.'
+            : deleteTarget?.examCreditsAdded
+              ? `This will remove the payment and subtract ${deleteTarget.examCreditsAdded} exam credit(s) from the center balance.`
+              : 'This payment record will be permanently removed.'
+        }
+        confirmLabel="Delete"
+        confirmColor="error"
+        loading={removingPayment}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeletePayment}
+      />
     </Layout>
   )
 }

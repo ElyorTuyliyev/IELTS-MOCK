@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { MODULE_ORDER, MODULE_PART_COUNTS, type ModuleName } from '../constants'
+import {
+  MODULE_ORDER,
+  MODULE_PART_COUNTS,
+  findFirstModuleIndexWithQuestions,
+  type ModuleName,
+} from '../constants'
 import type { ModuleDataResult } from './useExamData'
 import type { DisplayQuestion, ModulePart } from '../utils'
 import type { ExamSessionNavigation } from '../utils/examSessionPersistence'
@@ -7,8 +12,15 @@ import type { ExamSessionNavigation } from '../utils/examSessionPersistence'
 export function useExamNavigation(
   moduleData: ModuleDataResult,
   initialNavigation?: ExamSessionNavigation,
+  sessionResolved = true,
 ) {
-  const [moduleIndex, setModuleIndex] = useState(initialNavigation?.moduleIndex ?? 0)
+  const defaultModuleIndex = useMemo(
+    () => findFirstModuleIndexWithQuestions(moduleData.grouped),
+    [moduleData.grouped],
+  )
+  const [moduleIndex, setModuleIndex] = useState(
+    initialNavigation?.moduleIndex ?? defaultModuleIndex,
+  )
   const [part, setPart] = useState(initialNavigation?.part ?? 1)
   const [activeQuestion, setActiveQuestion] = useState(initialNavigation?.activeQuestion ?? '1')
   const navigationRestoredRef = useRef(Boolean(initialNavigation))
@@ -20,6 +32,11 @@ export function useExamNavigation(
     setPart(initialNavigation.part)
     setActiveQuestion(initialNavigation.activeQuestion)
   }, [initialNavigation])
+
+  useEffect(() => {
+    if (!sessionResolved || initialNavigation || navigationRestoredRef.current) return
+    setModuleIndex(defaultModuleIndex)
+  }, [defaultModuleIndex, initialNavigation, sessionResolved])
 
   const activeModule: ModuleName = MODULE_ORDER[moduleIndex] ?? 'writing'
 
@@ -88,18 +105,33 @@ export function useExamNavigation(
 
   const canGoToNextModule = moduleIndex < MODULE_ORDER.length - 1
 
+  const findModuleIndexWithQuestions = useCallback(
+    (startIndex: number) => {
+      for (let i = startIndex; i < MODULE_ORDER.length; i += 1) {
+        const mod = MODULE_ORDER[i]
+        if (moduleData.grouped[mod]?.some((part) => part.questions.length > 0)) {
+          return i
+        }
+      }
+      return -1
+    },
+    [moduleData.grouped],
+  )
+
   const goToModuleIndex = useCallback(
     (nextIndex: number) => {
-      const nextModule = MODULE_ORDER[nextIndex]
+      const resolvedIndex = findModuleIndexWithQuestions(nextIndex)
+      if (resolvedIndex < 0) return
+      const nextModule = MODULE_ORDER[resolvedIndex]
       if (!nextModule) return
       const nextParts = moduleData.grouped[nextModule] ?? []
       const firstPart =
         nextParts.find((item) => item.questions.length > 0) ?? nextParts[0]
-      setModuleIndex(nextIndex)
+      setModuleIndex(resolvedIndex)
       setPart(firstPart?.partNumber ?? 1)
       setActiveQuestion(firstPart?.questions[0]?.id ?? '1')
     },
-    [moduleData.grouped],
+    [findModuleIndexWithQuestions, moduleData.grouped],
   )
 
   const handleMoveQuestion = useCallback(

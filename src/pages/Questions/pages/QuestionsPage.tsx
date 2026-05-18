@@ -23,18 +23,26 @@ import {
   type QuestionType,
   type QuestionGridRow,
 } from '../QuestionsPage.constants'
+import { MODULE_PAGE_META } from '../QuestionsPage.config'
+import { resolveQuestionGroupKey } from '../../../helpers/questionGroupKey'
 import { QuestionsPageRoot } from './QuestionsPage.style'
 
 const PAGE_SIZE_OPTIONS = [8, 16, 24, 50] as const
 
-export function QuestionsPage() {
+type QuestionsPageProps = {
+  fixedModule?: QuestionType
+}
+
+export function QuestionsPage({ fixedModule }: QuestionsPageProps = {}) {
   const navigate = useNavigate()
   const toast = useToast()
   const userName = useAppSelector(selectUserName)
   const { data: questionsData } = useQuery<FindAllQuestionsResponse>(FIND_ALL_QUESTIONS_QUERY)
   const [removeQuestion] = useMutation(REMOVE_QUESTION_MUTATION)
   const [searchTerm, setSearchTerm] = useState('')
-  const [typeFilter, setTypeFilter] = useState<QuestionModuleFilter>('All IELTS modules')
+  const [typeFilter, setTypeFilter] = useState<QuestionModuleFilter>(
+    fixedModule ?? 'All IELTS modules',
+  )
   const [pendingDelete, setPendingDelete] = useState<QuestionGridRow | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
@@ -73,8 +81,7 @@ export function QuestionsPage() {
 
     for (const q of allQuestions) {
       const mod = resolveIeltsModule(q)
-      const examKey = q.examId?.trim() || 'pool'
-      const gid = q.groupId?.trim() || `legacy::${examKey}::${mod}`
+      const gid = resolveQuestionGroupKey(q, mod)
       if (!groupMap.has(gid)) {
         const baseTitle = (q.title ?? '').split(' — ')[0]?.trim() || mod
         groupMap.set(gid, {
@@ -99,7 +106,7 @@ export function QuestionsPage() {
       author: userName?.trim() || 'Center Admin',
       category: entry.examId?.trim()
         ? `Exam ${entry.examId.slice(-6)}`
-        : 'Umumiy bank',
+        : 'General bank',
       questionType: entry.module,
       questionIds: entry.questionIds,
     }))
@@ -116,12 +123,13 @@ export function QuestionsPage() {
         question.author.toLowerCase().includes(normalizedSearch) ||
         question.category.toLowerCase().includes(normalizedSearch)
 
+      const activeModule = fixedModule ?? typeFilter
       const matchesType =
-        typeFilter === 'All IELTS modules' || question.questionType === typeFilter
+        activeModule === 'All IELTS modules' || question.questionType === activeModule
 
       return matchesSearch && matchesType
     })
-  }, [backendRows, searchTerm, typeFilter])
+  }, [backendRows, searchTerm, typeFilter, fixedModule])
 
   const rows = filteredQuestions
 
@@ -182,8 +190,9 @@ export function QuestionsPage() {
         onDelete: handleRequestDelete,
         onEdit: handleEditQuestion,
         onView: handleEditQuestion,
+        hideModuleColumn: Boolean(fixedModule),
       }),
-    [handleRequestDelete, handleEditQuestion],
+    [handleRequestDelete, handleEditQuestion, fixedModule],
   )
   const totalPages = Math.max(1, Math.ceil(rows.length / paginationModel.pageSize))
   const gridPaginationModel = useMemo(
@@ -203,8 +212,24 @@ export function QuestionsPage() {
       listening: countByModule('Listening'),
       reading: countByModule('Reading'),
       writing: countByModule('Writing'),
+      speaking: countByModule('Speaking'),
     }
   }, [backendRows])
+
+  const pageMeta = fixedModule
+    ? MODULE_PAGE_META[fixedModule]
+    : {
+        title: 'All Questions',
+        subtitle: 'Manage, search and organize your question bank.',
+      }
+
+  const moduleCount = fixedModule
+    ? backendRows.filter((row) => row.questionType === fixedModule).length
+    : null
+
+  const addQuestionPath = fixedModule
+    ? `${ROUTES_PATH.addQuestion}?module=${encodeURIComponent(fixedModule)}`
+    : ROUTES_PATH.addQuestion
 
   return (
     <Layout>
@@ -213,16 +238,16 @@ export function QuestionsPage() {
           <Box className="question-page__header">
             <Box>
               <Typography component="h1" className="question-page__title">
-                All Questions
+                {pageMeta.title}
               </Typography>
               <Typography className="question-page__subtitle">
-                Manage, search and organize your question bank.
+                {pageMeta.subtitle}
               </Typography>
             </Box>
 
             <Button
               component={Link}
-              to={ROUTES_PATH.addQuestion}
+              to={addQuestionPath}
               className="question-page__primary-button"
               variant="primary"
             >
@@ -231,46 +256,71 @@ export function QuestionsPage() {
           </Box>
 
           <Box className="question-page__stats">
-            <Box className="question-page__stat-card">
-              <Box className="question-page__stat-metrics">
-                <Box className="question-page__stat-value-row">
-                  <Typography component="span" className="question-page__stat-value">
-                    {statsSummary.total}
-                  </Typography>
+            {fixedModule ? (
+              <Box className="question-page__stat-card">
+                <Box className="question-page__stat-metrics">
+                  <Box className="question-page__stat-value-row">
+                    <Typography component="span" className="question-page__stat-value">
+                      {moduleCount}
+                    </Typography>
+                  </Box>
                 </Box>
+                <Typography className="question-page__stat-label">{fixedModule}</Typography>
               </Box>
-              <Typography className="question-page__stat-label">Total</Typography>
-            </Box>
-            <Box className="question-page__stat-card">
-              <Box className="question-page__stat-metrics">
-                <Box className="question-page__stat-value-row">
-                  <Typography component="span" className="question-page__stat-value">
-                    {statsSummary.listening}
-                  </Typography>
+            ) : (
+              <>
+                <Box className="question-page__stat-card">
+                  <Box className="question-page__stat-metrics">
+                    <Box className="question-page__stat-value-row">
+                      <Typography component="span" className="question-page__stat-value">
+                        {statsSummary.total}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Typography className="question-page__stat-label">Total</Typography>
                 </Box>
-              </Box>
-              <Typography className="question-page__stat-label">Listening</Typography>
-            </Box>
-            <Box className="question-page__stat-card">
-              <Box className="question-page__stat-metrics">
-                <Box className="question-page__stat-value-row">
-                  <Typography component="span" className="question-page__stat-value">
-                    {statsSummary.reading}
-                  </Typography>
+                <Box className="question-page__stat-card">
+                  <Box className="question-page__stat-metrics">
+                    <Box className="question-page__stat-value-row">
+                      <Typography component="span" className="question-page__stat-value">
+                        {statsSummary.listening}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Typography className="question-page__stat-label">Listening</Typography>
                 </Box>
-              </Box>
-              <Typography className="question-page__stat-label">Reading</Typography>
-            </Box>
-            <Box className="question-page__stat-card">
-              <Box className="question-page__stat-metrics">
-                <Box className="question-page__stat-value-row">
-                  <Typography component="span" className="question-page__stat-value">
-                    {statsSummary.writing}
-                  </Typography>
+                <Box className="question-page__stat-card">
+                  <Box className="question-page__stat-metrics">
+                    <Box className="question-page__stat-value-row">
+                      <Typography component="span" className="question-page__stat-value">
+                        {statsSummary.reading}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Typography className="question-page__stat-label">Reading</Typography>
                 </Box>
-              </Box>
-              <Typography className="question-page__stat-label">Writing</Typography>
-            </Box>
+                <Box className="question-page__stat-card">
+                  <Box className="question-page__stat-metrics">
+                    <Box className="question-page__stat-value-row">
+                      <Typography component="span" className="question-page__stat-value">
+                        {statsSummary.writing}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Typography className="question-page__stat-label">Writing</Typography>
+                </Box>
+                <Box className="question-page__stat-card">
+                  <Box className="question-page__stat-metrics">
+                    <Box className="question-page__stat-value-row">
+                      <Typography component="span" className="question-page__stat-value">
+                        {statsSummary.speaking}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Typography className="question-page__stat-label">Speaking</Typography>
+                </Box>
+              </>
+            )}
           </Box>
 
           <Box className="question-table">
@@ -289,25 +339,27 @@ export function QuestionsPage() {
                 }}
               />
 
-              <Select
-                className="question-table__select"
-                aria-label="IELTS module"
-                value={typeFilter}
-                onChange={(event) => {
-                  setTypeFilter(event.target.value as QuestionModuleFilter)
-                  setPaginationModel((currentState) => ({
-                    ...currentState,
-                    page: 0,
-                  }))
-                }}
-                options={[
-                  { value: 'All IELTS modules', label: 'All modules' },
-                  { value: 'Listening', label: 'Listening' },
-                  { value: 'Reading', label: 'Reading' },
-                  { value: 'Writing', label: 'Writing' },
-                  { value: 'Speaking', label: 'Speaking' },
-                ]}
-              />
+              {!fixedModule && (
+                <Select
+                  className="question-table__select"
+                  aria-label="IELTS module"
+                  value={typeFilter}
+                  onChange={(event) => {
+                    setTypeFilter(event.target.value as QuestionModuleFilter)
+                    setPaginationModel((currentState) => ({
+                      ...currentState,
+                      page: 0,
+                    }))
+                  }}
+                  options={[
+                    { value: 'All IELTS modules', label: 'All modules' },
+                    { value: 'Listening', label: 'Listening' },
+                    { value: 'Reading', label: 'Reading' },
+                    { value: 'Writing', label: 'Writing' },
+                    { value: 'Speaking', label: 'Speaking' },
+                  ]}
+                />
+              )}
             </Box>
 
             <Box className="question-table__grid">
