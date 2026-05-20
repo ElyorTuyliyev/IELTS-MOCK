@@ -7,6 +7,7 @@ export const CREATE_STUDENT_MUTATION = gql`
     $email: String!
     $birthday: DateTime
     $gender: String
+    $profilePhoto: String
     $password: String!
     $phone: String
   ) {
@@ -16,6 +17,7 @@ export const CREATE_STUDENT_MUTATION = gql`
       email: $email
       birthday: $birthday
       gender: $gender
+      profilePhoto: $profilePhoto
       password: $password
       phone: $phone
     ) {
@@ -25,6 +27,7 @@ export const CREATE_STUDENT_MUTATION = gql`
       email
       birthday
       gender
+      profilePhoto
       phone
       role
       centerId

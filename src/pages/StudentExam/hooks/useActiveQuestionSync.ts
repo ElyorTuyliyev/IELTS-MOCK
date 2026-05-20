@@ -11,6 +11,14 @@ function questionNumberFromDropZone(zone: HTMLElement): string | null {
   return gapId.match(/\d+/)?.[0] ?? null
 }
 
+function questionNumberFromChoiceGroup(group: HTMLElement): string | null {
+  const fromAttr = group.getAttribute('data-question-number')?.trim()
+  if (fromAttr) return fromAttr
+  const slotKey = group.getAttribute('data-slot-key')?.trim() ?? ''
+  const qSlot = slotKey.match(/^Q(\d+)$/i)
+  return qSlot?.[1] ?? null
+}
+
 function getExamContainers(
   listeningContentRef: RefObject<HTMLDivElement | null>,
   moduleContentRef: RefObject<HTMLDivElement | null>,
@@ -68,6 +76,29 @@ export function useActiveQuestionSync(
           zone.removeEventListener('click', activate)
         })
       })
+
+      container
+        .querySelectorAll<HTMLElement>(
+          '[data-type="radio-group"], .rte-radio-group, [data-type="checkbox-group"], .rte-checkbox-group',
+        )
+        .forEach((group) => {
+          const activate = () => {
+            const num = questionNumberFromChoiceGroup(group)
+            if (num && num !== activeQuestionRef.current) {
+              onSelectQuestion(num)
+            }
+          }
+          group.querySelectorAll<HTMLInputElement>('input[type="radio"], input[type="checkbox"]').forEach(
+            (input) => {
+              input.addEventListener('focus', activate)
+              input.addEventListener('change', activate)
+              cleanups.push(() => {
+                input.removeEventListener('focus', activate)
+                input.removeEventListener('change', activate)
+              })
+            },
+          )
+        })
     }
 
     getExamContainers(listeningContentRef, moduleContentRef).forEach(bindContainer)
@@ -89,6 +120,14 @@ export function useActiveQuestionSync(
         for (const zone of container.querySelectorAll<HTMLElement>('.rte-drag-drop-fill__drop')) {
           if (questionNumberFromDropZone(zone) !== activeQuestion) continue
           zone.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          return
+        }
+
+        for (const group of container.querySelectorAll<HTMLElement>(
+          '[data-type="radio-group"], .rte-radio-group',
+        )) {
+          if (questionNumberFromChoiceGroup(group) !== activeQuestion) continue
+          group.scrollIntoView({ behavior: 'smooth', block: 'center' })
           return
         }
       }

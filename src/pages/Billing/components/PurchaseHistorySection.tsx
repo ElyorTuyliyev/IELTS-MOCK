@@ -34,12 +34,14 @@ type PurchaseHistorySectionProps = {
   pageParam?: string
   showTitle?: boolean
   showAdminHint?: boolean
+  embedded?: boolean
 }
 
 export function PurchaseHistorySection({
   pageParam = 'page',
   showTitle = true,
   showAdminHint = true,
+  embedded = false,
 }: PurchaseHistorySectionProps) {
   const toast = useToast()
   const role = useAppSelector(selectUserRole)
@@ -121,24 +123,39 @@ export function PurchaseHistorySection({
   )
 
   return (
-    <>
+    <Box className={embedded ? 'purchase-history purchase-history--embedded' : 'purchase-history'}>
       {showTitle ? (
-        <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+        <Typography
+          variant="h6"
+          sx={{ fontWeight: 700, mb: embedded ? 0 : 1 }}
+          className="purchase-history__title"
+        >
           Purchase history
         </Typography>
       ) : null}
       {isAdmin && showAdminHint ? (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, mt: showTitle ? 1 : 0 }}>
           Pending plan requests can be approved or rejected here. For full payment management,
           use Billing overview under Payments.
         </Typography>
-      ) : (
+      ) : embedded ? null : (
         <Box sx={{ mb: 2 }} />
       )}
 
-      <Box sx={{ overflowX: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
-        <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse' }}>
-          <Box component="thead" sx={{ bgcolor: 'action.hover' }}>
+      <Box
+        className="purchase-history__table-wrap"
+        sx={
+          embedded
+            ? undefined
+            : { overflowX: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 2 }
+        }
+      >
+        <Box
+          component="table"
+          className="purchase-history__table"
+          sx={{ width: '100%', borderCollapse: 'collapse' }}
+        >
+          <Box component="thead" sx={embedded ? undefined : { bgcolor: 'action.hover' }}>
             <Box component="tr">
               {[
                 'Date',
@@ -200,10 +217,14 @@ export function PurchaseHistorySection({
                     ) : null}
                   </Box>
                   <Box component="td" sx={{ p: 1.5, fontSize: '0.875rem' }}>
-                    ${row.amount.toFixed(2)}
+                    <span className="purchase-history__amount">${row.amount.toFixed(2)}</span>
                   </Box>
                   <Box component="td" sx={{ p: 1.5, fontSize: '0.875rem' }}>
-                    {row.examCredits ?? '—'}
+                    {row.examCredits != null ? (
+                      <span className="purchase-history__credits">{row.examCredits}</span>
+                    ) : (
+                      '—'
+                    )}
                   </Box>
                   <Box component="td" sx={{ p: 1.5, fontSize: '0.875rem' }}>
                     <BillingStatusChip status={row.status} recordType={row.recordType} />
@@ -227,16 +248,17 @@ export function PurchaseHistorySection({
       </Box>
 
       <Box
+        className="purchase-history__footer"
         sx={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          mt: 2,
+          mt: embedded ? 1.5 : 2,
           flexWrap: 'wrap',
           gap: 1,
         }}
       >
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="text.secondary" className="purchase-history__range">
           {rangeLabel}
         </Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
@@ -263,6 +285,6 @@ export function PurchaseHistorySection({
           onConfirm={handleReviewConfirm}
         />
       ) : null}
-    </>
+    </Box>
   )
 }

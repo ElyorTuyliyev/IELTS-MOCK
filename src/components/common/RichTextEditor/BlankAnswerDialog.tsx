@@ -18,27 +18,34 @@ function normalizeId(raw: string): string {
   return t.toUpperCase().startsWith('Q') ? t.toUpperCase() : `Q${t}`
 }
 
+function parseDefaultQuestionNumber(defaultId: string): number {
+  const match = defaultId.trim().match(/Q?(\d+)/i)
+  const n = match ? Number(match[1]) : 1
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1
+}
+
 export function BlankAnswerDialog({ open, defaultId, onClose, onInsert }: BlankAnswerDialogProps) {
   const toast = useToast()
   const titleId = useId()
   const descId = useId()
+  const defaultQuestionNumber = useMemo(() => parseDefaultQuestionNumber(defaultId), [defaultId])
   const [answer, setAnswer] = useState('')
+  const [questionNumber, setQuestionNumber] = useState(defaultQuestionNumber)
 
-   
   useEffect(() => {
     if (!open) return
     setAnswer('')
-  }, [open])
-   
-
-  const normalizedId = useMemo(() => normalizeId(defaultId), [defaultId])
+    setQuestionNumber(defaultQuestionNumber)
+  }, [open, defaultQuestionNumber])
 
   const handleInsert = () => {
     if (!answer.trim()) {
       toast.error('Enter an answer.')
       return
     }
-    onInsert({ id: normalizedId, answer: answer.trim() })
+    const safeNumber =
+      Number.isFinite(questionNumber) && questionNumber > 0 ? Math.floor(questionNumber) : 1
+    onInsert({ id: normalizeId(`Q${safeNumber}`), answer: answer.trim() })
   }
 
   return (
@@ -74,6 +81,15 @@ export function BlankAnswerDialog({ open, defaultId, onClose, onInsert }: BlankA
 
       <DialogContent sx={{ pt: 1, px: 3 }}>
         <TextField
+          type="number"
+          size="small"
+          label="Q number"
+          value={questionNumber}
+          onChange={(e) => setQuestionNumber(Math.max(1, Number(e.target.value || 1)))}
+          sx={{ mb: 1.25, maxWidth: 140 }}
+          slotProps={{ htmlInput: { min: 1 } }}
+        />
+        <TextField
           fullWidth
           label="Correct answer"
           value={answer}
@@ -82,7 +98,7 @@ export function BlankAnswerDialog({ open, defaultId, onClose, onInsert }: BlankA
           sx={{ mb: 0.5 }}
         />
         <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'text.secondary' }}>
-          ID is assigned automatically: <strong>{normalizedId}</strong>
+          Default Q is suggested from existing blanks; you can change it before inserting.
         </Typography>
       </DialogContent>
 

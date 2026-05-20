@@ -18,8 +18,24 @@ export function tryGetGraphQLErrorMessage(error: unknown): string | null {
   return null
 }
 
+export function isNetworkFetchError(error: unknown): boolean {
+  const message = tryGetGraphQLErrorMessage(error)
+  if (!message) return false
+  const normalized = message.toLowerCase()
+  return (
+    normalized.includes('failed to fetch') ||
+    normalized.includes('networkerror') ||
+    normalized.includes('load failed')
+  )
+}
+
+export function getNetworkErrorMessage(error: unknown): string | null {
+  if (!isNetworkFetchError(error)) return null
+  return 'Cannot reach the API server. Make sure the backend is running on port 8000 and refresh the page.'
+}
+
 export function getGraphQLErrorMessage(error: unknown, fallback: string): string {
-  return tryGetGraphQLErrorMessage(error) ?? fallback
+  return getNetworkErrorMessage(error) ?? tryGetGraphQLErrorMessage(error) ?? fallback
 }
 
 export type ApolloMutationResultLike = {

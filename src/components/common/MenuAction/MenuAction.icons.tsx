@@ -1,4 +1,5 @@
-import { Box, type ReactNode } from '@mui/material'
+import type { ReactNode } from 'react'
+import { Box } from '@mui/material'
 
 export function MoreIcon() {
   return (

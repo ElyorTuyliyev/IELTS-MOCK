@@ -11,6 +11,8 @@ type AppButtonOwnProps = {
   variant?: AppButtonVariant
   size?: AppButtonSize
   loading?: boolean
+  /** Supported when `component` is a router link. */
+  to?: string
 }
 
 export type ButtonProps<RootComponent extends ElementType = 'button'> = Omit<
@@ -43,14 +45,14 @@ export const Button = forwardRef(function Button<
     children,
     ...props
   }: ButtonProps<RootComponent>,
-  ref: ForwardedRef<Element>,
+  ref: ForwardedRef<unknown>,
 ) {
   const isDisabled = Boolean(disabled || loading)
 
   return (
     <StyledButton
-      {...props}
-      ref={ref}
+      {...(props as MuiButtonProps)}
+      ref={ref as MuiButtonProps['ref']}
       $appVariant={variant}
       $appSize={size}
       variant={getMuiVariant(variant)}
@@ -66,5 +68,5 @@ export const Button = forwardRef(function Button<
     </StyledButton>
   )
 }) as <RootComponent extends ElementType = 'button'>(
-  props: ButtonProps<RootComponent> & { ref?: ForwardedRef<Element> },
+  props: ButtonProps<RootComponent> & { ref?: ForwardedRef<unknown> },
 ) => ReactElement

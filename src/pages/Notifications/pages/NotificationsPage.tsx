@@ -27,7 +27,7 @@ export function NotificationsPage() {
   const navigate = useNavigate()
   const toast = useToast()
   const userRole = useAppSelector(selectUserRole)
-  const { notifications, unreadCount, markAsRead, markAllAsRead, loading, error } =
+  const { notifications, unreadCount, markAsRead, markAllAsRead, loading, error, refetch } =
     useNotifications()
   const [filter, setFilter] = useState<NotificationFilter>('all')
   const roleCopy = getNotificationRoleCopy(userRole)
@@ -45,6 +45,10 @@ export function NotificationsPage() {
 
     return sorted
   }, [filter, notifications])
+
+  useEffect(() => {
+    void refetch()
+  }, [refetch])
 
   useEffect(() => {
     if (error) {

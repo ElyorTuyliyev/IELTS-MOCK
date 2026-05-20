@@ -138,7 +138,8 @@ export function collectExamAnswersFromDom(root: HTMLElement | null): SubmitExamA
     if (!questionId) return
 
     container.querySelectorAll<HTMLElement>('div[data-type="radio-group"]').forEach((group, groupIndex) => {
-      const slotKey = `radio-${groupIndex + 1}`
+      const slotFromAttr = group.getAttribute('data-slot-key')?.trim()
+      const slotKey = slotFromAttr ? slotKeyFromLabel(slotFromAttr) : `radio-${groupIndex + 1}`
       const optionsJson = group.getAttribute('data-options') ?? '[]'
       let selectedValue = ''
       group.querySelectorAll<HTMLInputElement>('input[type="radio"]').forEach((radio) => {
@@ -187,7 +188,7 @@ export function collectExamAnswersFromRoots(
 ): SubmitExamAnswerItem[] {
   const map = new Map<string, SubmitExamAnswerItem>()
   for (const root of roots) {
-    for (const item of collectExamAnswersFromDom(root)) {
+    for (const item of collectExamAnswersFromDom(root ?? null)) {
       map.set(`${item.questionId}\u0000${item.slotKey}`, item)
     }
   }

@@ -6,16 +6,21 @@ export const ROUTES_PATH = {
   signUp: '/sign-up',
   studentJoin: '/join',
   studentLeadJoin: '/join/lead',
+  paymentRequest: '/pay/:token',
   allExams: '/exams',
   examsArchive: '/exams/archive',
   examDetails: '/exams/:examId',
   examStudentReview: '/exams/:examId/students/:studentExamId',
   studentExamPlayer: '/student/exam-player',
   studentMyExams: '/student/exams',
+  studentMyExamReview: '/student/exams/:studentExamId/review',
+  studentCertificates: '/student/certificates',
   center: '/centers',
+  centerView: '/centers/:centerId',
   surveys: '/surveys',
   students: '/students',
   payments: '/payments',
+  centerPayments: '/center-payments',
   examPlans: '/exam-plans',
   buyPlan: '/buy-plan',
   purchaseHistory: '/purchase-history',
@@ -41,6 +46,18 @@ export const ROUTES_PATH = {
 } as const
 
 export type QuestionsModuleKey = 'Listening' | 'Reading' | 'Writing' | 'Speaking'
+
+export function getCenterViewPath(centerId: string): string {
+  return `/centers/${centerId}`
+}
+
+export function getStudentMyExamReviewPath(studentExamId: string): string {
+  return `/student/exams/${encodeURIComponent(studentExamId)}/review`
+}
+
+export function getPaymentRequestPath(token: string): string {
+  return `/pay/${encodeURIComponent(token)}`
+}
 
 export function getQuestionsListPath(module?: QuestionsModuleKey | null): string {
   switch (module) {

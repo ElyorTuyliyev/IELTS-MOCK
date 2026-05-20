@@ -15,12 +15,15 @@ export const FIND_STUDENT_EXAM_REVIEW_QUERY = gql`
       speakingScore
       totalScore
       writingFeedback
+      writingEvaluation
       speakingFeedback
+      speakingEvaluation
       modules {
         module
         correctCount
         totalCount
         score
+        audioUrl
         questions {
           questionId
           title
@@ -48,7 +51,9 @@ export const UPDATE_STUDENT_EXAM_REVIEW_MUTATION = gql`
       speakingScore
       totalScore
       writingFeedback
+      writingEvaluation
       speakingFeedback
+      speakingEvaluation
     }
   }
 `
@@ -75,6 +80,7 @@ export type ReviewModule = {
   correctCount: number
   totalCount: number
   score?: number | null
+  audioUrl?: string | null
   questions: ReviewQuestion[]
 }
 
@@ -91,7 +97,9 @@ export type StudentExamReview = {
   speakingScore?: number | null
   totalScore?: number | null
   writingFeedback?: string | null
+  writingEvaluation?: string | null
   speakingFeedback?: string | null
+  speakingEvaluation?: string | null
   modules: ReviewModule[]
 }
 

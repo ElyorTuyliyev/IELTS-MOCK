@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useState, type ChangeEvent } from 'react'
 import { useMutation } from '@apollo/client/react'
 
 import { useToast } from '../../../components/common/Toast'
@@ -7,6 +7,7 @@ import { agentLog } from '../../../utils/agentLog'
 import { selectAuthToken, selectUserRole } from '../../../store'
 import { useAppSelector } from '../../../store/hooks'
 import { USER_ROLES } from '../../../store/slices/authSlice'
+import { resolveCenterLogoUrl } from '../../Certificates/utils/resolveCenterLogoUrl'
 import { CREATE_STUDENT_MUTATION } from '../api/createStudentMutation'
 import { DELETE_STUDENT_MUTATION } from '../api/deleteStudentMutation'
 import { UPDATE_STUDENT_MUTATION } from '../api/updateStudentMutation'
@@ -56,6 +57,9 @@ export function useStudentForm({ usersData, refetchUsers }: UseStudentFormParams
   const [gender, setGender] = useState('')
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
+  const [photoDataUrl, setPhotoDataUrl] = useState('')
+  const [photoFileName, setPhotoFileName] = useState('')
+  const [hasNewPhotoUpload, setHasNewPhotoUpload] = useState(false)
 
   const [createStudent, { loading: isCreating }] = useMutation<
     CreateStudentMutationResponse,
@@ -110,6 +114,9 @@ export function useStudentForm({ usersData, refetchUsers }: UseStudentFormParams
     setGender('')
     setPhone('')
     setPassword('')
+    setPhotoDataUrl('')
+    setPhotoFileName('')
+    setHasNewPhotoUpload(false)
     setEditingStudentId(null)
   }, [])
 
@@ -134,10 +141,44 @@ export function useStudentForm({ usersData, refetchUsers }: UseStudentFormParams
       setGender(sourceUser?.gender ?? '')
       setPhone(sourceUser?.phone ?? '')
       setPassword('')
+      const existingPhoto = resolveCenterLogoUrl(sourceUser?.profilePhoto) ?? sourceUser?.profilePhoto ?? ''
+      setPhotoDataUrl(existingPhoto)
+      setPhotoFileName(sourceUser?.profilePhoto ? 'existing-photo' : '')
+      setHasNewPhotoUpload(false)
       setEditingStudentId(row.userId)
       setIsModalOpen(true)
     },
     [usersData],
+  )
+
+  const handlePhotoFileChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const selectedFile = event.target.files?.[0] ?? null
+      if (!selectedFile) {
+        setPhotoDataUrl('')
+        setPhotoFileName('')
+        setHasNewPhotoUpload(false)
+        return
+      }
+
+      if (!selectedFile.type.startsWith('image/')) {
+        toast.error('Select an image file for the profile photo (png, jpg, webp...).')
+        setPhotoDataUrl('')
+        setPhotoFileName('')
+        setHasNewPhotoUpload(false)
+        return
+      }
+
+      const reader = new FileReader()
+      reader.onload = () => {
+        const result = typeof reader.result === 'string' ? reader.result : ''
+        setPhotoDataUrl(result)
+        setPhotoFileName(selectedFile.name)
+        setHasNewPhotoUpload(true)
+      }
+      reader.readAsDataURL(selectedFile)
+    },
+    [toast],
   )
 
   const handleSave = useCallback(async () => {
@@ -227,6 +268,7 @@ export function useStudentForm({ usersData, refetchUsers }: UseStudentFormParams
               email: normalizedEmail,
               ...(normalizedBirthdayIso ? { birthday: normalizedBirthdayIso } : {}),
               ...(normalizedGender ? { gender: normalizedGender } : {}),
+              ...(hasNewPhotoUpload && photoDataUrl ? { profilePhoto: photoDataUrl } : {}),
               ...(trimmedPassword ? { password: trimmedPassword } : {}),
               ...(normalizedPhone ? { phone: normalizedPhone } : {}),
               ...(normalizedCenterId ? { centerId: normalizedCenterId } : {}),
@@ -240,6 +282,7 @@ export function useStudentForm({ usersData, refetchUsers }: UseStudentFormParams
               email: normalizedEmail,
               ...(normalizedBirthdayIso ? { birthday: normalizedBirthdayIso } : {}),
               ...(normalizedGender ? { gender: normalizedGender } : {}),
+              ...(photoDataUrl ? { profilePhoto: photoDataUrl } : {}),
               password: trimmedPassword,
               ...(normalizedPhone ? { phone: normalizedPhone } : {}),
               ...(normalizedCenterId ? { centerId: normalizedCenterId } : {}),
@@ -303,6 +346,8 @@ export function useStudentForm({ usersData, refetchUsers }: UseStudentFormParams
     gender,
     phone,
     password,
+    photoDataUrl,
+    hasNewPhotoUpload,
     authToken,
     currentRole,
     editingStudentId,
@@ -329,6 +374,8 @@ export function useStudentForm({ usersData, refetchUsers }: UseStudentFormParams
     gender,
     phone,
     password,
+    photoDataUrl,
+    photoFileName,
 
     // field setters
     setFirstName,
@@ -338,6 +385,7 @@ export function useStudentForm({ usersData, refetchUsers }: UseStudentFormParams
     setGender,
     setPhone,
     setPassword,
+    handlePhotoFileChange,
 
     // actions
     openCreateModal,

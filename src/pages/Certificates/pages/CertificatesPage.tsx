@@ -1,18 +1,19 @@
-import { useMemo, useState } from 'react'
-import { Box, Tab, Tabs, Typography } from '@mui/material'
+import { useCallback, useMemo, useState } from 'react'
+import { Box, CircularProgress, Tab, Tabs, Typography } from '@mui/material'
 import type { GridColDef, GridPaginationModel } from '@mui/x-data-grid'
 
 import { Layout } from '../../../components/layout'
 import { Button } from '../../../components/common/Button'
 import { useToast } from '../../../components/common/Toast'
 import { c } from '../../../theme'
+import { CertificatePreviewDialog } from '../components/CertificatePreviewDialog'
 import { CertificatesTable } from '../components/CertificatesTable'
 import {
   CERTIFICATE_TEMPLATES,
-  MOCK_CERTIFICATES,
   type CertificateRecord,
   type CertificateStatus,
 } from '../certificates.data'
+import { useCertificates } from '../hooks/useCertificates'
 import { CertificatesPageRoot } from './CertificatesPage.style'
 
 type TabKey = 'issued' | 'templates'
@@ -34,27 +35,49 @@ function StatusChip({ status }: { status: CertificateStatus }) {
 
 export function CertificatesPage() {
   const toast = useToast()
+  const { certificates, loading, error, issueCertificate, issuing } = useCertificates()
   const [tab, setTab] = useState<TabKey>('issued')
   const [statusFilter, setStatusFilter] = useState<'all' | CertificateStatus>('all')
   const [search, setSearch] = useState('')
+  const [previewRecord, setPreviewRecord] = useState<CertificateRecord | null>(null)
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
     page: 0,
     pageSize: 8,
   })
 
+  const openPreview = useCallback((record: CertificateRecord) => {
+    setPreviewRecord(record)
+  }, [])
+
+  const closePreview = useCallback(() => {
+    setPreviewRecord(null)
+  }, [])
+
+  const templatesWithUsage = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const cert of certificates) {
+      counts.set(cert.templateName, (counts.get(cert.templateName) ?? 0) + 1)
+    }
+    return CERTIFICATE_TEMPLATES.map((tpl) => ({
+      ...tpl,
+      usageCount: counts.get(tpl.name) ?? 0,
+    }))
+  }, [certificates])
+
   const stats = useMemo(() => {
-    const issued = MOCK_CERTIFICATES.filter((row) => row.status === 'issued').length
-    const pending = MOCK_CERTIFICATES.filter((row) => row.status === 'pending').length
+    const issued = certificates.filter((row) => row.status === 'issued').length
+    const pending = certificates.filter((row) => row.status === 'pending').length
+    const templateNames = new Set(certificates.map((c) => c.templateName))
     return {
-      templates: CERTIFICATE_TEMPLATES.length,
+      templates: templateNames.size || CERTIFICATE_TEMPLATES.length,
       issued,
       pending,
     }
-  }, [])
+  }, [certificates])
 
   const filteredRows = useMemo(() => {
     const query = search.trim().toLowerCase()
-    return MOCK_CERTIFICATES.filter((row) => {
+    return certificates.filter((row) => {
       if (statusFilter !== 'all' && row.status !== statusFilter) return false
       if (!query) return true
       return (
@@ -64,7 +87,22 @@ export function CertificatesPage() {
         row.verificationCode.toLowerCase().includes(query)
       )
     })
-  }, [search, statusFilter])
+  }, [certificates, search, statusFilter])
+
+  const previewSample = certificates[0] ?? null
+
+  const handleIssue = useCallback(
+    async (row: CertificateRecord) => {
+      try {
+        await issueCertificate(row.id)
+        toast.success(`Certificate issued for ${row.studentName}`)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to issue certificate'
+        toast.error(message)
+      }
+    },
+    [issueCertificate, toast],
+  )
 
   const columns = useMemo<GridColDef<CertificateRecord>[]>(
     () => [
@@ -115,15 +153,8 @@ export function CertificatesPage() {
         filterable: false,
         disableColumnMenu: true,
         renderCell: ({ row }) => (
-          <Box
-            className="certificates-table__actions"
-            sx={{ height: '100%' }}
-          >
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => toast.info(`Preview: ${row.studentName}`)}
-            >
+          <Box className="certificates-table__actions" sx={{ height: '100%' }}>
+            <Button variant="secondary" size="sm" onClick={() => openPreview(row)}>
               Preview
             </Button>
             <Box className="certificates-table__actions-slot" aria-hidden={row.status === 'issued'}>
@@ -131,7 +162,8 @@ export function CertificatesPage() {
                 <Button
                   variant="primary"
                   size="sm"
-                  onClick={() => toast.success(`Certificate issued for ${row.studentName}`)}
+                  disabled={issuing}
+                  onClick={() => void handleIssue(row)}
                 >
                   Issue
                 </Button>
@@ -141,7 +173,7 @@ export function CertificatesPage() {
         ),
       },
     ],
-    [toast],
+    [handleIssue, issuing, openPreview],
   )
 
   return (
@@ -161,7 +193,7 @@ export function CertificatesPage() {
               <Button variant="secondary" onClick={() => toast.info('Template editor coming soon')}>
                 Add template
               </Button>
-              <Button variant="primary" onClick={() => toast.info('Issue certificate flow coming soon')}>
+              <Button variant="primary" onClick={() => toast.info('Select a student row to issue')}>
                 Issue certificate
               </Button>
             </Box>
@@ -204,7 +236,17 @@ export function CertificatesPage() {
               <Tab label="Templates" value="templates" />
             </Tabs>
 
-            {tab === 'issued' ? (
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+                <CircularProgress size={36} />
+              </Box>
+            ) : error ? (
+              <Box sx={{ p: 3 }}>
+                <Typography color="error">
+                  {error.message || 'Failed to load certificates'}
+                </Typography>
+              </Box>
+            ) : tab === 'issued' ? (
               <CertificatesTable
                 rows={filteredRows}
                 columns={columns}
@@ -218,8 +260,21 @@ export function CertificatesPage() {
               />
             ) : (
               <Box className="certificates-page__templates">
-                {CERTIFICATE_TEMPLATES.map((template) => (
+                {templatesWithUsage.map((template) => (
                   <Box key={template.id} className="certificates-page__template-card">
+                    <Box className="certificates-page__template-thumb" aria-hidden>
+                      <Box className="certificates-page__template-thumb-top">
+                        <span className="certificates-page__template-thumb-logo">IELTS</span>
+                        <span className="certificates-page__template-thumb-type">ACADEMIC</span>
+                      </Box>
+                      <span className="certificates-page__template-thumb-title">Test Report Form</span>
+                      <Box className="certificates-page__template-thumb-bars">
+                        <span className="certificates-page__template-thumb-bar" />
+                        <span className="certificates-page__template-thumb-bar" />
+                        <span className="certificates-page__template-thumb-bar" />
+                        <span className="certificates-page__template-thumb-bar" />
+                      </Box>
+                    </Box>
                     <Typography component="p" className="certificates-page__template-name">
                       {template.name}
                     </Typography>
@@ -237,7 +292,8 @@ export function CertificatesPage() {
                       <Button
                         variant="text"
                         size="sm"
-                        onClick={() => toast.info(`Preview: ${template.name}`)}
+                        disabled={!previewSample}
+                        onClick={() => previewSample && openPreview(previewSample)}
                       >
                         Preview
                       </Button>
@@ -248,6 +304,12 @@ export function CertificatesPage() {
             )}
           </Box>
         </Box>
+
+        <CertificatePreviewDialog
+          open={previewRecord !== null}
+          record={previewRecord}
+          onClose={closePreview}
+        />
       </CertificatesPageRoot>
     </Layout>
   )

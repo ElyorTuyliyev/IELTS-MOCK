@@ -58,6 +58,8 @@ export function AllStudentsPage() {
             gender={form.gender}
             phone={form.phone}
             password={form.password}
+            photoDataUrl={form.photoDataUrl}
+            photoFileName={form.photoFileName}
             onFirstNameChange={form.setFirstName}
             onLastNameChange={form.setLastName}
             onEmailChange={form.setEmail}
@@ -65,6 +67,7 @@ export function AllStudentsPage() {
             onGenderChange={form.setGender}
             onPhoneChange={form.setPhone}
             onPasswordChange={form.setPassword}
+            onPhotoFileChange={form.handlePhotoFileChange}
             onSave={form.handleSave}
             onClose={form.closeModal}
           />

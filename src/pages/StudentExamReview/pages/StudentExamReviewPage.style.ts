@@ -177,6 +177,20 @@ export const StudentExamReviewRoot = styled.div`
     color: ${c.text.secondary};
   }
 
+  .review__essay--readonly {
+    white-space: pre-wrap;
+  }
+
+  .review__feedback-readonly {
+    font-size: 14px;
+    color: ${c.text.primary};
+    white-space: pre-wrap;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid ${c.border.default};
+    background: ${c.background.soft};
+  }
+
   .review__essay {
     width: 100%;
     min-height: 160px;

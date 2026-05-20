@@ -1,45 +1,23 @@
-import { useEffect, useMemo } from 'react'
-import { useQuery } from '@apollo/client/react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMutation } from '@apollo/client/react'
 import { useNavigate } from 'react-router-dom'
 import { Box, Typography } from '@mui/material'
 import { Button } from '../../../components/common/Button'
 
 import { Layout } from '../../../components/layout'
 import { useToast } from '../../../components/common/Toast'
-import { ROUTES_PATH } from '../../../routes/paths'
-import { FIND_ALL_EXAMS_QUERY } from '../../CreateExam/api/findAllExamsQuery'
-import { FIND_MY_STUDENT_EXAMS_QUERY, type FindMyStudentExamsResponse } from '../api/findMyStudentExamsQuery'
+import { getGraphQLErrorMessage } from '../../../helpers/graphql'
+import { ROUTES_PATH, getStudentMyExamReviewPath } from '../../../routes/paths'
+import { CertificatePreviewDialog } from '../../Certificates/components/CertificatePreviewDialog'
+import type { CertificateRecord } from '../../Certificates/certificates.data'
+import { useMyCertificates } from '../../StudentCertificates/hooks/useMyCertificates'
+import {
+  useMyStudentExams,
+  type StudentExamListItem,
+} from '../hooks/useMyStudentExams'
+import { REGISTER_MY_STUDENT_EXAM_MUTATION } from '../api/registerMyStudentExamMutation'
+import { StudentPaymentRegistrationModal } from '../components/StudentPaymentRegistrationModal'
 import { StudentMyExamsPageRoot } from './StudentMyExamsPage.style'
-
-type StudentExamListItem = {
-  id: string
-  title: string
-  scheduleLabel: string
-  examStatus: 'active' | 'ended' | 'draft'
-  studentCompleted: boolean
-  canStart: boolean
-}
-
-type FindAllExamsResponse = {
-  findAllExams: Array<{
-    _id: string
-    title: string
-    examiner: string
-    examDate: string
-    startTime: string
-    endTime: string
-    isActive: boolean
-    isCompleted: boolean
-  }>
-}
-
-function formatSchedule(examDate: string, startTime: string, endTime: string) {
-  const parsed = new Date(examDate)
-  const dateLabel = Number.isNaN(parsed.getTime())
-    ? '—'
-    : parsed.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
-  return `${dateLabel} · ${startTime} – ${endTime}`
-}
 
 function getExamStatusLabel(status: StudentExamListItem['examStatus']) {
   if (status === 'active') return 'Active'
@@ -54,55 +32,63 @@ function getExamStatusClass(status: StudentExamListItem['examStatus']) {
 export function StudentMyExamsPage() {
   const navigate = useNavigate()
   const toast = useToast()
-  const { data: examsData, loading: examsLoading, error: examsError } = useQuery<FindAllExamsResponse>(
-    FIND_ALL_EXAMS_QUERY,
+  const { items, loading, error, refetch } = useMyStudentExams()
+  const [registerMyStudentExam, { loading: registering }] = useMutation(
+    REGISTER_MY_STUDENT_EXAM_MUTATION,
   )
-  const {
-    data: enrollmentsData,
-    loading: enrollmentsLoading,
-    error: enrollmentsError,
-  } = useQuery<FindMyStudentExamsResponse>(FIND_MY_STUDENT_EXAMS_QUERY)
+  const { certificates, error: certificatesError } = useMyCertificates()
+  const [previewRecord, setPreviewRecord] = useState<CertificateRecord | null>(null)
+  const [paymentModalExam, setPaymentModalExam] = useState<{
+    examId: string
+    title: string
+  } | null>(null)
 
-  const items = useMemo<StudentExamListItem[]>(() => {
-    const exams = examsData?.findAllExams ?? []
-    const examsById = new Map(exams.map((exam) => [exam._id, exam]))
+  const certificateByEnrollmentId = useMemo(() => {
+    const map = new Map<string, CertificateRecord>()
+    for (const cert of certificates) {
+      map.set(cert.id, cert)
+    }
+    return map
+  }, [certificates])
 
-    return (enrollmentsData?.findMyStudentExams ?? [])
-      .map((enrollment) => {
-        const exam = examsById.get(String(enrollment.examId))
-        if (!exam) return null
+  const openCertificate = useCallback(
+    (studentExamId: string) => {
+      const record = certificateByEnrollmentId.get(studentExamId)
+      if (record) setPreviewRecord(record)
+    },
+    [certificateByEnrollmentId],
+  )
 
-        const studentCompleted = Boolean(enrollment.isCompleted)
-        const examStatus: StudentExamListItem['examStatus'] = exam.isCompleted
-          ? 'ended'
-          : exam.isActive
-            ? 'active'
-            : 'draft'
+  const closePreview = useCallback(() => setPreviewRecord(null), [])
 
-        return {
-          id: exam._id,
-          title: exam.title,
-          scheduleLabel: formatSchedule(exam.examDate, exam.startTime, exam.endTime),
-          examStatus,
-          studentCompleted,
-          canStart:
-            Boolean(enrollment.isReleased) &&
-            exam.isActive &&
-            !exam.isCompleted &&
-            !studentCompleted,
+  const registerForExam = useCallback(
+    async (examId: string) => {
+      try {
+        const result = await registerMyStudentExam({ variables: { examId } })
+        if (result.error) {
+          toast.error(result.error.message ?? 'Failed to register for the exam.')
+          return
         }
-      })
-      .filter((item): item is StudentExamListItem => item != null)
-  }, [enrollmentsData?.findMyStudentExams, examsData?.findAllExams])
-
-  const loading = examsLoading || enrollmentsLoading
-  const error = examsError ?? enrollmentsError
+        toast.success('Registration sent. Your center admin will review your request.')
+        await refetch()
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Failed to register for the exam.')
+      }
+    },
+    [registerMyStudentExam, refetch, toast],
+  )
 
   useEffect(() => {
-    if (error?.message) {
-      toast.error(error.message)
+    if (error) {
+      toast.error(getGraphQLErrorMessage(error, 'Failed to load exams.'))
     }
   }, [error, toast])
+
+  useEffect(() => {
+    if (certificatesError) {
+      toast.error(getGraphQLErrorMessage(certificatesError, 'Failed to load certificates.'))
+    }
+  }, [certificatesError, toast])
 
   return (
     <Layout>
@@ -129,30 +115,86 @@ export function StudentMyExamsPage() {
                     {item.title}
                   </Typography>
                   <Typography className="student-exam-card__meta">{item.scheduleLabel}</Typography>
+                  <Typography className="student-exam-card__meta">{item.priceLabel}</Typography>
                   <Box className={getExamStatusClass(item.examStatus)}>
                     {getExamStatusLabel(item.examStatus)}
                     {item.studentCompleted ? ' · Completed' : ''}
+                    {item.isApprovalPending ? ' · Approval pending' : ''}
+                    {item.isPaymentPending ? ' · Payment pending' : ''}
                   </Box>
-                  <Button
-                    variant="primary"
-                    className="student-exam-card__action"
-                    disabled={!item.canStart}
-                    onClick={() =>
-                      navigate(`${ROUTES_PATH.studentExamPlayer}?examId=${encodeURIComponent(item.id)}`)
-                    }
-                  >
-                    {item.studentCompleted
-                      ? 'Submitted'
-                      : item.examStatus === 'ended'
-                        ? 'Exam ended'
-                        : 'Start'}
-                  </Button>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, marginTop: 'auto' }}>
+                    {item.studentCompleted ? (
+                      <Button
+                        variant="secondary"
+                        className="student-exam-card__action"
+                        onClick={() => navigate(getStudentMyExamReviewPath(item.studentExamId))}
+                      >
+                        View results & answers
+                      </Button>
+                    ) : null}
+                    {certificateByEnrollmentId.has(item.studentExamId) ? (
+                      <Button
+                        variant="secondary"
+                        className="student-exam-card__action"
+                        onClick={() => openCertificate(item.studentExamId)}
+                      >
+                        View certificate ·{' '}
+                        {certificateByEnrollmentId.get(item.studentExamId)?.bandScore}
+                      </Button>
+                    ) : null}
+                    <Button
+                      variant="primary"
+                      className="student-exam-card__action"
+                      disabled={(!item.canStart && !item.canRegister) || registering}
+                      onClick={() => {
+                        if (item.canRegister) {
+                          if (item.requiresPayment) {
+                            setPaymentModalExam({ examId: item.id, title: item.title })
+                            return
+                          }
+                          void registerForExam(item.id)
+                          return
+                        }
+                        navigate(
+                          `${ROUTES_PATH.studentExamPlayer}?examId=${encodeURIComponent(item.id)}`,
+                        )
+                      }}
+                    >
+                      {item.canRegister
+                        ? registering
+                          ? 'Registering...'
+                          : 'Register for exam'
+                        : item.studentCompleted
+                          ? 'Submitted'
+                          : item.isPaymentPending
+                            ? 'Payment pending'
+                            : item.isApprovalPending
+                              ? 'Awaiting approval'
+                              : item.examStatus === 'ended'
+                              ? 'Exam ended'
+                              : 'Start'}
+                    </Button>
+                  </Box>
                 </Box>
               ))}
             </Box>
           )}
         </Box>
       </StudentMyExamsPageRoot>
+
+      <CertificatePreviewDialog
+        open={previewRecord != null}
+        record={previewRecord}
+        onClose={closePreview}
+      />
+
+      <StudentPaymentRegistrationModal
+        open={paymentModalExam != null}
+        examId={paymentModalExam?.examId ?? ''}
+        examTitle={paymentModalExam?.title ?? ''}
+        onClose={() => setPaymentModalExam(null)}
+        onSubmitted={refetch}
+      />
     </Layout>
   )
 }

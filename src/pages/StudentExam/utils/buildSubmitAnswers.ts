@@ -113,6 +113,9 @@ export function buildSubmitAnswersFromStores(
       continue
     }
 
+    // Legacy :choice:radio:N keys map to radio-N; prefer composite keys from flushChoiceValuesFromDom.
+    if (/:choice:radio:\d+$/.test(key)) continue
+
     const questionId = questionIdFromBlankStorageKey(key, moduleData)
     if (!questionId) continue
 

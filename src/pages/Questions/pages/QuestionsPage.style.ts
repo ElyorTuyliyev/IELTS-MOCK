@@ -258,24 +258,6 @@ export const QuestionsPageRoot = styled.div`
     background: ${c.background.card};
   }
 
-  .MuiDataGrid-selectedRowCount {
-    display: none;
-  }
-
-  .MuiCheckbox-root {
-    color: ${c.border.strong};
-  }
-
-  .MuiCheckbox-root.Mui-checked {
-    color: ${c.primary.main};
-  }
-
-  .MuiDataGrid-columnHeaderCheckbox,
-  .MuiDataGrid-cellCheckbox {
-    justify-content: center;
-    align-items: center;
-  }
-
   .MuiDataGrid-columnSeparator {
     display: none;
   }

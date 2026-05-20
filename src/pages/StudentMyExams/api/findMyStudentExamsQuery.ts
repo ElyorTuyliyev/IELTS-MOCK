@@ -7,6 +7,8 @@ export const FIND_MY_STUDENT_EXAMS_QUERY = gql`
       examId
       isCompleted
       isReleased
+      isApproved
+      registrationPaymentStatus
       completedAt
       startedAt
     }
@@ -19,6 +21,8 @@ export type FindMyStudentExamsResponse = {
     examId: string
     isCompleted: boolean
     isReleased: boolean
+    isApproved: boolean
+    registrationPaymentStatus?: string | null
     completedAt?: string | null
     startedAt: string
   }>

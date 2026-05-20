@@ -1,11 +1,12 @@
-import { useMemo } from 'react'
-import { useQuery } from '@apollo/client/react'
+import { useEffect, useMemo } from 'react'
+import { useMutation } from '@apollo/client/react'
 import { useSearchParams } from 'react-router-dom'
 
 import {
-  CHECK_MY_STUDENT_EXAM_ACCESS_QUERY,
-  type CheckMyStudentExamAccessResponse,
+  BEGIN_MY_STUDENT_EXAM_MUTATION,
+  type BeginMyStudentExamResponse,
 } from '../api/studentExamMutations'
+import { isNetworkFetchError } from '../../../helpers/graphql'
 import type { StudentExamUnavailableReason } from '../components/StudentExamUnavailable'
 
 export type StudentExamDenyState = {
@@ -15,8 +16,8 @@ export type StudentExamDenyState = {
 
 function resolveDenyState(
   examId: string,
-  access: CheckMyStudentExamAccessResponse['checkMyStudentExamAccess'] | undefined,
-  options: { hasError: boolean; noQuestions: boolean },
+  access: BeginMyStudentExamResponse['beginMyStudentExam'] | undefined,
+  options: { hasError: boolean; networkError: boolean; noQuestions: boolean },
 ): StudentExamDenyState {
   if (!examId) {
     return {
@@ -27,7 +28,12 @@ function resolveDenyState(
 
   if (!access) {
     return options.hasError
-      ? { reason: 'no_exam', description: 'Failed to load exam details.' }
+      ? {
+          reason: 'no_exam',
+          description: options.networkError
+            ? 'Cannot reach the API server. Make sure the backend is running on port 8000 and refresh the page.'
+            : 'Failed to load exam details.',
+        }
       : null
   }
 
@@ -79,30 +85,34 @@ export function useStudentExamAccess(options?: { noQuestions?: boolean }) {
   const examId = searchParams.get('examId')?.trim() ?? ''
   const noQuestions = options?.noQuestions ?? false
 
-  const { data, loading, error } = useQuery<CheckMyStudentExamAccessResponse>(
-    CHECK_MY_STUDENT_EXAM_ACCESS_QUERY,
-    {
-      variables: { examId },
-      skip: !examId,
-      fetchPolicy: 'network-only',
-    },
+  const [beginExam, { data, loading, error }] = useMutation<BeginMyStudentExamResponse>(
+    BEGIN_MY_STUDENT_EXAM_MUTATION,
+    { fetchPolicy: 'no-cache' },
   )
+
+  useEffect(() => {
+    if (!examId) {
+      return
+    }
+    void beginExam({ variables: { examId } })
+  }, [beginExam, examId])
 
   const denyState = useMemo(() => {
     if (loading) {
       return null
     }
-    return resolveDenyState(examId, data?.checkMyStudentExamAccess, {
+    return resolveDenyState(examId, data?.beginMyStudentExam, {
       hasError: Boolean(error),
+      networkError: isNetworkFetchError(error),
       noQuestions,
     })
-  }, [data?.checkMyStudentExamAccess, error, examId, loading, noQuestions])
+  }, [data?.beginMyStudentExam, error, examId, loading, noQuestions])
 
   return {
     examId,
     denyState,
     accessLoading: Boolean(examId) && loading,
-    enrollment: data?.checkMyStudentExamAccess?.enrollment ?? null,
-    access: data?.checkMyStudentExamAccess ?? null,
+    enrollment: data?.beginMyStudentExam?.enrollment ?? null,
+    access: data?.beginMyStudentExam ?? null,
   } as const
 }

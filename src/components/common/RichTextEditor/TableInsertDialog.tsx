@@ -55,8 +55,8 @@ export function TableInsertDialog({ open, onClose, onInsert }: TableInsertDialog
     onInsert(selectedRow, selectedCol)
   }, [onInsert, selectedCol, selectedRow])
 
-  const displayRow = hoveredRow ?? selectedRow
-  const displayCol = hoveredCol ?? selectedCol
+  const previewRow = hoveredRow ?? selectedRow
+  const previewCol = hoveredCol ?? selectedCol
 
   return (
     <Dialog
@@ -175,13 +175,13 @@ export function TableInsertDialog({ open, onClose, onInsert }: TableInsertDialog
             }}
           >
             <Typography component="span" sx={{ fontWeight: 800, fontSize: '1.05rem', color: c.text.primary }}>
-              {displayRow}
+              {previewRow}
             </Typography>
             <Typography component="span" sx={{ fontWeight: 500, color: palette.lineStrong, fontSize: '0.95rem' }}>
               ×
             </Typography>
             <Typography component="span" sx={{ fontWeight: 800, fontSize: '1.05rem', color: c.text.primary }}>
-              {displayCol}
+              {previewCol}
             </Typography>
           </Box>
           <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 500 }}>
@@ -213,35 +213,35 @@ export function TableInsertDialog({ open, onClose, onInsert }: TableInsertDialog
           {Array.from({ length: MAX_DIM }, (_, ri) =>
             Array.from({ length: MAX_DIM }, (_, ci) => {
               const r = ri + 1
-              const c = ci + 1
-              const selected = r <= selectedRow && c <= selectedCol
+              const col = ci + 1
+              const highlighted = r <= previewRow && col <= previewCol
               return (
                 <Box
-                  key={`${r}-${c}`}
+                  key={`${r}-${col}`}
                   component="button"
                   type="button"
-                  aria-label={`${r} qator, ${c} ustun`}
+                  aria-label={`${r} qator, ${col} ustun`}
                   onPointerEnter={() => {
                     setHoveredRow(r)
-                    setHoveredCol(c)
+                    setHoveredCol(col)
                   }}
                   onClick={() => {
                     setSelectedRow(r)
-                    setSelectedCol(c)
+                    setSelectedCol(col)
                   }}
                   sx={{
                     width: 20,
                     height: 20,
                     p: 0,
-                    border: `1px solid ${selected ? palette.selectedBorder : palette.line}`,
+                    border: `1px solid ${highlighted ? palette.selectedBorder : palette.line}`,
                     borderRadius: '4px',
                     cursor: 'pointer',
-                    bgcolor: selected ? palette.selected : c.surface.default,
-                    boxShadow: selected ? `0 0 0 1px ${palette.accent} inset` : 'none',
+                    bgcolor: highlighted ? palette.selected : palette.surface,
+                    boxShadow: highlighted ? `0 0 0 1px ${palette.accent} inset` : 'none',
                     transition: 'background-color 0.1s ease, border-color 0.1s ease, box-shadow 0.1s ease',
                     '&:hover': {
-                      bgcolor: selected ? palette.selectedHover : palette.surface,
-                      borderColor: selected ? palette.selectedBorder : palette.lineStrong,
+                      bgcolor: highlighted ? palette.selectedHover : palette.surface,
+                      borderColor: highlighted ? palette.selectedBorder : palette.lineStrong,
                     },
                     '&:focus-visible': {
                       outline: `2px solid ${palette.accent}`,

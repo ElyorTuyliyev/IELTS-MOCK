@@ -1,5 +1,7 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
 
+import { isAuthTokenOversized } from '../../helpers/authToken'
+
 export const ROLES = {
   SUPER_ADMIN: 'super_admin',
   CENTER: 'center',
@@ -43,6 +45,13 @@ const authSlice = createSlice({
       state.role = action.payload
     },
     setAuthSession: (state, action: PayloadAction<AuthPayload>) => {
+      if (isAuthTokenOversized(action.payload.token)) {
+        state.token = null
+        state.role = null
+        state.name = null
+        return
+      }
+
       state.token = action.payload.token
       state.role = action.payload.role
       state.name = action.payload.name ?? null

@@ -7,6 +7,7 @@ export type CreateStudentMutationResponse = {
     birthday?: string | null
     gender?: string | null
     phone?: string | null
+    profilePhoto?: string | null
     role: string | null
     centerId?: string | null
     createdAt?: string
@@ -19,6 +20,7 @@ export type CreateStudentMutationVariables = {
   email: string
   birthday?: string
   gender?: string
+  profilePhoto?: string
   password: string
   phone?: string
   centerId?: string
@@ -42,6 +44,7 @@ export type UpdateStudentMutationVariables = {
   gender?: string
   password?: string
   phone?: string
+  profilePhoto?: string
   role?: string
   centerId?: string
 }
@@ -63,6 +66,7 @@ export type FindAllUsersQueryResponse = {
     birthday?: string | null
     gender?: string | null
     phone?: string | null
+    profilePhoto?: string | null
     role?: string | null
     centerId?: string | null
     createdAt: string

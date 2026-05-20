@@ -8,6 +8,7 @@ export const UPDATE_STUDENT_MUTATION = gql`
     $email: String
     $birthday: DateTime
     $gender: String
+    $profilePhoto: String
     $password: String
     $phone: String
     $role: String
@@ -20,6 +21,7 @@ export const UPDATE_STUDENT_MUTATION = gql`
       email: $email
       birthday: $birthday
       gender: $gender
+      profilePhoto: $profilePhoto
       password: $password
       phone: $phone
       role: $role
@@ -31,6 +33,7 @@ export const UPDATE_STUDENT_MUTATION = gql`
       email
       birthday
       gender
+      profilePhoto
       phone
       role
       centerId

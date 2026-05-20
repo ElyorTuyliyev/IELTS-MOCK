@@ -84,7 +84,7 @@ export const FIND_PENDING_PLAN_PURCHASES_QUERY = gql`
 `
 
 export const PURCHASE_HISTORY_QUERY = gql`
-  query PurchaseHistory($page: Int!, $pageSize: Int!, $centerId: ID) {
+  query PurchaseHistory($page: Int!, $pageSize: Int!, $centerId: String) {
     purchaseHistory(page: $page, pageSize: $pageSize, centerId: $centerId) {
       items {
         _id

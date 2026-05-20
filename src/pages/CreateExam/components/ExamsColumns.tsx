@@ -3,7 +3,9 @@ import type { GridColDef } from '@mui/x-data-grid'
 
 import { MenuActionCell } from '../../../components/common/MenuAction'
 import { Button } from '../../../components/common/Button'
+import { PaymentInstructionsTooltip } from '../../../features/examPayments/components/PaymentInstructionsTooltip'
 import { formatPriceInSom } from '../../../utils/priceFormat'
+import { formatShortDate } from '../../../helpers/dateFormat'
 import type { ExamCard } from '../HomePage.constants'
 import { ExamRowActionsMenu } from './ExamRowActionsMenu'
 
@@ -56,14 +58,21 @@ export function createExamsColumns(handlers: ExamColumnHandlers): GridColDef<Exa
     {
       field: 'price',
       headerName: 'Price',
-      width: 120,
+      width: 180,
       sortable: false,
       flex: 1,
       align: 'center',
       headerAlign: 'center',
       renderCell: ({ row }) => (
-        <Box className="exam-table__center-cell">
+        <Box className="exam-table__center-cell" sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
           <Typography className="exam-table__meta">{formatPriceInSom(row.price)}</Typography>
+          {row.price > 0 ? (
+            <PaymentInstructionsTooltip examId={row.id}>
+              <Button variant="secondary" className="exam-table__payment-link">
+                Payment details
+              </Button>
+            </PaymentInstructionsTooltip>
+          ) : null}
         </Box>
       ),
     },
@@ -77,6 +86,34 @@ export function createExamsColumns(handlers: ExamColumnHandlers): GridColDef<Exa
         <Typography component="span" className={handlers.getStatusClassName(row.status)}>
           {row.status}
         </Typography>
+      ),
+    },
+    {
+      field: 'startedAt',
+      headerName: 'Started',
+      flex: 1,
+      minWidth: 120,
+      sortable: false,
+      renderCell: ({ row }) => (
+        <Box className="exam-table__center-cell">
+          <Typography className="exam-table__meta">
+            {row.startedAt ? formatShortDate(row.startedAt) : '-'}
+          </Typography>
+        </Box>
+      ),
+    },
+    {
+      field: 'completedAt',
+      headerName: 'Completed',
+      flex: 1,
+      minWidth: 120,
+      sortable: false,
+      renderCell: ({ row }) => (
+        <Box className="exam-table__center-cell">
+          <Typography className="exam-table__meta">
+            {row.completedAt ? formatShortDate(row.completedAt) : '-'}
+          </Typography>
+        </Box>
       ),
     },
     {

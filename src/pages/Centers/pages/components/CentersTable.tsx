@@ -1,53 +1,40 @@
 import { memo, useMemo } from 'react'
-import {
-  Box,
-  Typography,
-} from '@mui/material'
+import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined'
+import { Box, CircularProgress, Typography } from '@mui/material'
 import { DataGrid, type GridPaginationModel } from '@mui/x-data-grid'
 
-import { Button } from '../../../../components/common/Button'
 import { SearchField } from '../../../../components/common/SearchField'
-import { Select } from '../../../../components/common/Select'
-import { CENTER_PAGE_SIZE } from '../../api/centersData'
-import { getVisiblePages } from '../../components/pagination'
+import { CENTER_PAGE_SIZE, CENTER_PAGE_SIZE_OPTIONS } from '../../api/centersData'
 import type { EditableCenter, MappedCenterRow } from '@/types/centers'
 import { createCentersColumns } from './CentersColumns'
 
 type CentersTableProps = {
   rows: MappedCenterRow[]
   searchTerm: string
+  loading: boolean
   paginationModel: GridPaginationModel
-  currentPage: number
-  totalPages: number
-  rangeStart: number
-  rangeEnd: number
   canDeleteCenter: boolean
   canEditCenter: boolean
   onSearchChange: (value: string) => void
   onPaginationChange: (model: GridPaginationModel) => void
   onDelete: (id: string) => void
   onEdit: (row: EditableCenter) => void
-  onView: (row: EditableCenter) => void
+  onRowClick: (row: EditableCenter) => void
 }
 
 export const CentersTable = memo(function CentersTable({
   rows,
   searchTerm,
+  loading,
   paginationModel,
-  currentPage,
-  totalPages,
-  rangeStart,
-  rangeEnd,
   canDeleteCenter,
   canEditCenter,
   onSearchChange,
   onPaginationChange,
   onDelete,
   onEdit,
-  onView,
+  onRowClick,
 }: CentersTableProps) {
-  // FIX: columns now stable — handlers are memoized with useCallback in the hook
-  // No `isDeletingCenter` in deps
   const columns = useMemo(
     () =>
       createCentersColumns({
@@ -55,133 +42,131 @@ export const CentersTable = memo(function CentersTable({
         canEditCenter,
         onDelete,
         onEdit,
-        onView,
       }),
-    [canDeleteCenter, canEditCenter, onDelete, onEdit, onView],
+    [canDeleteCenter, canEditCenter, onDelete, onEdit],
   )
 
-  const visiblePages = getVisiblePages(currentPage, totalPages)
+  const hasSearch = searchTerm.trim().length > 0
+  const showEmpty = !loading && rows.length === 0
 
   return (
-    <Box className="centers-panel">
-      <Box className="centers-panel__header">
+    <Box className="centers-page__panel">
+      <Box className="centers-page__panel-head">
         <Box>
-          <Typography component="h2" className="centers-panel__title">
-            Branch Overview
+          <Typography component="h2" className="centers-page__panel-title">
+            All centers
           </Typography>
-          <Typography component="p" className="centers-panel__subtitle">
-            List of active centers with key metrics.
+          <Typography component="p" className="centers-page__panel-subtitle">
+            Search by name, email, phone, address, or manager.
           </Typography>
         </Box>
+        <span className="centers-page__panel-count">{rows.length} listed</span>
       </Box>
 
-      <Box className="centers-table">
-        <Box className="centers-table__filters">
-          <SearchField
-            className="centers-table__search"
-            aria-label="Search centers"
-            value={searchTerm}
-            onChange={(e) => onSearchChange(e.target.value)}
-          />
-
-          <Box className="centers-table__actions">
-            <Select
-              className="centers-table__select"
-              aria-label="Sort centers"
-              value="Name"
-              onChange={() => {}}
-              options={[{ value: 'Name', label: 'Name' }]}
-            />
-
-            <Button className="centers-table__ghost-button" variant="secondary">
-              Display columns
-            </Button>
-          </Box>
-        </Box>
-
-        <DataGrid
-          rows={rows}
-          columns={columns}
-          pagination
-          checkboxSelection
-          disableRowSelectionOnClick
-          disableColumnMenu
-          disableColumnResize
-          hideFooter
-          autoHeight
-          rowHeight={66}
-          columnHeaderHeight={54}
-          pageSizeOptions={[CENTER_PAGE_SIZE]}
-          paginationModel={paginationModel}
-          onPaginationModelChange={onPaginationChange}
-          localeText={{ noRowsLabel: 'No centers matched the current search.' }}
-          initialState={{
-            pagination: { paginationModel: { page: 0, pageSize: CENTER_PAGE_SIZE } },
-          }}
-          sx={{ border: 0 }}
+      <Box className="centers-page__toolbar">
+        <SearchField
+          className="centers-page__search"
+          aria-label="Search centers"
+          placeholder="Search centers..."
+          value={searchTerm}
+          onChange={(e) => onSearchChange(e.target.value)}
         />
+        {!showEmpty ? (
+          <span className="centers-page__result-hint">
+            {hasSearch
+              ? `${rows.length} result${rows.length === 1 ? '' : 's'} for "${searchTerm.trim()}"`
+              : `${rows.length} center${rows.length === 1 ? '' : 's'} total`}
+          </span>
+        ) : null}
+      </Box>
 
-        <Box className="centers-table__footer">
-          <Box className="centers-table__pagination">
-            <Button
-              className="centers-table__page-button"
-              variant="secondary"
-              disabled={currentPage === 1}
-              onClick={() =>
-                onPaginationChange({
-                  ...paginationModel,
-                  page: Math.max(0, paginationModel.page - 1),
-                })
-              }
-            >
-              ‹
-            </Button>
-
-            {visiblePages.map((item) =>
-              typeof item === 'number' ? (
-                <Button
-                  key={item}
-                  className={`centers-table__page-number${
-                    item === currentPage ? ' centers-table__page-number--active' : ''
-                  }`}
-                  variant="text"
-                  onClick={() =>
-                    onPaginationChange({ ...paginationModel, page: item - 1 })
-                  }
-                >
-                  {item}
-                </Button>
-              ) : (
-                <span key={item} className="centers-table__page-ellipsis">
-                  ...
-                </span>
-              ),
-            )}
-
-            <Button
-              className="centers-table__page-button"
-              variant="secondary"
-              disabled={currentPage === totalPages}
-              onClick={() =>
-                onPaginationChange({
-                  ...paginationModel,
-                  page: Math.min(totalPages - 1, paginationModel.page + 1),
-                })
-              }
-            >
-              ›
-            </Button>
+      <Box className="centers-page__table-wrap">
+        {loading && rows.length === 0 ? (
+          <Box className="centers-page__loading">
+            <CircularProgress size={28} />
           </Box>
-
-          <Box className="centers-table__footer-meta">
-            <span>
-              Showing {rangeStart} to {rangeEnd} of {rows.length} entries
-            </span>
-            <Button className="centers-table__show-button" variant="secondary">
-              Show {paginationModel.pageSize} ⌃
-            </Button>
+        ) : showEmpty ? (
+          <Box className="centers-page__empty">
+            <Box className="centers-page__empty-icon" aria-hidden="true">
+              <BusinessOutlinedIcon />
+            </Box>
+            <Typography component="h2">
+              {hasSearch ? 'No centers match your search' : 'No centers yet'}
+            </Typography>
+            <Typography component="p">
+              {hasSearch
+                ? 'Try a different name, email, or address keyword.'
+                : 'Add your first center to start managing branches and exam credits.'}
+            </Typography>
           </Box>
-        </Box>
+        ) : (
+          <Box className="centers-page__table">
+            <DataGrid
+              rows={rows}
+              columns={columns}
+              loading={loading}
+              pagination
+              paginationMode="client"
+              paginationModel={paginationModel}
+              onPaginationModelChange={onPaginationChange}
+              pageSizeOptions={[...CENTER_PAGE_SIZE_OPTIONS]}
+              disableRowSelectionOnClick
+              disableColumnMenu
+              disableColumnResize
+              onRowClick={(params, event) => {
+                const target = event.target as HTMLElement
+                if (target.closest('button')) return
+                onRowClick({
+                  id: String(params.row.id),
+                  name: String(params.row.name ?? ''),
+                  manager: String(params.row.manager ?? ''),
+                  email: String(params.row.email ?? ''),
+                  phone: String(params.row.phone ?? ''),
+                  address: String(params.row.address ?? ''),
+                  logo: String(params.row.logo ?? ''),
+                  establishedAt: String(params.row.establishedAt ?? ''),
+                  availableExamCredits: Number(params.row.availableExamCredits ?? 0),
+                })
+              }}
+              rowHeight={72}
+              columnHeaderHeight={48}
+              density="comfortable"
+              localeText={{
+                noRowsLabel: 'No centers matched the current search.',
+              }}
+              initialState={{
+                pagination: { paginationModel: { page: 0, pageSize: CENTER_PAGE_SIZE } },
+              }}
+              sx={{
+                border: 0,
+                '& .MuiDataGrid-row': { cursor: 'pointer' },
+              }}
+              slotProps={{
+                cell: {
+                  onMouseDown: (event) => {
+                    const target = event.target as HTMLElement
+                    if (target.closest('button')) {
+                      event.stopPropagation()
+                    }
+                  },
+                },
+                pagination: {
+                  labelRowsPerPage: 'Rows per page:',
+                  labelDisplayedRows: ({
+                    from,
+                    to,
+                    count,
+                  }: {
+                    from: number
+                    to: number
+                    count: number
+                  }) =>
+                    `${from}–${to} of ${count !== -1 ? count : `more than ${to}`}`,
+                },
+              }}
+            />
+          </Box>
+        )}
       </Box>
     </Box>
   )

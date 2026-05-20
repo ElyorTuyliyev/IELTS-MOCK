@@ -24,11 +24,11 @@ export const ReadingEditor = memo(function ReadingEditor({
         <label className="add-question-form__label">
           Question content ({entries.length} {entries.length === 1 ? 'part' : 'parts'})
         </label>
-        <Box className="add-question-form__grid">
+        <Box className="add-question-form__parts-grid">
           {entries.map((entry, index) => (
             <Box
               key={entry.key}
-              className="add-question-form__field add-question-form__field--span-2 add-question-form__textarea"
+              className="add-question-form__part-block add-question-form__textarea"
             >
               <label className="add-question-form__label">{entry.label}</label>
               <label className="add-question-form__label">Passage text</label>
@@ -39,7 +39,7 @@ export const ReadingEditor = memo(function ReadingEditor({
                   .slice(0, index)
                   .flatMap((part) => [part?.passage ?? '', part?.questions ?? ''])}
               />
-              <Box sx={{ height: 10 }} />
+              <Box sx={{ height: 16 }} />
               <label className="add-question-form__label">Questions</label>
               <RichTextEditor
                 value={contents[index]?.questions ?? EMPTY_HTML}

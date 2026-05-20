@@ -160,6 +160,21 @@ export function extractAnswerKeyFromHtml(html: string): string | null {
     const answerKey: AnswerKeyPayload = { radio: [], blank: [], dragDrop: [] };
 
     const radioGroups = Array.from(doc.querySelectorAll('div[data-type="radio-group"]'));
+
+    function radioQuestionNumberBeforeGroup(group: Element): string | null {
+      let prev: Element | null = group.previousElementSibling;
+      while (
+        prev &&
+        (prev.tagName === "BR" ||
+          (prev.tagName === "P" && !prev.textContent?.trim()))
+      ) {
+        prev = prev.previousElementSibling;
+      }
+      if (!prev?.matches("p, h1, h2, h3, h4, h5, h6")) return null;
+      const match = (prev.textContent ?? "").trim().match(/^Q(\d+)\b/i);
+      return match?.[1] ?? null;
+    }
+
     radioGroups.forEach((group, groupIndex) => {
       const optionsJson = group.getAttribute("data-options") ?? "[]";
       const checkedValue = (group.getAttribute("data-checked-value") ?? "").trim();
@@ -179,7 +194,9 @@ export function extractAnswerKeyFromHtml(html: string): string | null {
           .filter((item): item is { label: string; value: string } => Boolean(item && item.label));
         const selected = options.find((o) => o.value === checkedValue);
         if (!selected) return;
-        answerKey.radio.push({ qid: `radio-${groupIndex + 1}`, correct: selected.label });
+        const qNum = radioQuestionNumberBeforeGroup(group);
+        const qid = qNum ? `Q${qNum}` : `radio-${groupIndex + 1}`;
+        answerKey.radio.push({ qid, correct: selected.label });
       } catch {
         /* malformed radio data */
       }

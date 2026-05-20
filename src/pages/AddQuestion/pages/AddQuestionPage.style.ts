@@ -143,6 +143,28 @@ export const AddQuestionPageRoot = styled.div`
     }
   }
 
+  .add-question-form__parts-grid {
+    display: flex;
+    flex-direction: column;
+    gap: ${theme.spacing(3)};
+  }
+
+  .add-question-form__part-block {
+    display: flex;
+    flex-direction: column;
+    gap: ${theme.spacing(1.5)};
+    padding: ${theme.spacing(2.5)};
+    border-radius: 14px;
+    border: 1px solid ${c.border.divider};
+    background: ${c.surface.muted};
+  }
+
+  .add-question-form__part-block .add-question-form__label:first-of-type {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: ${c.text.primary};
+  }
+
   .add-question-form__field {
     display: flex;
     flex-direction: column;

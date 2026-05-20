@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react'
 import {
+  Box,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   TextField,
   Typography,
 } from '@mui/material'
 
 import { Button } from '../../../components/common/Button'
+import { c } from '../../../theme'
 import type { PendingPlanPurchase } from '../../Billing/api/billingQueries'
 import { formatPaymentDate, resolveCenterName } from './paymentUtils'
 
@@ -19,6 +22,26 @@ type ReviewPurchaseDialogProps = {
   loading?: boolean
   onClose: () => void
   onConfirm: (approve: boolean, adminNote: string) => void | Promise<void>
+}
+
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        gap: 2,
+        py: 0.75,
+      }}
+    >
+      <Typography variant="body2" color="text.secondary">
+        {label}
+      </Typography>
+      <Typography variant="body2" sx={{ fontWeight: 600, textAlign: 'right' }}>
+        {value}
+      </Typography>
+    </Box>
+  )
 }
 
 export function ReviewPurchaseDialog({
@@ -44,21 +67,53 @@ export function ReviewPurchaseDialog({
   const centerName = resolveCenterName(centers, purchase.centerId)
 
   return (
-    <Dialog open={open} onClose={loading ? undefined : onClose} fullWidth maxWidth="sm">
-      <DialogTitle>Review plan purchase</DialogTitle>
-      <DialogContent sx={{ display: 'grid', gap: 2, pt: 1 }}>
-        <Typography>
-          <strong>{purchase.planName}</strong> · {centerName}
-        </Typography>
-        <Typography color="text.secondary">
-          {purchase.examCount} exam credits · ${purchase.amount.toFixed(2)} · submitted{' '}
-          {formatPaymentDate(purchase.createdAt)}
-        </Typography>
-        {purchase.centerNote ? (
-          <Typography variant="body2">
-            Center note: {purchase.centerNote}
+    <Dialog
+      open={open}
+      onClose={loading ? undefined : onClose}
+      fullWidth
+      maxWidth="sm"
+      PaperProps={{ sx: { borderRadius: 3, overflow: 'hidden' } }}
+    >
+      <DialogTitle sx={{ pb: 1 }}>Review plan purchase</DialogTitle>
+      <DialogContent sx={{ display: 'grid', gap: 2, pt: 0 }}>
+        <Box
+          sx={{
+            p: 2,
+            borderRadius: 2,
+            border: `1px solid ${c.border.default}`,
+            background: c.surface.muted,
+          }}
+        >
+          <Typography sx={{ fontWeight: 700, fontSize: '1.05rem' }}>
+            {purchase.planName}
           </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            {centerName}
+          </Typography>
+          <Divider sx={{ my: 1.5 }} />
+          <SummaryRow label="Exam credits" value={String(purchase.examCount)} />
+          <SummaryRow label="Amount" value={`$${purchase.amount.toFixed(2)}`} />
+          <SummaryRow label="Submitted" value={formatPaymentDate(purchase.createdAt)} />
+        </Box>
+
+        {purchase.centerNote ? (
+          <Box
+            sx={{
+              p: 1.5,
+              borderRadius: 2,
+              border: `1px dashed ${c.border.soft}`,
+              background: c.surface.default,
+            }}
+          >
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+              Center note
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 0.5 }}>
+              {purchase.centerNote}
+            </Typography>
+          </Box>
         ) : null}
+
         <TextField
           label="Admin note (optional)"
           value={adminNote}
@@ -69,7 +124,7 @@ export function ReviewPurchaseDialog({
           disabled={loading}
         />
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+      <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
         <Button variant="secondary" onClick={onClose} disabled={loading}>
           Cancel
         </Button>

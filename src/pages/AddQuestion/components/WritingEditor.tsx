@@ -22,11 +22,11 @@ export const WritingEditor = memo(function WritingEditor({
         <label className="add-question-form__label">
           Question content ({entries.length} {entries.length === 1 ? 'part' : 'parts'})
         </label>
-        <Box className="add-question-form__grid">
+        <Box className="add-question-form__parts-grid">
           {entries.map((entry, index) => (
             <Box
               key={entry.key}
-              className="add-question-form__field add-question-form__field--span-2 add-question-form__textarea"
+              className="add-question-form__part-block add-question-form__textarea"
             >
               <label className="add-question-form__label">{entry.label}</label>
               <RichTextEditor

@@ -1,10 +1,9 @@
 import {
   useCallback,
-  useEffect,
   useMemo,
   type ReactNode,
 } from 'react'
-import { useLazyQuery, useMutation } from '@apollo/client/react'
+import { useMutation, useQuery } from '@apollo/client/react'
 
 import { tryGetGraphQLErrorMessage } from '../../helpers/graphql'
 import { useAppSelector } from '../../store/hooks'
@@ -50,29 +49,26 @@ function mapNotification(record: FindMyNotificationsResponse['findMyNotification
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const authToken = useAppSelector(selectAuthToken)
   const userRole = useAppSelector(selectUserRole)
+  const canFetch = Boolean(authToken && userRole)
 
-  const [fetchNotifications, { data, loading, error, refetch }] =
-    useLazyQuery<FindMyNotificationsResponse>(FIND_MY_NOTIFICATIONS_QUERY, {
+  const { data, loading, error, refetch } = useQuery<FindMyNotificationsResponse>(
+    FIND_MY_NOTIFICATIONS_QUERY,
+    {
+      skip: !canFetch,
       fetchPolicy: 'cache-and-network',
-    })
-
-  useEffect(() => {
-    if (!authToken || !userRole) {
-      return
-    }
-
-    void fetchNotifications()
-  }, [authToken, userRole, fetchNotifications])
+      notifyOnNetworkStatusChange: true,
+    },
+  )
 
   const [markNotificationAsRead] = useMutation(MARK_NOTIFICATION_AS_READ_MUTATION)
   const [markAllNotificationsAsRead] = useMutation(MARK_ALL_NOTIFICATIONS_AS_READ_MUTATION)
 
   const notifications = useMemo(
     () =>
-      authToken && userRole
+      canFetch
         ? (data?.findMyNotifications ?? []).map(mapNotification)
         : [],
-    [authToken, userRole, data],
+    [canFetch, data],
   )
 
   const unreadCount = useMemo(
@@ -81,8 +77,11 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   )
 
   const handleRefetch = useCallback(async () => {
+    if (!canFetch) {
+      return
+    }
     await refetch()
-  }, [refetch])
+  }, [canFetch, refetch])
 
   const markAsRead = useCallback(
     async (id: string) => {
@@ -104,7 +103,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     () => ({
       notifications,
       unreadCount,
-      loading,
+      loading: canFetch && loading,
       error: tryGetGraphQLErrorMessage(error),
       markAsRead,
       markAllAsRead,
@@ -113,6 +112,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     [
       notifications,
       unreadCount,
+      canFetch,
       loading,
       error,
       markAsRead,

@@ -1,18 +1,27 @@
-import { ApolloClient, createHttpLink, from, InMemoryCache } from '@apollo/client'
+import {
+  ApolloClient,
+  createHttpLink,
+  from,
+  InMemoryCache,
+  type Operation,
+} from '@apollo/client'
 import { onError } from '@apollo/client/link/error'
 import { setContext } from '@apollo/client/link/context'
 
+import { isAuthTokenOversized, isSafeAuthToken } from '../helpers/authToken'
 import { store } from '../store'
 import { clearAuth } from '../store/slices/authSlice'
 import { ROUTES_PATH } from '../routes/paths'
 
-const rawGraphqlUrl = import.meta.env.VITE_GRAPHQL_URL ?? 'http://127.0.0.1:8000/graphql'
+const rawGraphqlUrl =
+  import.meta.env.VITE_GRAPHQL_URL ??
+  ('http://localhost:8000/graphql')
 
 function normalizeGraphqlUrl(url: string) {
   try {
     const parsedUrl = new URL(url)
     if (parsedUrl.hostname === 'localhost') {
-      parsedUrl.hostname = '127.0.0.1'
+      parsedUrl.hostname = 'localhost'
       return parsedUrl.toString()
     }
   } catch {
@@ -25,36 +34,70 @@ function normalizeGraphqlUrl(url: string) {
 const graphqlUrl = normalizeGraphqlUrl(rawGraphqlUrl)
 const graphqlToken = import.meta.env.VITE_GRAPHQL_TOKEN
 
+const PUBLIC_AUTH_OPERATIONS = new Set([
+  'login',
+  'signup',
+  'logout',
+  'createstudentsignupleaddata',
+  'paymentrequestbytoken',
+  'submitpaymentrequestbytoken',
+])
+
+function resolveOperationName(operation: Operation) {
+  if (operation.operationName) {
+    return operation.operationName.toLowerCase()
+  }
+
+  for (const definition of operation.query.definitions) {
+    if (definition.kind === 'OperationDefinition' && definition.name) {
+      return definition.name.value.toLowerCase()
+    }
+  }
+
+  return undefined
+}
+
+function resolveAuthToken() {
+  const token = store.getState().auth.token ?? graphqlToken ?? null
+
+  if (!token) {
+    return null
+  }
+
+  if (isAuthTokenOversized(token)) {
+    store.dispatch(clearAuth())
+    return null
+  }
+
+  return token
+}
+
 const httpLink = createHttpLink({
   uri: graphqlUrl,
   credentials: 'omit',
 })
 
 const authLink = setContext((operation, { headers }) => {
-  const operationName = operation.operationName?.toLowerCase()
+  const operationName = resolveOperationName(operation)
   const isPublicAuthOperation =
-    operationName === 'login' ||
-    operationName === 'signup' ||
-    operationName === 'logout' ||
-    operationName === 'createstudentsignupleaddata'
+    operationName != null && PUBLIC_AUTH_OPERATIONS.has(operationName)
 
   if (isPublicAuthOperation) {
-    return {
-      headers: {
-        ...headers,
-      },
-    }
+    const nextHeaders = { ...headers } as Record<string, string>
+    delete nextHeaders.Authorization
+    delete nextHeaders.authorization
+    return { headers: nextHeaders }
   }
 
-  const token = store.getState().auth.token ?? graphqlToken
+  const token = resolveAuthToken()
 
   return {
     headers: {
       ...headers,
-      ...(token
+      ...(isSafeAuthToken(token)
         ? {
-            Authorization: `Bearer ${token}`,
-          }
+          Authorization: `Bearer ${token}`,
+        }
         : {}),
     },
   }
@@ -98,8 +141,10 @@ const errorLink = onError((errorContext) => {
       : null
   const hasUnauthorizedNetworkError =
     Boolean(networkErrorObject && 'statusCode' in networkErrorObject && networkErrorObject.statusCode === 401)
+  const hasHeaderTooLargeNetworkError =
+    Boolean(networkErrorObject && 'statusCode' in networkErrorObject && networkErrorObject.statusCode === 431)
 
-  if (hasUnauthenticatedGraphqlError || hasUnauthorizedNetworkError) {
+  if (hasUnauthenticatedGraphqlError || hasUnauthorizedNetworkError || hasHeaderTooLargeNetworkError) {
     forceLogoutOnAuthError()
   }
 })

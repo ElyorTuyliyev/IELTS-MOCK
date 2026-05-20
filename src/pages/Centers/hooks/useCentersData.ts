@@ -62,14 +62,7 @@ export function useCentersData({ centersData }: UseCentersDataParams) {
   const rows = filteredCenters
 
   const totalPages = Math.max(1, Math.ceil(rows.length / paginationModel.pageSize))
-  const currentPage = paginationModel.page + 1
-  const rangeStart = rows.length === 0 ? 0 : paginationModel.page * paginationModel.pageSize + 1
-  const rangeEnd =
-    rows.length === 0
-      ? 0
-      : Math.min((paginationModel.page + 1) * paginationModel.pageSize, rows.length)
 
-  // FIX: page correction moved here with guard to avoid re-trigger loop
   const safePaginationModel = useMemo(() => {
     if (paginationModel.page > totalPages - 1) {
       return { ...paginationModel, page: Math.max(0, totalPages - 1) }
@@ -87,10 +80,6 @@ export function useCentersData({ centersData }: UseCentersDataParams) {
     searchTerm,
     paginationModel: safePaginationModel,
     setPaginationModel,
-    totalPages,
-    currentPage,
-    rangeStart,
-    rangeEnd,
     handleSearchChange,
   }
 }

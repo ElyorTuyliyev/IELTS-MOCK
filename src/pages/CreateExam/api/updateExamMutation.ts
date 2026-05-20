@@ -10,6 +10,10 @@ export const UPDATE_EXAM_MUTATION = gql`
     $startTime: String!
     $endTime: String!
     $price: Float!
+    $showPrice: Boolean
+    $isUpcomingVisibleToStudents: Boolean
+    $useGlobalPaymentInstructions: Boolean
+    $customPaymentInstructions: String
   ) {
     updateExam(
       _id: $_id
@@ -20,6 +24,10 @@ export const UPDATE_EXAM_MUTATION = gql`
       startTime: $startTime
       endTime: $endTime
       price: $price
+      showPrice: $showPrice
+      isUpcomingVisibleToStudents: $isUpcomingVisibleToStudents
+      useGlobalPaymentInstructions: $useGlobalPaymentInstructions
+      customPaymentInstructions: $customPaymentInstructions
     ) {
       _id
       title
@@ -29,6 +37,10 @@ export const UPDATE_EXAM_MUTATION = gql`
       startTime
       endTime
       price
+      showPrice
+      isUpcomingVisibleToStudents
+      useGlobalPaymentInstructions
+      customPaymentInstructions
       centerId
     }
   }

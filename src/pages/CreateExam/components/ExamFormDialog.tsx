@@ -1,18 +1,28 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useQuery } from '@apollo/client/react'
 import {
   Box,
+  Checkbox,
   DialogActions,
   DialogContent,
   DialogTitle,
   Divider,
+  FormControlLabel,
+  Link,
   TextField,
   Typography,
 } from '@mui/material'
+import { Link as RouterLink } from 'react-router-dom'
 import { Button } from '../../../components/common/Button'
 import { DateInput } from '../../../components/common/DateInput'
 import { Select } from '../../../components/common/Select'
 import { useToast } from '../../../components/common/Toast'
+import { ROUTES_PATH } from '../../../routes/paths'
+import { useAppSelector } from '../../../store/hooks'
+import { selectUserRole } from '../../../store'
+import { USER_ROLES } from '../../../store/slices/authSlice'
 import { formatPriceValue, parsePriceValue } from '../../../utils/priceFormat'
+import { CENTER_PAYMENT_SETTINGS_QUERY } from '../../../features/examPayments/api/examPaymentsQueries'
 import { ExamFormDialogRoot } from './ExamFormDialog.style'
 
 type ExamFormMode = { mode: 'create' } | { mode: 'edit'; examId: string }
@@ -25,6 +35,10 @@ type ExamFormValues = {
   startTime: string
   endTime: string
   price: string
+  showPrice: boolean
+  isUpcomingVisibleToStudents: boolean
+  useGlobalPaymentInstructions: boolean
+  customPaymentInstructions: string
 }
 
 type ExamFormDialogProps = {
@@ -44,6 +58,10 @@ const EMPTY_FORM: ExamFormValues = {
   startTime: '',
   endTime: '',
   price: '',
+  showPrice: true,
+  isUpcomingVisibleToStudents: false,
+  useGlobalPaymentInstructions: true,
+  customPaymentInstructions: '',
 }
 
 export function ExamFormDialog({
@@ -55,7 +73,22 @@ export function ExamFormDialog({
   onSave,
 }: ExamFormDialogProps) {
   const toast = useToast()
+  const userRole = useAppSelector(selectUserRole)
   const [form, setForm] = useState<ExamFormValues>(EMPTY_FORM)
+
+  const { data: centerSettings } = useQuery<{
+    centerPaymentSettings: { globalPaymentInstructions?: string | null }
+  }>(CENTER_PAYMENT_SETTINGS_QUERY, {
+    skip: !open || userRole !== USER_ROLES.center,
+  })
+
+  const globalPaymentInstructions =
+    centerSettings?.centerPaymentSettings?.globalPaymentInstructions?.trim() ?? ''
+
+  const isPaidExam = useMemo(() => {
+    const price = parsePriceValue(form.price)
+    return Number.isFinite(price) && price > 0
+  }, [form.price])
 
   useEffect(() => {
     if (open) {
@@ -63,6 +96,9 @@ export function ExamFormDialog({
         ...EMPTY_FORM,
         ...initialValues,
         price: initialValues?.price ? formatPriceValue(initialValues.price) : '',
+        useGlobalPaymentInstructions:
+          initialValues?.useGlobalPaymentInstructions ?? true,
+        customPaymentInstructions: initialValues?.customPaymentInstructions ?? '',
       })
     }
   }, [open, initialValues])
@@ -100,8 +136,22 @@ export function ExamFormDialog({
       toast.error('Price must be a valid positive number.')
       return
     }
+
+    if (numPrice > 0) {
+      if (form.useGlobalPaymentInstructions && !globalPaymentInstructions) {
+        toast.error(
+          'Global payment instructions are missing. Add them on the Payments page or use custom instructions for this exam.',
+        )
+        return
+      }
+      if (!form.useGlobalPaymentInstructions && !form.customPaymentInstructions.trim()) {
+        toast.error('Custom payment instructions are required for paid exams.')
+        return
+      }
+    }
+
     onSave(form)
-  }, [form, onSave, toast])
+  }, [form, globalPaymentInstructions, onSave, toast])
 
   const isEdit = formMode?.mode === 'edit'
 
@@ -198,6 +248,74 @@ export function ExamFormDialog({
           fullWidth
           className="exam-form__field"
         />
+
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={form.showPrice}
+              onChange={(event) => updateField('showPrice', event.target.checked)}
+            />
+          }
+          label="Display exam price to students"
+        />
+
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={form.isUpcomingVisibleToStudents}
+              onChange={(event) =>
+                updateField('isUpcomingVisibleToStudents', event.target.checked)
+              }
+            />
+          }
+          label="Show this upcoming exam to all students for registration"
+        />
+
+        {isPaidExam ? (
+          <>
+            <Divider sx={{ my: 1 }} />
+            <Typography className="exam-form__title-sub">Payment instructions</Typography>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={form.useGlobalPaymentInstructions}
+                  onChange={(event) =>
+                    updateField('useGlobalPaymentInstructions', event.target.checked)
+                  }
+                />
+              }
+              label="Use global payment instructions"
+            />
+            {form.useGlobalPaymentInstructions ? (
+              <Box>
+                {globalPaymentInstructions ? (
+                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', mb: 1 }}>
+                    {globalPaymentInstructions}
+                  </Typography>
+                ) : (
+                  <Typography variant="body2" color="warning.main" sx={{ mb: 1 }}>
+                    Global payment instructions are not set. They are required for paid exams
+                    using global settings.
+                  </Typography>
+                )}
+                <Link component={RouterLink} to={ROUTES_PATH.centerPayments} variant="body2">
+                  Edit global payment instructions
+                </Link>
+              </Box>
+            ) : (
+              <TextField
+                label="Custom payment instructions"
+                required
+                value={form.customPaymentInstructions}
+                onChange={(e) => updateField('customPaymentInstructions', e.target.value)}
+                multiline
+                minRows={4}
+                fullWidth
+                className="exam-form__field"
+              />
+            )}
+          </>
+        ) : null}
 
       </DialogContent>
 

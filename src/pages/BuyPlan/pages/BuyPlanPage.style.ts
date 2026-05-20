@@ -1,8 +1,10 @@
 import styled from '@emotion/styled'
 
 import theme, { c, tokens } from '@/theme'
+import { planPricingCardStyles } from '@/styles/planPricingCardStyles'
 
 export const BuyPlanPageRoot = styled.div`
+  ${planPricingCardStyles}
   .buy-plan-page {
     display: flex;
     flex-direction: column;
@@ -178,155 +180,14 @@ export const BuyPlanPageRoot = styled.div`
 
   .buy-plan-page__plans-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: ${theme.spacing(2.25)};
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: ${theme.spacing(2.5)};
     align-items: stretch;
   }
 
-  .buy-plan-pricing-card {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    border: 1px solid ${c.border.default};
-    border-radius: 20px;
-    background: ${c.surface.default};
-    overflow: hidden;
-    box-shadow: 0 10px 30px ${tokens.rgba.slate900_06};
-    transition:
-      transform 0.2s ease,
-      box-shadow 0.2s ease,
-      border-color 0.2s ease;
-
-    &:hover {
-      transform: translateY(-4px);
-      border-color: ${c.primary.tintBorder};
-      box-shadow: 0 18px 40px ${tokens.rgba.primary_12};
-    }
-  }
-
-  .buy-plan-pricing-card--featured {
-    border-color: ${c.primary.tintBorderStrong};
-    box-shadow: 0 16px 42px ${tokens.rgba.primary_14};
-
-    &:hover {
-      box-shadow: 0 22px 48px ${tokens.rgba.primary_20};
-    }
-  }
-
-  .buy-plan-pricing-card__badge {
-    position: absolute;
-    top: 14px;
-    right: 14px;
-    z-index: 1;
-    padding: 5px 10px;
-    border-radius: 999px;
-    background: ${c.surface.default};
-    color: ${c.primary.dark};
-    font-size: 0.72rem;
-    font-weight: 800;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    box-shadow: 0 4px 14px ${tokens.rgba.slate900_12};
-  }
-
-  .buy-plan-pricing-card__visual {
-    padding: 22px 22px 18px;
-    color: ${c.text.inverse};
-    min-height: 108px;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    gap: 4px;
-  }
-
-  .buy-plan-pricing-card__name {
-    margin: 0;
-    font-size: 1.2rem;
-    font-weight: 800;
-    letter-spacing: -0.01em;
-  }
-
-  .buy-plan-pricing-card__exams {
-    margin: 0;
-    font-size: 0.88rem;
-    opacity: 0.92;
-  }
-
-  .buy-plan-pricing-card__body {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    gap: ${theme.spacing(1.5)};
-    padding: 20px 22px 22px;
-  }
-
-  .buy-plan-pricing-card__price-row {
-    display: flex;
-    align-items: baseline;
-    gap: 6px;
-  }
-
-  .buy-plan-pricing-card__currency {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: ${c.text.secondary};
-  }
-
-  .buy-plan-pricing-card__price {
-    margin: 0;
-    font-size: 2rem;
-    font-weight: 800;
-    color: ${c.text.primary};
-    letter-spacing: -0.03em;
-    line-height: 1;
-  }
-
-  .buy-plan-pricing-card__per-exam {
-    margin: 0;
-    color: ${c.text.secondary};
-    font-size: 0.85rem;
-  }
-
-  .buy-plan-pricing-card__features {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .buy-plan-pricing-card__feature {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: ${c.text.muted};
-    font-size: 0.88rem;
-
-    svg {
-      width: 18px;
-      height: 18px;
-      color: ${c.primary.main};
-      flex-shrink: 0;
-    }
-  }
-
-  .buy-plan-pricing-card__action.MuiButton-root {
-    margin-top: auto;
-    width: 100%;
-    min-height: 46px;
-    border-radius: 12px;
-    text-transform: none;
-    font-weight: 700;
-  }
-
-  .buy-plan-pricing-card--featured .buy-plan-pricing-card__action.MuiButton-root {
-    background: ${c.gradient.primary};
-    box-shadow: ${tokens.shadows.button};
-
-    &:hover {
-      background: ${c.gradient.primaryHover};
-      box-shadow: ${tokens.shadows.buttonHover};
+  @media (max-width: 1100px) {
+    .buy-plan-page__plans-grid {
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     }
   }
 

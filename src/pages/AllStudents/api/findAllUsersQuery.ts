@@ -9,6 +9,7 @@ export const FIND_ALL_USERS_QUERY = gql`
       email
       birthday
       gender
+      profilePhoto
       phone
       role
       centerId

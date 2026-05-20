@@ -1,3 +1,23 @@
+export type FindOneCenterQueryResponse = {
+  findOneCenter: {
+    _id: string
+    name: string
+    manager?: string | null
+    address: string
+    phone: string
+    email: string
+    logo?: string | null
+    establishedAt?: string | null
+    availableExamCredits?: number | null
+    createdAt: string
+    updatedAt: string
+  }
+}
+
+export type FindOneCenterQueryVariables = {
+  _id: string
+}
+
 export type FindAllCentersQueryResponse = {
   findAllCenters: Array<{
     _id: string

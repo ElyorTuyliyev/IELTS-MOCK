@@ -47,7 +47,7 @@ export function useExamData(assignedQuestionIds?: string[] | null) {
 
     const assignedIds = assignedQuestionIds?.map(String).filter(Boolean) ?? []
     if (assignedIds.length === 0) {
-      return forExam.filter((item) => String(item.examId ?? '').trim() === examId)
+      return []
     }
 
     const expandedIds = new Set(

@@ -1,6 +1,6 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery } from '@apollo/client/react'
-import { Box, Typography } from '@mui/material'
+import { Alert, Box, CircularProgress, Typography } from '@mui/material'
 import { DataGrid, type GridCellParams, type GridPaginationModel } from '@mui/x-data-grid'
 import type { KeyboardEvent } from 'react'
 import { Button } from '../../../components/common/Button'
@@ -57,7 +57,14 @@ type FindAllExamsQueryResponse = {
     startTime: string
     endTime: string
     price: number
+    showPrice?: boolean | null
+    isUpcomingVisibleToStudents?: boolean | null
+    useGlobalPaymentInstructions?: boolean | null
+    customPaymentInstructions?: string | null
+    startedAt?: string | null
+    completedAt?: string | null
     isActive: boolean
+    isStoredActive: boolean
     isCompleted: boolean
     createdAt: string
     centerId?: string | null
@@ -85,13 +92,28 @@ export function HomePage({ archiveOnly = false }: HomePageProps) {
   const [examFormDialog, setExamFormDialog] = useState<ExamFormDialog>(null)
   const [pendingDeleteExam, setPendingDeleteExam] = useState<ExamCard | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
-  const [examFormInitial, setExamFormInitial] = useState<Record<string, string>>({})
+  const [examFormInitial, setExamFormInitial] = useState<
+    Record<string, string | boolean>
+  >({})
   const [createExam, { loading: isCreatingExam }] = useMutation(CREATE_EXAM_MUTATION)
   const [updateExam, { loading: isUpdatingExam }] = useMutation(UPDATE_EXAM_MUTATION)
-  const [removeExam, { loading: isRemovingExam }] = useMutation(REMOVE_EXAM_MUTATION)
-  const { data: examsData, refetch: refetchExams } = useQuery<FindAllExamsQueryResponse>(
-    FIND_ALL_EXAMS_QUERY,
-  )
+  const [removeExam] = useMutation(REMOVE_EXAM_MUTATION)
+  const {
+    data: examsData,
+    refetch: refetchExams,
+    loading: examsLoading,
+    error: examsError,
+  } = useQuery<FindAllExamsQueryResponse>(FIND_ALL_EXAMS_QUERY)
+
+  const examsErrorMessage = examsError
+    ? getGraphQLErrorMessage(examsError, 'Failed to load exams.')
+    : null
+
+  useEffect(() => {
+    if (examsErrorMessage) {
+      toast.error(examsErrorMessage)
+    }
+  }, [examsErrorMessage, toast])
 
   const canManageExams =
     userRole === USER_ROLES.center || userRole === USER_ROLES.superAdmin
@@ -128,14 +150,16 @@ export function HomePage({ archiveOnly = false }: HomePageProps) {
         : (examsData?.findAllExams ?? [])
 
     const backendExams = scopedExams.map((exam, index): ExamCard => {
+      const isStoredActive = exam.isStoredActive ?? exam.isActive
       const status: ExamCard['status'] = exam.isCompleted
         ? 'Archived'
-        : exam.isActive
+        : isStoredActive
           ? 'Active'
           : 'Draft'
 
       return {
         id: exam._id,
+        isStoredActive,
         title: exam.title,
         gradient: gradientPalette[index % gradientPalette.length],
         category: exam.examType ?? 'Mock Exam',
@@ -152,6 +176,12 @@ export function HomePage({ archiveOnly = false }: HomePageProps) {
         startTime: exam.startTime,
         endTime: exam.endTime,
         price: exam.price,
+        showPrice: Boolean(exam.showPrice ?? true),
+        isUpcomingVisibleToStudents: Boolean(exam.isUpcomingVisibleToStudents ?? false),
+        useGlobalPaymentInstructions: Boolean(exam.useGlobalPaymentInstructions ?? true),
+        customPaymentInstructions: exam.customPaymentInstructions ?? '',
+        startedAt: exam.startedAt ?? null,
+        completedAt: exam.completedAt ?? null,
       }
     })
 
@@ -227,12 +257,28 @@ export function HomePage({ archiveOnly = false }: HomePageProps) {
       startTime: normalizeTimeForInput(exam.startTime),
       endTime: normalizeTimeForInput(exam.endTime),
       price: formatPriceValue(exam.price),
+      showPrice: exam.showPrice ?? true,
+      isUpcomingVisibleToStudents: exam.isUpcomingVisibleToStudents ?? false,
+      useGlobalPaymentInstructions: exam.useGlobalPaymentInstructions ?? true,
+      customPaymentInstructions: exam.customPaymentInstructions ?? '',
     })
     setExamFormDialog({ mode: 'edit', examId: exam.id })
   }, [])
 
   const handleSaveExam = useCallback(
-    async (values: { title: string; examiner: string; examType: string; examDate: string; startTime: string; endTime: string; price: string }) => {
+    async (values: {
+      title: string
+      examiner: string
+      examType: string
+      examDate: string
+      startTime: string
+      endTime: string
+      price: string
+      showPrice: boolean
+      isUpcomingVisibleToStudents: boolean
+      useGlobalPaymentInstructions: boolean
+      customPaymentInstructions: string
+    }) => {
       const examDateIso = dateInputValueToIso(values.examDate)
       const normalizedPrice = parsePriceValue(values.price)
 
@@ -250,6 +296,10 @@ export function HomePage({ archiveOnly = false }: HomePageProps) {
               startTime: values.startTime,
               endTime: values.endTime,
               price: normalizedPrice,
+              showPrice: values.showPrice,
+              isUpcomingVisibleToStudents: values.isUpcomingVisibleToStudents,
+              useGlobalPaymentInstructions: values.useGlobalPaymentInstructions,
+              customPaymentInstructions: values.customPaymentInstructions.trim() || null,
             },
           })
           if (res.error) {
@@ -267,6 +317,10 @@ export function HomePage({ archiveOnly = false }: HomePageProps) {
               startTime: values.startTime,
               endTime: values.endTime,
               price: normalizedPrice,
+              showPrice: values.showPrice,
+              isUpcomingVisibleToStudents: values.isUpcomingVisibleToStudents,
+              useGlobalPaymentInstructions: values.useGlobalPaymentInstructions,
+              customPaymentInstructions: values.customPaymentInstructions.trim() || null,
             },
           })
           if (res.error) {
@@ -325,7 +379,10 @@ export function HomePage({ archiveOnly = false }: HomePageProps) {
             startTime: exam.startTime,
             endTime: exam.endTime,
             price: exam.price,
+            showPrice: exam.showPrice ?? true,
+            isUpcomingVisibleToStudents: exam.isUpcomingVisibleToStudents ?? false,
             isActive: exam.status === 'Active',
+            isStoredActive: exam.isStoredActive,
             isCompleted: exam.status === 'Archived',
           },
         },
@@ -460,7 +517,17 @@ export function HomePage({ archiveOnly = false }: HomePageProps) {
             <ExamsViewToggle value={viewMode} onChange={setViewMode} />
           </Box>
 
-          {filteredExams.length > 0 ? (
+          {examsErrorMessage ? (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {examsErrorMessage}
+            </Alert>
+          ) : null}
+
+          {examsLoading && !examsData ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+              <CircularProgress size={28} />
+            </Box>
+          ) : filteredExams.length > 0 ? (
             viewMode === 'table' ? (
               <Box className="content__table-wrap">
                 <DataGrid
@@ -577,6 +644,10 @@ export function HomePage({ archiveOnly = false }: HomePageProps) {
               ))}
             </Box>
             )
+          ) : examsErrorMessage ? (
+            <Box className="content__empty-state">
+              Could not load exams. Check your connection and sign in again.
+            </Box>
           ) : (
             <Box className="content__empty-state">
               {archiveOnly

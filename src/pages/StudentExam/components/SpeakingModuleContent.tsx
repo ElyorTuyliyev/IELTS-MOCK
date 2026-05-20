@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import { Box, Typography } from '@mui/material'
 import { Button } from '../../../components/common/Button'
 import type { RefObject } from 'react'
+import { PassageHtmlPane } from './PassageHtmlPane'
 
 type SpeakingModuleContentProps = {
   splitContainerRef: RefObject<HTMLDivElement | null>
@@ -44,7 +45,7 @@ export function SpeakingModuleContent({
         style={{ width: `${splitLeftWidth}%` }}
       >
         {currentPartPassage ? (
-          <Box dangerouslySetInnerHTML={{ __html: currentPartPassage }} />
+          <PassageHtmlPane html={currentPartPassage} />
         ) : (
           <Typography className="student-exam-player__passage-muted">
             Read the speaking prompt and respond aloud. You may add brief notes on the right.

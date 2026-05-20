@@ -11,6 +11,7 @@ export type SidebarRouteGroup = {
     allowedRoles?: UserRole[]
     children?: Array<{
       label: string
+      icon: SidebarIconKey
       path?: string
       allowedRoles?: UserRole[]
     }>
@@ -36,11 +37,13 @@ export const SIDEBAR_ROUTE_GROUPS: SidebarRouteGroup[] = [
         children: [
           {
             label: 'All Exams',
+            icon: 'exams',
             path: ROUTES_PATH.allExams,
             allowedRoles: [USER_ROLES.center, USER_ROLES.superAdmin],
           },
           {
             label: 'Archive',
+            icon: 'archive',
             path: ROUTES_PATH.examsArchive,
             allowedRoles: [USER_ROLES.center, USER_ROLES.superAdmin],
           },
@@ -53,22 +56,10 @@ export const SIDEBAR_ROUTE_GROUPS: SidebarRouteGroup[] = [
         allowedRoles: [USER_ROLES.student],
       },
       {
-        label: 'LMS',
-        icon: 'lms',
-        path: ROUTES_PATH.lms,
-        allowedRoles: [USER_ROLES.superAdmin],
-        children: [
-          {
-            label: 'Courses',
-            path: ROUTES_PATH.courses,
-            allowedRoles: [USER_ROLES.superAdmin],
-          },
-          {
-            label: 'Courseware',
-            path: ROUTES_PATH.courseware,
-            allowedRoles: [USER_ROLES.superAdmin],
-          },
-        ],
+        label: 'My Certificates',
+        icon: 'certificates',
+        path: ROUTES_PATH.studentCertificates,
+        allowedRoles: [USER_ROLES.student],
       },
       {
         label: 'Modules',
@@ -78,21 +69,25 @@ export const SIDEBAR_ROUTE_GROUPS: SidebarRouteGroup[] = [
         children: [
           {
             label: 'Listening',
+            icon: 'listening',
             path: ROUTES_PATH.listeningQuestions,
             allowedRoles: [USER_ROLES.center, USER_ROLES.superAdmin],
           },
           {
             label: 'Reading',
+            icon: 'reading',
             path: ROUTES_PATH.readingQuestions,
             allowedRoles: [USER_ROLES.center, USER_ROLES.superAdmin],
           },
           {
             label: 'Writing',
+            icon: 'writing',
             path: ROUTES_PATH.writingQuestions,
             allowedRoles: [USER_ROLES.center, USER_ROLES.superAdmin],
           },
           {
             label: 'Speaking',
+            icon: 'speaking',
             path: ROUTES_PATH.speakingQuestions,
             allowedRoles: [USER_ROLES.center, USER_ROLES.superAdmin],
           },
@@ -106,15 +101,16 @@ export const SIDEBAR_ROUTE_GROUPS: SidebarRouteGroup[] = [
         children: [
           {
             label: 'All students',
+            icon: 'students',
             path: ROUTES_PATH.allStudents,
             allowedRoles: [USER_ROLES.center, USER_ROLES.superAdmin],
           },
           {
             label: 'Signup Forms',
+            icon: 'signupForms',
             path: ROUTES_PATH.signupForms,
             allowedRoles: [USER_ROLES.center, USER_ROLES.superAdmin],
           },
-          
         ],
       },
     ],
@@ -122,18 +118,6 @@ export const SIDEBAR_ROUTE_GROUPS: SidebarRouteGroup[] = [
   {
     title: 'Management',
     items: [
-      {
-        label: 'Results Database',
-        icon: 'resultsDatabase',
-        path: ROUTES_PATH.resultsDatabase,
-        allowedRoles: [ USER_ROLES.superAdmin],
-      },
-      {
-        label: 'Statistics',
-        icon: 'statistics',
-        path: ROUTES_PATH.statistics,
-        allowedRoles: [USER_ROLES.superAdmin],
-      },
       {
         label: 'Certificates',
         icon: 'certificates',
@@ -148,11 +132,13 @@ export const SIDEBAR_ROUTE_GROUPS: SidebarRouteGroup[] = [
         children: [
           {
             label: 'Billing overview',
+            icon: 'payments',
             path: ROUTES_PATH.payments,
             allowedRoles: [USER_ROLES.superAdmin],
           },
           {
             label: 'Exam plans',
+            icon: 'examPlans',
             path: ROUTES_PATH.examPlans,
             allowedRoles: [USER_ROLES.superAdmin],
           },
@@ -162,6 +148,12 @@ export const SIDEBAR_ROUTE_GROUPS: SidebarRouteGroup[] = [
         label: 'Buy exam plan',
         icon: 'payments',
         path: ROUTES_PATH.buyPlan,
+        allowedRoles: [USER_ROLES.center],
+      },
+      {
+        label: 'Exam payments',
+        icon: 'payments',
+        path: ROUTES_PATH.centerPayments,
         allowedRoles: [USER_ROLES.center],
       },
     ],
@@ -179,7 +171,6 @@ export const SIDEBAR_ROUTE_GROUPS: SidebarRouteGroup[] = [
         label: 'Help',
         icon: 'help',
         path: ROUTES_PATH.help,
-        allowedRoles: [USER_ROLES.superAdmin],
       },
     ],
   },

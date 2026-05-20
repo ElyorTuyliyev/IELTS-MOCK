@@ -183,66 +183,25 @@ export function parseDistractors(json: string | null | undefined): string[] {
   }
 }
 
-function appendMatchingLayout(
-  parent: HTMLElement,
-  questionText: string,
-  gaps: DragDropGap[],
-  pool: string[],
-  targetsLabel = 'Categories',
-  poolLabel = 'Options',
-) {
-  const rows = buildMatchingRows(questionText, gaps)
-  const instruction = extractDragDropInstruction(questionText)
+export function extractInlineQuestionBody(questionText: string): string {
+  const lines = String(questionText ?? '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+  const gapLines = lines.filter((line) => line.includes(DRAG_DROP_GAP_TOKEN))
+  if (gapLines.length > 0) return gapLines.join('\n')
+  return String(questionText ?? '').trim()
+}
 
-  if (instruction) {
-    const intro = document.createElement('p')
-    intro.className = 'rte-drag-drop-fill__instruction'
-    intro.textContent = instruction
-    parent.appendChild(intro)
-  }
-
-  const layout = document.createElement('div')
-  layout.className = 'rte-drag-drop-fill__layout'
-
-  const targets = document.createElement('div')
-  targets.className = 'rte-drag-drop-fill__targets'
-  const targetsHead = document.createElement('div')
-  targetsHead.className = 'rte-drag-drop-fill__column-head'
-  targetsHead.textContent = targetsLabel
-  targets.appendChild(targetsHead)
-  rows.forEach((row) => {
-    const rowEl = document.createElement('div')
-    rowEl.className = 'rte-drag-drop-fill__row'
-
-    const label = document.createElement('span')
-    label.className = 'rte-drag-drop-fill__row-label'
-    label.textContent = row.label
-
-    const drop = document.createElement('div')
-    drop.className = 'rte-drag-drop-fill__drop'
-    drop.dataset.gapId = row.gapId
-    drop.setAttribute('data-gap-id', row.gapId)
-    drop.dataset.type = 'drop'
-    drop.setAttribute('role', 'button')
-    drop.tabIndex = 0
-
-    const dropNum = document.createElement('span')
-    dropNum.className = 'rte-drag-drop-fill__drop-num'
-    dropNum.textContent = gapIdToDisplayNumber(row.gapId)
-    drop.appendChild(dropNum)
-
-    rowEl.appendChild(label)
-    rowEl.appendChild(drop)
-    targets.appendChild(rowEl)
+function appendTextWithLineBreaks(parent: HTMLElement, text: string) {
+  const lines = text.split(/\r?\n/)
+  lines.forEach((line, index) => {
+    if (index > 0) parent.appendChild(document.createElement('br'))
+    if (line) parent.appendChild(document.createTextNode(line))
   })
+}
 
-  const poolWrap = document.createElement('div')
-  poolWrap.className = 'rte-drag-drop-fill__pool'
-  const poolLabelEl = document.createElement('div')
-  poolLabelEl.className = 'rte-drag-drop-fill__pool-label'
-  poolLabelEl.textContent = poolLabel
-  const poolItems = document.createElement('div')
-  poolItems.className = 'rte-drag-drop-fill__pool-items'
+function appendPoolChips(poolItems: HTMLElement, pool: string[]) {
   pool.forEach((value, chipIndex) => {
     const chip = document.createElement('span')
     chip.className = 'rte-drag-drop-fill__chip'
@@ -252,12 +211,77 @@ function appendMatchingLayout(
     chip.textContent = value || '—'
     poolItems.appendChild(chip)
   })
-  poolWrap.appendChild(poolLabelEl)
-  poolWrap.appendChild(poolItems)
+}
 
-  layout.appendChild(targets)
-  layout.appendChild(poolWrap)
-  parent.appendChild(layout)
+function appendInlineLayout(
+  parent: HTMLElement,
+  questionText: string,
+  gaps: DragDropGap[],
+  pool: string[],
+  poolLabel = 'Word bank',
+) {
+  const instruction = extractDragDropInstruction(questionText)
+  const body = extractInlineQuestionBody(questionText)
+
+  if (instruction) {
+    const intro = document.createElement('p')
+    intro.className = 'rte-drag-drop-fill__instruction'
+    intro.textContent = instruction
+    parent.appendChild(intro)
+  }
+
+  const questionEl = document.createElement('p')
+  questionEl.className = 'rte-drag-drop-fill__question'
+  const parts = buildQuestionParts(body, gaps)
+  for (const part of parts) {
+    if (typeof part === 'string') {
+      appendTextWithLineBreaks(questionEl, part)
+      continue
+    }
+    const blank = document.createElement('span')
+    blank.className = 'rte-drag-drop-fill__blank'
+    blank.dataset.gapId = part.id
+    blank.setAttribute('data-gap-id', part.id)
+    blank.dataset.type = 'drop'
+    blank.setAttribute('role', 'button')
+    blank.tabIndex = 0
+    const blankNum = document.createElement('span')
+    blankNum.className = 'rte-drag-drop-fill__blank-num'
+    blankNum.textContent = gapIdToDisplayNumber(part.id)
+    blank.appendChild(blankNum)
+    questionEl.appendChild(blank)
+  }
+  parent.appendChild(questionEl)
+
+  const bank = document.createElement('div')
+  bank.className = 'rte-drag-drop-fill__bank'
+  const poolLabelEl = document.createElement('div')
+  poolLabelEl.className = 'rte-drag-drop-fill__pool-label'
+  poolLabelEl.textContent = poolLabel
+  const poolItems = document.createElement('div')
+  poolItems.className = 'rte-drag-drop-fill__pool-items'
+  appendPoolChips(poolItems, pool)
+  bank.appendChild(poolLabelEl)
+  bank.appendChild(poolItems)
+  parent.appendChild(bank)
+}
+
+/** Rebuild inline DOM (e.g. when hydrating legacy matching blocks in the exam player). */
+export function renderInlineDragDropDom(
+  block: HTMLElement,
+  questionText: string,
+  gaps: DragDropGap[],
+  pool: string[],
+  poolLabel: string,
+) {
+  block
+    .querySelectorAll(
+      '.rte-drag-drop-fill__instruction, .rte-drag-drop-fill__question, .rte-drag-drop-fill__bank, .rte-drag-drop-fill__layout',
+    )
+    .forEach((node) => node.remove())
+  appendInlineLayout(block, questionText, gaps, pool, poolLabel)
+  block.classList.remove('rte-drag-drop-fill--matching')
+  block.classList.add('rte-drag-drop-fill--inline')
 }
 
 declare module '@tiptap/core' {
@@ -314,10 +338,10 @@ export const DragDropFillBlank = Node.create({
         }),
       },
       poolLabel: {
-        default: 'Options',
-        parseHTML: (element) => element.getAttribute('data-pool-label') ?? 'Options',
+        default: 'Word bank',
+        parseHTML: (element) => element.getAttribute('data-pool-label') ?? 'Word bank',
         renderHTML: (attributes) => ({
-          'data-pool-label': escapeHtmlAttr(String(attributes.poolLabel ?? 'Options')),
+          'data-pool-label': escapeHtmlAttr(String(attributes.poolLabel ?? 'Word bank')),
         }),
       },
       clientKey: {
@@ -356,10 +380,9 @@ export const DragDropFillBlank = Node.create({
     const mode = String(node.attrs.mode ?? 'shuffled')
     const gaps = parseGaps(node.attrs.gapsJson as string)
     const distractors = parseDistractors(node.attrs.distractorsJson as string)
-    const rows = buildMatchingRows(q, gaps)
     const instruction = extractDragDropInstruction(q)
-    const targetsLabel = String(node.attrs.targetsLabel ?? 'Categories')
-    const poolLabel = String(node.attrs.poolLabel ?? 'Options')
+    const body = extractInlineQuestionBody(q)
+    const poolLabel = String(node.attrs.poolLabel ?? 'Word bank')
     const pool = buildPool(mode, gaps, distractors, q)
     const children: Array<unknown> = []
 
@@ -367,46 +390,41 @@ export const DragDropFillBlank = Node.create({
       children.push(['p', { class: 'rte-drag-drop-fill__instruction' }, instruction])
     }
 
+    const questionChildren: Array<unknown> = []
+    for (const part of buildQuestionParts(body, gaps)) {
+      if (typeof part === 'string') {
+        if (part) questionChildren.push(part)
+        continue
+      }
+      questionChildren.push([
+        'span',
+        {
+          class: 'rte-drag-drop-fill__blank',
+          'data-gap-id': part.id,
+          role: 'button',
+          tabindex: '0',
+        },
+        ['span', { class: 'rte-drag-drop-fill__blank-num' }, gapIdToDisplayNumber(part.id)],
+      ])
+    }
+    children.push(['p', { class: 'rte-drag-drop-fill__question' }, ...questionChildren])
+
     children.push([
       'div',
-      { class: 'rte-drag-drop-fill__layout' },
+      { class: 'rte-drag-drop-fill__bank' },
+      ['div', { class: 'rte-drag-drop-fill__pool-label' }, poolLabel],
       [
         'div',
-        { class: 'rte-drag-drop-fill__targets' },
-        ['div', { class: 'rte-drag-drop-fill__column-head' }, targetsLabel],
-        ...rows.map((row) => [
-          'div',
-          { class: 'rte-drag-drop-fill__row' },
-          ['span', { class: 'rte-drag-drop-fill__row-label' }, row.label],
-          [
-            'div',
-            {
-              class: 'rte-drag-drop-fill__drop',
-              'data-gap-id': row.gapId,
-              role: 'button',
-              tabindex: '0',
-            },
-            ['span', { class: 'rte-drag-drop-fill__drop-num' }, gapIdToDisplayNumber(row.gapId)],
-          ],
+        { class: 'rte-drag-drop-fill__pool-items' },
+        ...pool.map((value, chipIndex) => [
+          'span',
+          {
+            class: 'rte-drag-drop-fill__chip',
+            'data-chip-value': escapeHtmlAttr(value || '—'),
+            'data-chip-index': String(chipIndex),
+          },
+          value || '—',
         ]),
-      ],
-      [
-        'div',
-        { class: 'rte-drag-drop-fill__pool' },
-        ['div', { class: 'rte-drag-drop-fill__pool-label' }, poolLabel],
-        [
-          'div',
-          { class: 'rte-drag-drop-fill__pool-items' },
-          ...pool.map((value, chipIndex) => [
-            'span',
-            {
-              class: 'rte-drag-drop-fill__chip',
-              'data-chip-value': escapeHtmlAttr(value || '—'),
-              'data-chip-index': String(chipIndex),
-            },
-            value || '—',
-          ]),
-        ],
       ],
     ])
 
@@ -414,12 +432,11 @@ export const DragDropFillBlank = Node.create({
       'div',
       mergeAttributes(HTMLAttributes, {
         'data-type': 'drag-drop-fill',
-        class: 'rte-drag-drop-fill rte-drag-drop-fill--matching',
+        class: 'rte-drag-drop-fill rte-drag-drop-fill--inline',
         'data-question-text': escapeHtmlAttr(q),
         'data-mode': mode,
         'data-gaps': escapeHtmlAttr(String(node.attrs.gapsJson ?? '[]')),
         'data-distractors': escapeHtmlAttr(String(node.attrs.distractorsJson ?? '[]')),
-        'data-targets-label': escapeHtmlAttr(targetsLabel),
         'data-pool-label': escapeHtmlAttr(poolLabel),
       }),
       ...children,
@@ -439,7 +456,7 @@ export const DragDropFillBlank = Node.create({
               gapsJson: JSON.stringify(payload.gaps),
               distractorsJson: JSON.stringify(payload.distractors),
               targetsLabel: payload.targetsLabel ?? 'Categories',
-              poolLabel: payload.poolLabel ?? 'Options',
+              poolLabel: payload.poolLabel ?? 'Word bank',
               clientKey: createClientKey(),
             },
           })
@@ -450,7 +467,7 @@ export const DragDropFillBlank = Node.create({
   addNodeView() {
     return ({ node, editor, getPos }) => {
       const dom = document.createElement('div')
-      dom.className = 'rte-drag-drop-fill rte-drag-drop-fill--matching'
+      dom.className = 'rte-drag-drop-fill rte-drag-drop-fill--inline'
       dom.setAttribute('data-type', 'drag-drop-fill')
       dom.setAttribute('contenteditable', 'false')
 
@@ -526,15 +543,13 @@ export const DragDropFillBlank = Node.create({
         const mode = String(next.attrs.mode ?? 'shuffled')
         const gaps = parseGaps(resolvedGapsJson)
         const distractors = parseDistractors(next.attrs.distractorsJson as string)
-        const targetsLabel = String(next.attrs.targetsLabel ?? 'Categories')
-        const poolLabel = String(next.attrs.poolLabel ?? 'Options')
+        const poolLabel = String(next.attrs.poolLabel ?? 'Word bank')
         const pool = buildPool(mode, gaps, distractors, q)
 
         dom.setAttribute('data-question-text', q)
         dom.setAttribute('data-mode', mode)
         dom.setAttribute('data-gaps', resolvedGapsJson)
         dom.setAttribute('data-distractors', String(next.attrs.distractorsJson ?? '[]'))
-        dom.setAttribute('data-targets-label', targetsLabel)
         dom.setAttribute('data-pool-label', poolLabel)
 
         const close = document.createElement('button')
@@ -559,7 +574,7 @@ export const DragDropFillBlank = Node.create({
         }
         dom.appendChild(close)
 
-        appendMatchingLayout(dom, q, gaps, pool, targetsLabel, poolLabel)
+        appendInlineLayout(dom, q, gaps, pool, poolLabel)
 
         const previewValuesRef = { current: getEditorDragDropPreviewValues(clientKey) }
         dragCleanup = attachDragDropBlockBehavior(dom, {
@@ -599,7 +614,7 @@ export const DragDropFillBlank = Node.create({
           if (target.closest('button.rte-drag-drop-fill__close')) return true
           return Boolean(
             target.closest(
-              '.rte-drag-drop-fill__chip, .rte-drag-drop-fill__drop, .rte-drag-drop-fill__pool-items',
+              '.rte-drag-drop-fill__chip, .rte-drag-drop-fill__blank, .rte-drag-drop-fill__drop, .rte-drag-drop-fill__pool-items',
             ),
           )
         },

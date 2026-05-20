@@ -17,6 +17,23 @@ export const CHECK_MY_STUDENT_EXAM_ACCESS_QUERY = gql`
   }
 `
 
+export const BEGIN_MY_STUDENT_EXAM_MUTATION = gql`
+  mutation BeginMyStudentExam($examId: String!) {
+    beginMyStudentExam(examId: $examId) {
+      allowed
+      reason
+      enrollment {
+        _id
+        examId
+        isCompleted
+        completedAt
+        startedAt
+        questionIds
+      }
+    }
+  }
+`
+
 export const FIND_MY_STUDENT_EXAM_QUERY = gql`
   query FindMyStudentExam($examId: String!) {
     findMyStudentExam(examId: $examId) {
@@ -53,6 +70,21 @@ export const COMPLETE_MY_STUDENT_EXAM_MUTATION = gql`
     }
   }
 `
+
+export type BeginMyStudentExamResponse = {
+  beginMyStudentExam: {
+    allowed: boolean
+    reason?: string | null
+    enrollment?: {
+      _id: string
+      examId: string
+      isCompleted: boolean
+      completedAt?: string | null
+      startedAt: string
+      questionIds?: string[] | null
+    } | null
+  }
+}
 
 export type CheckMyStudentExamAccessResponse = {
   checkMyStudentExamAccess: {

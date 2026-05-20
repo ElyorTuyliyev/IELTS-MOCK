@@ -1,5 +1,5 @@
 import { forwardRef } from 'react'
-import { InputAdornment, type TextFieldProps } from '@mui/material'
+import { InputAdornment, type InputProps, type TextFieldProps } from '@mui/material'
 
 import {
   SearchFieldIcon,
@@ -23,7 +23,10 @@ export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(
     },
     ref,
   ) {
-    const inputSlotProps = slotProps?.input
+    const inputSlotProps =
+      typeof slotProps?.input === 'function'
+        ? undefined
+        : (slotProps?.input as Partial<InputProps> | undefined)
 
     return (
       <StyledSearchField

@@ -155,13 +155,13 @@ export function AddCenterForm({
             disabled={isViewMode}
           />
           <PasswordTextField
-            label="Password"
+            label={isEditMode ? 'New password (optional)' : 'Password'}
             value={password}
             onChange={(event) => onPasswordChange(event.target.value)}
             disabled={isViewMode}
           />
           <PasswordTextField
-            label="Confirm password"
+            label={isEditMode ? 'Confirm new password' : 'Confirm password'}
             value={confirmPassword}
             onChange={(event) => onConfirmPasswordChange(event.target.value)}
             disabled={isViewMode}

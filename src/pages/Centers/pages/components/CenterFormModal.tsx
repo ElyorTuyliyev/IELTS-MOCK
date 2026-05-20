@@ -7,14 +7,17 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { c } from '../../../../theme'
+
 import { Button } from '../../../../components/common/Button'
 import { PasswordTextField } from '../../../../components/common/PasswordTextField'
 import { PhoneInput } from '../../../../components/common/PhoneInput'
+import { c } from '../../../../theme'
+import type { CenterModalMode } from '../../hooks/useCenterForm'
 
-type CreateCenterModalProps = {
+type CenterFormModalProps = {
   open: boolean
-  isCreating: boolean
+  mode: CenterModalMode
+  isSaving: boolean
   centerName: string
   email: string
   phone: string
@@ -36,9 +39,15 @@ type CreateCenterModalProps = {
   onClose: () => void
 }
 
-export const CreateCenterModal = memo(function CreateCenterModal({
+const modalTitle: Record<Exclude<CenterModalMode, null>, string> = {
+  create: 'Add Center',
+  edit: 'Edit Center',
+}
+
+export const CenterFormModal = memo(function CenterFormModal({
   open,
-  isCreating,
+  mode,
+  isSaving,
   centerName,
   email,
   phone,
@@ -58,7 +67,10 @@ export const CreateCenterModal = memo(function CreateCenterModal({
   onLogoFileChange,
   onSave,
   onClose,
-}: CreateCenterModalProps) {
+}: CenterFormModalProps) {
+  const isEditMode = mode === 'edit'
+  const title = mode ? modalTitle[mode] : 'Center'
+
   return (
     <Dialog
       open={open}
@@ -77,9 +89,11 @@ export const CreateCenterModal = memo(function CreateCenterModal({
           p: '22px 24px',
         }}
       >
-        <Typography sx={{ fontSize: '36px', fontWeight: 700 }}>Add Center</Typography>
-        <IconButton onClick={onClose} aria-label="Close center modal">
-          <span style={{ fontSize: 28, lineHeight: 1 }}>×</span>
+        <Typography sx={{ fontSize: '1.35rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
+          {title}
+        </Typography>
+        <IconButton onClick={onClose} aria-label="Close center modal" size="small">
+          <span style={{ fontSize: 24, lineHeight: 1 }}>×</span>
         </IconButton>
       </Box>
 
@@ -112,12 +126,12 @@ export const CreateCenterModal = memo(function CreateCenterModal({
             onChange={(e) => onManagerNameChange(e.target.value)}
           />
           <PasswordTextField
-            label="Password"
+            label={isEditMode ? 'New Password (optional)' : 'Password'}
             value={password}
             onChange={(e) => onPasswordChange(e.target.value)}
           />
           <PasswordTextField
-            label="Confirm Password"
+            label={isEditMode ? 'Confirm New Password' : 'Confirm Password'}
             value={confirmPassword}
             onChange={(e) => onConfirmPasswordChange(e.target.value)}
           />
@@ -175,13 +189,13 @@ export const CreateCenterModal = memo(function CreateCenterModal({
               </Typography>
             </Box>
 
-            {logoFileName && (
+            {logoFileName ? (
               <Typography variant="body2" sx={{ mt: 1 }}>
                 Selected: {logoFileName}
               </Typography>
-            )}
+            ) : null}
 
-            {logoDataUrl && (
+            {logoDataUrl ? (
               <Box sx={{ mt: 1.5 }}>
                 <Typography variant="body2" sx={{ mb: 1 }}>
                   Logo preview
@@ -199,7 +213,7 @@ export const CreateCenterModal = memo(function CreateCenterModal({
                   }}
                 />
               </Box>
-            )}
+            ) : null}
           </Box>
 
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5, mt: 1 }}>
@@ -211,17 +225,17 @@ export const CreateCenterModal = memo(function CreateCenterModal({
               Cancel
             </Button>
             <Button
-              variant="primary"
-              onClick={onSave}
-              disabled={isCreating}
-              sx={{
-                minWidth: 140,
-                borderRadius: '12px',
-                background: c.gradient.primary,
-              }}
-            >
-              {isCreating ? 'Saving...' : 'Save'}
-            </Button>
+                variant="primary"
+                onClick={onSave}
+                disabled={isSaving}
+                sx={{
+                  minWidth: 140,
+                  borderRadius: '12px',
+                  background: c.gradient.primary,
+                }}
+              >
+                {isSaving ? 'Saving...' : isEditMode ? 'Update' : 'Save'}
+              </Button>
           </Box>
         </Box>
       </DialogContent>

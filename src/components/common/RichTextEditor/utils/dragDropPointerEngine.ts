@@ -1,4 +1,5 @@
 import { c, tokens } from '../../../../theme'
+import { closestDropZone } from './dragDropZoneUtils'
 
 const GHOST_CLASS = 'ielts-drag-ghost'
 
@@ -82,7 +83,7 @@ function hitTest(
     delete node.dataset._ieltsPrevPointerEvents
   }
 
-  const zone = el?.closest<HTMLElement>('.rte-drag-drop-fill__drop') ?? null
+  const zone = closestDropZone(el)
   if (zone && block.contains(zone)) {
     return { zone, pool: false }
   }
@@ -127,14 +128,21 @@ export function attachPointerDragEngine({
       chip.classList.add('rte-drag-drop-fill__chip--dragging')
       chip.style.pointerEvents = 'none'
 
-      const sourceZone = chip.closest<HTMLElement>('.rte-drag-drop-fill__drop')
+      const sourceZone = closestDropZone(chip)
       let hoverZone: HTMLElement | null = null
 
       const setHover = (zone: HTMLElement | null, overPool = false) => {
         if (hoverZone !== zone) {
-          hoverZone?.classList.remove('rte-drag-drop-fill__drop--drag-over')
+          hoverZone?.classList.remove(
+            'rte-drag-drop-fill__drop--drag-over',
+            'rte-drag-drop-fill__blank--drag-over',
+          )
           hoverZone = zone
-          hoverZone?.classList.add('rte-drag-drop-fill__drop--drag-over')
+          hoverZone?.classList.add(
+            zone.classList.contains('rte-drag-drop-fill__blank')
+              ? 'rte-drag-drop-fill__blank--drag-over'
+              : 'rte-drag-drop-fill__drop--drag-over',
+          )
         }
         poolContainer?.classList.toggle('rte-drag-drop-fill__pool-items--drag-over', overPool)
       }

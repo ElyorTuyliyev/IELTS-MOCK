@@ -16,7 +16,11 @@ export function recoverGapsJsonFromElement(element: HTMLElement): string {
   const gaps = parseGaps(fromAttr)
   if (gaps.some((gap) => gap.answer.trim())) return fromAttr
 
-  const zones = Array.from(element.querySelectorAll<HTMLElement>('.rte-drag-drop-fill__drop'))
+  const zones = Array.from(
+    element.querySelectorAll<HTMLElement>(
+      '.rte-drag-drop-fill__blank, .rte-drag-drop-fill__drop',
+    ),
+  )
   const gapIds = zones.map(
     (zone, index) =>
       zone.getAttribute('data-gap-id')?.trim() ||

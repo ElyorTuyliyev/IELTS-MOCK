@@ -12,7 +12,14 @@ export const FIND_ALL_EXAMS_QUERY = gql`
       startTime
       endTime
       price
+      showPrice
+      isUpcomingVisibleToStudents
+      useGlobalPaymentInstructions
+      customPaymentInstructions
+      startedAt
+      completedAt
       isActive
+      isStoredActive
       isCompleted
       createdAt
       listeningId

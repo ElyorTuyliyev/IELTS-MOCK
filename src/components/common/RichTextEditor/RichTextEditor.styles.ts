@@ -40,6 +40,7 @@ export const RichTextEditorRoot = styled.div`
     flex-direction: column;
     border-radius: 18px;
     overflow: hidden;
+    contain: layout style;
     box-shadow:
       0 0 0 1px ${tokens.rgba.slate900_06},
       0 25px 60px ${tokens.rgba.slate900_18};
@@ -292,6 +293,7 @@ export const RichTextEditorRoot = styled.div`
     max-height: var(--rte-max-height, 500px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    contain: layout style paint;
     scrollbar-width: thin;
     scrollbar-color: var(--rte-violet-mid) transparent;
     background: linear-gradient(180deg, ${c.surface.elevated} 0%, var(--rte-surface) 48%);
@@ -579,13 +581,17 @@ export const RichTextEditorRoot = styled.div`
 
   .rte-body .tiptap .rte-drag-drop-fill {
     margin: 0.65em 0;
-    padding: 14px 16px;
-    border-radius: 12px;
-    border: 1px solid var(--rte-border);
-    background: linear-gradient(165deg, ${c.surface.elevated} 0%, ${c.slate[100]} 100%);
-    box-shadow: 0 4px 14px ${tokens.rgba.slate900_04};
+    padding: 16px 18px;
+    border-radius: 14px;
+    border: 1px solid ${c.border.default};
+    background: ${c.surface.default};
+    box-shadow: 0 6px 18px ${tokens.rgba.slate900_06};
     user-select: none;
     position: relative;
+  }
+
+  .rte-body .tiptap .rte-drag-drop-fill--inline {
+    border-left: 4px solid ${c.info.main};
   }
 
   .rte-body .tiptap .rte-drag-drop-fill__close {
@@ -636,124 +642,122 @@ export const RichTextEditorRoot = styled.div`
   }
 
   .rte-body .tiptap .rte-drag-drop-fill__instruction {
-    margin: 0 0 10px;
-    font-size: 14px;
-    line-height: 1.55;
-    color: var(--rte-text);
-  }
-
-  .rte-body .tiptap .rte-drag-drop-fill__column-head {
+    margin: 0 0 12px;
+    padding: 10px 12px;
     font-size: 13px;
-    font-weight: 700;
-    color: ${c.text.subtle};
-    margin-bottom: 8px;
-    padding-bottom: 4px;
-    border-bottom: 1px solid ${tokens.rgba.border_24};
-  }
-
-  .rte-body .tiptap .rte-drag-drop-fill__layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: ${theme.spacing(2.5)};
-    align-items: start;
-  }
-
-  .rte-body .tiptap .rte-drag-drop-fill__targets {
-    display: flex;
-    flex-direction: column;
-    gap: ${theme.spacing(1)};
-  }
-
-  .rte-body .tiptap .rte-drag-drop-fill__row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 100px;
-    gap: ${theme.spacing(1.25)};
-    align-items: center;
-  }
-
-  .rte-body .tiptap .rte-drag-drop-fill__row-label {
-    font-size: 13px;
-    line-height: 1.45;
-    color: var(--rte-text);
-    font-weight: 600;
-  }
-
-  .rte-body .tiptap .rte-drag-drop-fill__drop {
-    min-height: 30px;
-    border-radius: 8px;
-    border: 1px dashed ${tokens.rgba.border_24};
-    background: ${tokens.rgba.white_92};
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 4px 8px;
-  }
-
-  .rte-body .tiptap .rte-drag-drop-fill__drop-num {
-    font-size: 13px;
-    font-weight: 700;
-    color: ${c.text.secondary};
+    line-height: 1.5;
+    color: ${c.info.darker};
+    background: ${c.info.bgMuted};
+    border-radius: 10px;
+    border: 1px solid ${c.info.border};
   }
 
   .rte-body .tiptap .rte-drag-drop-fill__question {
+    margin: 0 0 14px;
     font-size: 14px;
-    line-height: 1.55;
+    line-height: 1.7;
     color: var(--rte-text);
-    white-space: pre-wrap;
     word-break: break-word;
   }
 
   .rte-body .tiptap .rte-drag-drop-fill__blank {
-    display: inline-block;
-    width: 110px;
-    height: 30px;
-    margin: 0 6px;
-    padding: 4px 8px;
-    border-radius: 8px;
-    border: 1px solid ${tokens.rgba.border_24};
-    background: ${tokens.rgba.white_92};
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 96px;
+    min-height: 32px;
+    margin: 0 4px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 2px dashed ${c.info.light};
+    background: ${c.info.bgMuted};
     font-size: 13px;
     color: ${c.text.primary};
-    vertical-align: baseline;
+    vertical-align: middle;
+    cursor: default;
+    transition: border-color 0.12s ease, background-color 0.12s ease, box-shadow 0.12s ease;
   }
 
-  .rte-body .tiptap .rte-drag-drop-fill__blank::placeholder {
-    color: ${c.slate[400]};
+  .rte-body .tiptap .rte-drag-drop-fill__blank-num {
+    font-size: 12px;
+    font-weight: 800;
+    color: ${c.info.main};
+    letter-spacing: 0.02em;
+  }
+
+  .rte-body .tiptap .rte-drag-drop-fill__blank--filled {
+    border-style: solid;
+    border-color: ${c.info.main};
+    background: ${c.info.bg};
+    padding: 2px 6px;
+  }
+
+  .rte-body .tiptap .rte-drag-drop-fill__blank--filled .rte-drag-drop-fill__blank-num {
+    display: none;
+  }
+
+  .rte-body .tiptap .rte-drag-drop-fill__blank--drag-over {
+    border-color: ${c.info.main};
+    box-shadow: 0 0 0 3px ${tokens.rgba.primary_20};
+  }
+
+  .rte-body .tiptap .rte-drag-drop-fill__blank > .rte-drag-drop-fill__chip {
+    margin: 0;
+    padding: 4px 10px;
+    border: none;
+    background: transparent;
+    box-shadow: none;
     font-weight: 600;
+    color: ${c.text.primary};
   }
 
-  .rte-body .tiptap .rte-drag-drop-fill__pool {
-    margin-top: 0;
-    padding-top: 0;
-    border-top: none;
+  .rte-body .tiptap .rte-drag-drop-fill__bank {
+    margin-top: 4px;
+    padding-top: 14px;
+    border-top: 1px dashed ${c.border.default};
   }
 
   .rte-body .tiptap .rte-drag-drop-fill__pool-label {
-    font-size: 12px;
-    font-weight: 700;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
     color: ${c.text.secondary};
-    margin-bottom: 8px;
+    margin-bottom: 10px;
   }
 
   .rte-body .tiptap .rte-drag-drop-fill__pool-items {
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
     gap: ${theme.spacing(1)};
   }
 
   .rte-body .tiptap .rte-drag-drop-fill__chip {
-    display: block;
-    padding: 8px 10px;
-    border-radius: 10px;
-    background: ${tokens.rgba.white_92};
-    border: 1px solid ${c.border.default};
-    box-shadow: ${tokens.shadows.md};
-    font-size: 12px;
-    font-weight: 650;
-    color: ${c.text.subtle};
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: ${c.surface.muted};
+    border: 1px solid ${c.border.strong};
+    box-shadow: 0 1px 2px ${tokens.rgba.slate900_04};
+    font-size: 13px;
+    font-weight: 600;
+    color: ${c.text.primary};
     cursor: grab;
     touch-action: none;
     user-select: none;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+
+  .rte-body .tiptap .rte-drag-drop-fill__chip:hover {
+    border-color: ${c.info.light};
+    box-shadow: ${tokens.shadows.md};
+  }
+
+  .rte-body .tiptap .rte-drag-drop-fill__chip--dragging {
+    opacity: 0.6;
+    cursor: grabbing;
+    transform: scale(0.97);
   }
 
   .rte-body .tiptap .rte-blank-answer {
@@ -916,6 +920,5 @@ export const RichTextEditorExpandBackdrop = styled.div`
   position: fixed;
   inset: 0;
   z-index: 1240;
-  background: ${tokens.rgba.slate900_42};
-  backdrop-filter: blur(3px);
+  background: ${tokens.rgba.slate900_52};
 `

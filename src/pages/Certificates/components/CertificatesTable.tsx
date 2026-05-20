@@ -18,6 +18,9 @@ type CertificatesTableProps = {
   onSearchChange: (value: string) => void
   onStatusFilterChange: (value: StatusFilter) => void
   onPaginationChange: (model: GridPaginationModel) => void
+  showStatusFilters?: boolean
+  searchPlaceholder?: string
+  emptyLabel?: string
 }
 
 export const CertificatesTable = memo(function CertificatesTable({
@@ -30,6 +33,9 @@ export const CertificatesTable = memo(function CertificatesTable({
   onSearchChange,
   onStatusFilterChange,
   onPaginationChange,
+  showStatusFilters = true,
+  searchPlaceholder = 'Search student, exam, code…',
+  emptyLabel = 'No certificates matched the current filters.',
 }: CertificatesTableProps) {
   return (
     <Box className="certificates-table">
@@ -37,27 +43,29 @@ export const CertificatesTable = memo(function CertificatesTable({
         <SearchField
           className="certificates-table__search"
           aria-label="Search certificates"
-          placeholder="Search student, exam, code…"
+          placeholder={searchPlaceholder}
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
         />
 
-        <Box className="certificates-table__chips" role="group" aria-label="Filter by status">
-          {statusFilters.map((item) => (
-            <button
-              key={item.value}
-              type="button"
-              className={
-                statusFilter === item.value
-                  ? 'certificates-table__chip certificates-table__chip--active'
-                  : 'certificates-table__chip'
-              }
-              onClick={() => onStatusFilterChange(item.value)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </Box>
+        {showStatusFilters ? (
+          <Box className="certificates-table__chips" role="group" aria-label="Filter by status">
+            {statusFilters.map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                className={
+                  statusFilter === item.value
+                    ? 'certificates-table__chip certificates-table__chip--active'
+                    : 'certificates-table__chip'
+                }
+                onClick={() => onStatusFilterChange(item.value)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </Box>
+        ) : null}
       </Box>
 
       <Box className="certificates-table__grid-wrap">
@@ -74,7 +82,7 @@ export const CertificatesTable = memo(function CertificatesTable({
           columnHeaderHeight={52}
           density="comfortable"
           localeText={{
-            noRowsLabel: 'No certificates matched the current filters.',
+            noRowsLabel: emptyLabel,
           }}
           sx={{
             border: 0,

@@ -11,7 +11,9 @@ import { BrowserRouter } from 'react-router-dom'
 import { ToastProvider } from '../components/common/Toast'
 import { apolloClient } from '../graphql/client'
 import { NotificationsProvider } from '../features/notifications'
+import { isAuthTokenOversized } from '../helpers/authToken'
 import { persistor, store } from '../store'
+import { clearAuth } from '../store/slices/authSlice'
 import { muiTheme } from '../theme'
 import { globalStyles } from './globalStyles'
 
@@ -37,7 +39,15 @@ type AppProvidersProps = {
 export function AppProviders({ children }: AppProvidersProps) {
   return (
     <Provider store={store}>
-      <PersistGate loading={null} persistor={persistor}>
+      <PersistGate
+        loading={null}
+        persistor={persistor}
+        onBeforeLift={() => {
+          if (isAuthTokenOversized(store.getState().auth.token)) {
+            store.dispatch(clearAuth())
+          }
+        }}
+      >
         <ApolloProvider client={apolloClient}>
           <BrowserRouter>
             <ThemeProvider theme={muiTheme}>

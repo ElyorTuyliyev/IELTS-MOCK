@@ -14,9 +14,40 @@ export const FIND_ALL_USERS_QUERY = gql`
 export const CREATE_STUDENT_EXAM_MUTATION = gql`
   mutation CreateStudentExam($input: CreateStudentExamInput!) {
     createStudentExam(input: $input) {
+      studentExam {
+        _id
+        studentId
+        examId
+        isApproved
+      }
+      payment {
+        _id
+        status
+        paymentRequestToken
+      }
+      paymentRequestUrl
+    }
+  }
+`
+
+export const REGISTER_MY_STUDENT_EXAM_MUTATION = gql`
+  mutation RegisterMyStudentExam($examId: String!) {
+    registerMyStudentExam(examId: $examId) {
       _id
       studentId
       examId
+      isApproved
+      isReleased
+      isCompleted
+    }
+  }
+`
+
+export const APPROVE_STUDENT_EXAM_MUTATION = gql`
+  mutation ApproveStudentExam($_id: ID!) {
+    approveStudentExam(_id: $_id) {
+      _id
+      isApproved
     }
   }
 `
@@ -26,6 +57,7 @@ export const START_STUDENT_EXAM_MUTATION = gql`
     startStudentExam(_id: $_id) {
       _id
       isReleased
+      questionIds
     }
   }
 `
@@ -74,6 +106,7 @@ export const FIND_ALL_STUDENT_EXAMS_QUERY = gql`
       completedAt
       isCompleted
       isReleased
+      isApproved
       questionIds
       listeningScore
       readingScore

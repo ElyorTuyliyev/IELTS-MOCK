@@ -371,8 +371,6 @@ export function QuestionsPage({ fixedModule }: QuestionsPageProps = {}) {
                 paginationModel={gridPaginationModel}
                 onPaginationModelChange={handlePaginationModelChange}
                 pageSizeOptions={[...PAGE_SIZE_OPTIONS]}
-                checkboxSelection
-                disableRowSelectionOnClick
                 disableColumnMenu
                 disableColumnResize
                 rowHeight={64}

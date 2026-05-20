@@ -20,7 +20,8 @@ import { ROUTES_PATH } from "../../../../routes";
 import { emailRegisterRules, isValidEmail, normalizeEmail } from "../../../../utils/emailValidation";
 import { passwordRegisterRules } from "../../../../utils/passwordValidation";
 import { useAppDispatch } from "../../../../store/hooks";
-import { setAuthSession, USER_ROLES } from "../../../../store/slices/authSlice";
+import { clearAuth, setAuthSession, USER_ROLES } from "../../../../store/slices/authSlice";
+import { isAuthTokenOversized } from "../../../../helpers/authToken";
 import {
   AUTH_CHART_BARS,
   AUTH_PAGINATION_DOTS,
@@ -98,6 +99,8 @@ export function SignUpPage() {
     }
 
     try {
+      dispatch(clearAuth())
+
       const result = await signup({
         variables: {
           firstName,
@@ -124,6 +127,11 @@ export function SignUpPage() {
           apolloErrorMessage ??
           "Signup completed but token was not returned by backend.";
         toast.error(fallbackErrorMessage);
+        return;
+      }
+
+      if (isAuthTokenOversized(signupData.token)) {
+        toast.error("Session token is too large. Please contact support.");
         return;
       }
 

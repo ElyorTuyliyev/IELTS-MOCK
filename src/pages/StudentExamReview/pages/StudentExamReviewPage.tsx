@@ -6,21 +6,25 @@ import {
   CircularProgress,
   Tab,
   Tabs,
-  TextField,
   Typography,
 } from '@mui/material'
 import { useNavigate, useParams } from 'react-router-dom'
+import { WritingEvaluationPanel, SpeakingEvaluationPanel } from '../../../components/ieltsEvaluation'
 import { Button } from '../../../components/common/Button'
 import { Layout } from '../../../components/layout'
 import { useToast } from '../../../components/common/Toast'
 import { ROUTES_PATH } from '../../../routes/paths'
+import type {
+  SpeakingEvaluationPayload,
+  WritingEvaluationPayload,
+} from '../../../types/ieltsEvaluation'
 import {
   FIND_STUDENT_EXAM_REVIEW_QUERY,
   UPDATE_STUDENT_EXAM_REVIEW_MUTATION,
   type FindStudentExamReviewResponse,
   type ReviewModule,
 } from '../api/queries'
-import { formatModuleScore } from '../../../helpers/scores'
+import { computeOverallModuleScore, formatModuleScore } from '../../../helpers/scores'
 import { StudentExamReviewRoot } from './StudentExamReviewPage.style'
 
 function SlotBadge({ isCorrect }: { isCorrect?: boolean | null }) {
@@ -49,7 +53,7 @@ function GradedModulePanel({ module }: { module: ReviewModule }) {
     <>
       <Box className="review__module-summary">
         <Typography>
-          Score: <strong>{module.score ?? 0}</strong>
+          Score: <strong>{formatModuleScore(module.score)}</strong>
         </Typography>
         <Typography>
           Auto score: <strong>{module.correctCount}</strong> / {module.totalCount} correct
@@ -92,10 +96,10 @@ function GradedModulePanel({ module }: { module: ReviewModule }) {
             ) : (
               <Box className="review__answers-table">
                 <Box className="review__slot-row review__slot-row--header">
-                  <Typography fontWeight={700}>№</Typography>
-                  <Typography fontWeight={700}>Student answer</Typography>
-                  <Typography fontWeight={700}>Correct answer</Typography>
-                  <Typography fontWeight={700}>Result</Typography>
+                  <Typography sx={{ fontWeight: 700 }}>№</Typography>
+                  <Typography sx={{ fontWeight: 700 }}>Student answer</Typography>
+                  <Typography sx={{ fontWeight: 700 }}>Correct answer</Typography>
+                  <Typography sx={{ fontWeight: 700 }}>Result</Typography>
                 </Box>
                 {q.slots.map((slot) => {
                   const unanswered = !slot.studentAnswer?.trim()
@@ -110,7 +114,7 @@ function GradedModulePanel({ module }: { module: ReviewModule }) {
                             : ''
                       }`}
                     >
-                      <Typography fontWeight={700}>{formatSlotLabel(slot.slotKey)}</Typography>
+                      <Typography sx={{ fontWeight: 700 }}>{formatSlotLabel(slot.slotKey)}</Typography>
                       <Box>
                         <Typography
                           className={
@@ -159,15 +163,11 @@ export function StudentExamReviewPage() {
 
   const [writingScore, setWritingScore] = useState('')
   const [speakingScore, setSpeakingScore] = useState('')
-  const [writingFeedback, setWritingFeedback] = useState('')
-  const [speakingFeedback, setSpeakingFeedback] = useState('')
 
   useEffect(() => {
     if (!review) return
     setWritingScore(review.writingScore != null ? String(review.writingScore) : '')
     setSpeakingScore(review.speakingScore != null ? String(review.speakingScore) : '')
-    setWritingFeedback(review.writingFeedback ?? '')
-    setSpeakingFeedback(review.speakingFeedback ?? '')
   }, [review])
 
   const [updateReview, { loading: saving }] = useMutation(UPDATE_STUDENT_EXAM_REVIEW_MUTATION)
@@ -184,39 +184,81 @@ export function StudentExamReviewPage() {
     [modules],
   )
 
-  const handleSaveScores = useCallback(async () => {
-    if (!studentExamId) return
-    try {
-      const res = await updateReview({
-        variables: {
-          input: {
-            studentExamId,
-            writingScore: writingScore === '' ? undefined : Number(writingScore),
-            speakingScore: speakingScore === '' ? undefined : Number(speakingScore),
-            writingFeedback: writingFeedback.trim() || null,
-            speakingFeedback: speakingFeedback.trim() || null,
+  const displayOverall = useMemo(() => {
+    if (!review) return null
+    const w = writingScore === '' ? review.writingScore : Number(writingScore)
+    const s = speakingScore === '' ? review.speakingScore : Number(speakingScore)
+    return computeOverallModuleScore(
+      review.listeningScore,
+      review.readingScore,
+      Number.isFinite(w) ? w : 0,
+      Number.isFinite(s) ? s : 0,
+    )
+  }, [review, speakingScore, writingScore])
+
+  const handleSaveSpeakingEvaluation = useCallback(
+    async (payload: {
+      speakingEvaluation: SpeakingEvaluationPayload
+      speakingScore: number
+      speakingFeedback: string | null
+    }) => {
+      if (!studentExamId) return
+      try {
+        const res = await updateReview({
+          variables: {
+            input: {
+              studentExamId,
+              speakingScore: payload.speakingScore,
+              speakingFeedback: payload.speakingFeedback,
+              speakingEvaluation: JSON.stringify(payload.speakingEvaluation),
+            },
           },
-        },
-      })
-      if (res.error) {
-        toast.error(res.error.message ?? 'Save failed.')
-        return
+        })
+        if (res.error) {
+          toast.error(res.error.message ?? 'Save failed.')
+          return
+        }
+        setSpeakingScore(String(payload.speakingScore))
+        toast.success('Speaking evaluation saved.')
+        void refetch()
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Save failed.')
       }
-      toast.success('Scores saved.')
-      void refetch()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Save failed.')
-    }
-  }, [
-    refetch,
-    speakingFeedback,
-    speakingScore,
-    studentExamId,
-    toast,
-    updateReview,
-    writingFeedback,
-    writingScore,
-  ])
+    },
+    [refetch, studentExamId, toast, updateReview],
+  )
+
+  const handleSaveWritingEvaluation = useCallback(
+    async (payload: {
+      writingEvaluation: WritingEvaluationPayload
+      writingScore: number
+      writingFeedback: string | null
+    }) => {
+      if (!studentExamId) return
+      try {
+        const res = await updateReview({
+          variables: {
+            input: {
+              studentExamId,
+              writingScore: payload.writingScore,
+              writingFeedback: payload.writingFeedback,
+              writingEvaluation: JSON.stringify(payload.writingEvaluation),
+            },
+          },
+        })
+        if (res.error) {
+          toast.error(res.error.message ?? 'Save failed.')
+          return
+        }
+        setWritingScore(String(payload.writingScore))
+        toast.success('Writing evaluation saved.')
+        void refetch()
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Save failed.')
+      }
+    },
+    [refetch, studentExamId, toast, updateReview],
+  )
 
   const handleBack = useCallback(() => {
     if (examId) {
@@ -242,12 +284,24 @@ export function StudentExamReviewPage() {
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1.5 }}>
             {review && (
               <Box className="review__scores">
-                <span className="review__score-chip">L: {review.listeningScore ?? 0}</span>
-                <span className="review__score-chip">R: {review.readingScore ?? 0}</span>
-                <span className="review__score-chip">W: {review.writingScore ?? 0}</span>
-                <span className="review__score-chip">S: {review.speakingScore ?? 0}</span>
                 <span className="review__score-chip">
-                  Overall: {formatModuleScore(review.totalScore)}
+                  L: {formatModuleScore(review.listeningScore)}
+                </span>
+                <span className="review__score-chip">
+                  R: {formatModuleScore(review.readingScore)}
+                </span>
+                <span className="review__score-chip">
+                  W: {formatModuleScore(
+                    writingScore === '' ? review.writingScore : Number(writingScore),
+                  )}
+                </span>
+                <span className="review__score-chip">
+                  S: {formatModuleScore(
+                    speakingScore === '' ? review.speakingScore : Number(speakingScore),
+                  )}
+                </span>
+                <span className="review__score-chip">
+                  Overall: {formatModuleScore(displayOverall)}
                 </span>
               </Box>
             )}
@@ -289,123 +343,23 @@ export function StudentExamReviewPage() {
                 <Box sx={{ mt: 2.5 }}>
                   {activeModule &&
                     (activeModule.module === 'Writing' ? (
-                      <>
-                        {writingModule?.questions.map((q) => (
-                          <Box key={q.questionId} className="review__question-block">
-                            <Typography className="review__question-title">
-                              {q.title ?? 'Writing task'}
-                            </Typography>
-                            {q.passageHtml && (
-                              <Box
-                                sx={{ mb: 1.5, fontSize: 14 }}
-                                dangerouslySetInnerHTML={{ __html: q.passageHtml }}
-                              />
-                            )}
-                            <Box className="review__essay">
-                              {q.slots[0]?.studentAnswer?.trim() ||
-                                'No essay submitted yet.'}
-                            </Box>
-                          </Box>
-                        ))}
-                        <Box className="review__form-grid">
-                          <Box>
-                            <Typography className="review__label">Writing score</Typography>
-                            <TextField
-                              className="review__input"
-                              type="number"
-                              size="small"
-                              value={writingScore}
-                              onChange={(e) => setWritingScore(e.target.value)}
-                              inputProps={{ min: 0, step: 0.5 }}
-                            />
-                          </Box>
-                          <Box>
-                            <Typography className="review__label">Feedback</Typography>
-                            <TextField
-                              className="review__textarea"
-                              multiline
-                              minRows={4}
-                              fullWidth
-                              value={writingFeedback}
-                              onChange={(e) => setWritingFeedback(e.target.value)}
-                              placeholder="Comments for the student..."
-                            />
-                          </Box>
-                        </Box>
-                      </>
+                      <WritingEvaluationPanel
+                        questions={writingModule?.questions ?? []}
+                        initialEvaluation={review.writingEvaluation}
+                        saving={saving}
+                        onSave={handleSaveWritingEvaluation}
+                      />
                     ) : activeModule.module === 'Speaking' ? (
-                      <>
-                        {speakingModule?.questions.length ? (
-                          speakingModule.questions.map((q) => (
-                            <Box key={q.questionId} className="review__question-block">
-                              <Typography className="review__question-title">
-                                {q.title ?? 'Speaking task'}
-                              </Typography>
-                              {q.passageHtml && (
-                                <Box
-                                  sx={{ mb: 1.5, fontSize: 14 }}
-                                  dangerouslySetInnerHTML={{ __html: q.passageHtml }}
-                                />
-                              )}
-                              {q.questionsHtml && (
-                                <Box
-                                  sx={{ fontSize: 14, mb: 1.5 }}
-                                  dangerouslySetInnerHTML={{ __html: q.questionsHtml }}
-                                />
-                              )}
-                              <Box className="review__essay">
-                                {q.slots.map((s) => s.studentAnswer).filter(Boolean).join('\n\n') ||
-                                  'No notes submitted. Grade based on the live speaking performance.'}
-                              </Box>
-                            </Box>
-                          ))
-                        ) : (
-                          <Typography className="review__empty">
-                            No speaking tasks assigned for this student.
-                          </Typography>
-                        )}
-                        <Box className="review__form-grid">
-                          <Box>
-                            <Typography className="review__label">Speaking score</Typography>
-                            <TextField
-                              className="review__input"
-                              type="number"
-                              size="small"
-                              value={speakingScore}
-                              onChange={(e) => setSpeakingScore(e.target.value)}
-                              inputProps={{ min: 0, step: 0.5 }}
-                            />
-                          </Box>
-                          <Box>
-                            <Typography className="review__label">Feedback</Typography>
-                            <TextField
-                              className="review__textarea"
-                              multiline
-                              minRows={3}
-                              fullWidth
-                              value={speakingFeedback}
-                              onChange={(e) => setSpeakingFeedback(e.target.value)}
-                              placeholder="Speaking assessment notes..."
-                            />
-                          </Box>
-                        </Box>
-                      </>
+                      <SpeakingEvaluationPanel
+                        questions={speakingModule?.questions ?? []}
+                        initialEvaluation={review.speakingEvaluation}
+                        saving={saving}
+                        onSave={handleSaveSpeakingEvaluation}
+                      />
                     ) : (
                       <GradedModulePanel module={activeModule} />
                     ))}
 
-                  {(activeModule?.module === 'Writing' ||
-                    activeModule?.module === 'Speaking') && (
-                    <Box className="review__actions">
-                      <Button
-                        variant="primary"
-                        disabled={saving}
-                        onClick={() => void handleSaveScores()}
-                      >
-                        {saving ? 'Saving...' : 'Save scores'}
-                      </Button>
-                    </Box>
-                  )}
                 </Box>
               </>
             )}

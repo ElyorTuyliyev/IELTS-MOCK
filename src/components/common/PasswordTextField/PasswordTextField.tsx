@@ -3,6 +3,7 @@ import {
   IconButton,
   InputAdornment,
   TextField,
+  type InputProps,
   type TextFieldProps,
 } from '@mui/material'
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined'
@@ -11,7 +12,10 @@ import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 export const PasswordTextField = forwardRef<HTMLInputElement, TextFieldProps>(
   function PasswordTextField({ slotProps, ...props }, ref) {
     const [visible, setVisible] = useState(false)
-    const inputSlotProps = slotProps?.input
+    const inputSlotProps =
+      typeof slotProps?.input === 'function'
+        ? undefined
+        : (slotProps?.input as Partial<InputProps> | undefined)
 
     return (
       <TextField

@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Box, Typography } from '@mui/material'
 import type { RefObject } from 'react'
+import { PassageHtmlPane } from './PassageHtmlPane'
 
 type ReadingModuleContentProps = {
   splitContainerRef: RefObject<HTMLDivElement | null>
@@ -41,7 +42,7 @@ export function ReadingModuleContent({
         style={{ width: `${splitLeftWidth}%` }}
       >
         {currentPartPassage ? (
-          <Box dangerouslySetInnerHTML={{ __html: currentPartPassage }} />
+          <PassageHtmlPane html={currentPartPassage} />
         ) : (
           <Typography className="student-exam-player__passage-muted">No passage content available.</Typography>
         )}

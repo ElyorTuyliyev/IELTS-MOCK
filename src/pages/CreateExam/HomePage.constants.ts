@@ -6,6 +6,7 @@ export type ExamCard = {
   gradient: string
   category: string
   status: 'Active' | 'Draft' | 'Archived'
+  isStoredActive: boolean
   meta: string[]
   date: string
   examiner: string
@@ -14,6 +15,12 @@ export type ExamCard = {
   startTime: string
   endTime: string
   price: number
+  showPrice?: boolean
+  isUpcomingVisibleToStudents?: boolean
+  useGlobalPaymentInstructions?: boolean
+  customPaymentInstructions?: string
+  startedAt?: string | null
+  completedAt?: string | null
 }
 
 export const EXAMS: ExamCard[] = [
@@ -23,6 +30,7 @@ export const EXAMS: ExamCard[] = [
     gradient: c.gradient.examCard[0],
     category: 'Academic',
     status: 'Active',
+    isStoredActive: true,
     meta: ['Default category', 'Preselected questions'],
     date: 'Created on Jan 22, 2025',
     examiner: 'T. Smith',
@@ -38,6 +46,7 @@ export const EXAMS: ExamCard[] = [
     gradient: c.gradient.examCard[1],
     category: 'Listening',
     status: 'Draft',
+    isStoredActive: false,
     meta: ['Default category', 'Questions count'],
     date: 'Created on Jan 22, 2025',
     examiner: 'J. Lee',
@@ -53,6 +62,7 @@ export const EXAMS: ExamCard[] = [
     gradient: c.gradient.examCard[2],
     category: 'Technology',
     status: 'Archived',
+    isStoredActive: false,
     meta: ['Default category', 'Total points 10'],
     date: 'Created on Jan 22, 2025',
     examiner: 'A. Chen',
@@ -68,6 +78,7 @@ export const EXAMS: ExamCard[] = [
     gradient: c.gradient.examCard[3],
     category: 'Mock Test',
     status: 'Active',
+    isStoredActive: true,
     meta: ['Default category', 'Everyone can test'],
     date: 'Created on Jan 22, 2025',
     examiner: 'M. Brown',
@@ -83,6 +94,7 @@ export const EXAMS: ExamCard[] = [
     gradient: c.gradient.examCard[4],
     category: 'Reading',
     status: 'Draft',
+    isStoredActive: false,
     meta: ['Default category', 'Preselected questions'],
     date: 'Created on Jan 22, 2025',
     examiner: 'K. Davis',
@@ -98,6 +110,7 @@ export const EXAMS: ExamCard[] = [
     gradient: c.gradient.examCard[5],
     category: 'Speaking',
     status: 'Active',
+    isStoredActive: true,
     meta: ['Default category', 'Limited time'],
     date: 'Created on Jan 22, 2025',
     examiner: 'R. Wilson',

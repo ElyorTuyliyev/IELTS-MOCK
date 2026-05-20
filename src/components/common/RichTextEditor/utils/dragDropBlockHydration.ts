@@ -7,6 +7,7 @@ import {
 } from '../extensions/dragDropFillBlankExtension'
 import { attachPointerDragEngine } from './dragDropPointerEngine'
 import { releaseExamContentFromDragDropElement } from './dragDropExamContentRelease'
+import { closestDropZone, queryDropZones } from './dragDropZoneUtils'
 
 export type DragDropValuesRef = { current: Record<string, string> }
 
@@ -18,16 +19,37 @@ function getChipInZone(zone: HTMLElement): HTMLElement | null {
   return zone.querySelector<HTMLElement>(':scope > .rte-drag-drop-fill__chip')
 }
 
-function showZoneEmpty(zone: HTMLElement) {
-  const num = zone.querySelector<HTMLElement>('.rte-drag-drop-fill__drop-num')
+function showZoneEmpty(zone: HTMLElement, examMode: boolean) {
+  const num = zone.querySelector<HTMLElement>(
+    examMode
+      ? '.rte-drag-drop-fill__drop-num'
+      : '.rte-drag-drop-fill__blank-num, .rte-drag-drop-fill__drop-num',
+  )
   if (num) num.style.display = ''
-  zone.classList.remove('rte-drag-drop-fill__drop--filled', 'rte-drag-drop-fill__drop--populated')
+  zone.classList.remove(
+    'rte-drag-drop-fill__blank--filled',
+    'rte-drag-drop-fill__blank--populated',
+    'rte-drag-drop-fill__drop--filled',
+    'rte-drag-drop-fill__drop--populated',
+  )
   delete zone.dataset.dropValue
 }
 
-function hideZoneNumber(zone: HTMLElement) {
-  const num = zone.querySelector<HTMLElement>('.rte-drag-drop-fill__drop-num')
+function hideZoneNumber(zone: HTMLElement, examMode: boolean) {
+  const num = zone.querySelector<HTMLElement>(
+    examMode
+      ? '.rte-drag-drop-fill__drop-num'
+      : '.rte-drag-drop-fill__blank-num, .rte-drag-drop-fill__drop-num',
+  )
   if (num) num.style.display = 'none'
+}
+
+function markZoneFilled(zone: HTMLElement, examMode: boolean) {
+  if (examMode) {
+    zone.classList.add('rte-drag-drop-fill__drop--filled', 'rte-drag-drop-fill__drop--populated')
+    return
+  }
+  zone.classList.add('rte-drag-drop-fill__blank--filled', 'rte-drag-drop-fill__blank--populated')
 }
 
 function chipValue(chip: HTMLElement): string {
@@ -39,7 +61,7 @@ export function captureDragDropValuesFromBlock(
   blockKey: string,
 ): Record<string, string> {
   const values: Record<string, string> = {}
-  block.querySelectorAll<HTMLElement>('.rte-drag-drop-fill__drop').forEach((zone, index) => {
+  queryDropZones(block).forEach((zone, index) => {
     const gapId =
       zone.dataset.gapId?.trim() ||
       zone.getAttribute('data-gap-id')?.trim() ||
@@ -55,7 +77,7 @@ export function captureDragDropValuesFromBlock(
 function removePoolDuplicates(block: HTMLElement, poolContainer: HTMLElement | null) {
   if (!poolContainer) return
   const assignedValues = new Set<string>()
-  block.querySelectorAll<HTMLElement>('.rte-drag-drop-fill__drop').forEach((zone) => {
+  queryDropZones(block).forEach((zone) => {
     const chip = getChipInZone(zone)
     if (chip) assignedValues.add(chipValue(chip))
   })
@@ -78,7 +100,11 @@ function ensureColumnHeads(block: HTMLElement) {
   if (poolLabelEl) poolLabelEl.textContent = poolLabel
 }
 
-function upgradeLegacyLayout(block: HTMLElement) {
+/** Student exam: two-column matching layout (unchanged from before). */
+function upgradeToMatchingLayout(block: HTMLElement) {
+  block.classList.remove('rte-drag-drop-fill--inline')
+  block.classList.add('rte-drag-drop-fill--matching')
+
   if (block.querySelector('.rte-drag-drop-fill__layout')) {
     ensureColumnHeads(block)
     return
@@ -88,11 +114,25 @@ function upgradeLegacyLayout(block: HTMLElement) {
   const gaps = parseGaps(block.getAttribute('data-gaps'))
   const rows = buildMatchingRows(questionText, gaps)
 
-  const pool = block.querySelector('.rte-drag-drop-fill__pool')
   block.querySelector('.rte-drag-drop-fill__question')?.remove()
+
+  let poolWrap = block.querySelector<HTMLElement>('.rte-drag-drop-fill__pool')
+  const bank = block.querySelector<HTMLElement>('.rte-drag-drop-fill__bank')
+  if (!poolWrap && bank) {
+    poolWrap = document.createElement('div')
+    poolWrap.className = 'rte-drag-drop-fill__pool'
+    const poolLabel = bank.querySelector('.rte-drag-drop-fill__pool-label')
+    const poolItems = bank.querySelector('.rte-drag-drop-fill__pool-items')
+    if (poolLabel) poolWrap.appendChild(poolLabel)
+    if (poolItems) poolWrap.appendChild(poolItems)
+    bank.remove()
+  } else {
+    bank?.remove()
+  }
 
   const layout = document.createElement('div')
   layout.className = 'rte-drag-drop-fill__layout'
+
   const targets = document.createElement('div')
   targets.className = 'rte-drag-drop-fill__targets'
   const targetsHead = document.createElement('div')
@@ -123,9 +163,24 @@ function upgradeLegacyLayout(block: HTMLElement) {
   })
 
   layout.appendChild(targets)
-  if (pool) layout.appendChild(pool)
+
+  if (poolWrap) {
+    if (bank) bank.remove()
+    layout.appendChild(poolWrap)
+  } else {
+    const newPool = document.createElement('div')
+    newPool.className = 'rte-drag-drop-fill__pool'
+    const poolLabelEl = document.createElement('div')
+    poolLabelEl.className = 'rte-drag-drop-fill__pool-label'
+    poolLabelEl.textContent = block.getAttribute('data-pool-label')?.trim() || 'Options'
+    const poolItems = document.createElement('div')
+    poolItems.className = 'rte-drag-drop-fill__pool-items'
+    newPool.appendChild(poolLabelEl)
+    newPool.appendChild(poolItems)
+    layout.appendChild(newPool)
+  }
+
   block.appendChild(layout)
-  block.classList.add('rte-drag-drop-fill--matching')
   ensureColumnHeads(block)
 }
 
@@ -150,10 +205,9 @@ function ensurePoolStructure(block: HTMLElement) {
 }
 
 function ensurePoolChips(block: HTMLElement) {
-  const poolItems = ensurePoolStructure(block) ?? block.querySelector<HTMLElement>('.rte-drag-drop-fill__pool-items')
+  const poolItems =
+    ensurePoolStructure(block) ?? block.querySelector<HTMLElement>('.rte-drag-drop-fill__pool-items')
   if (!poolItems) return
-  // Skip when chips already exist anywhere (pool or drop zones). Re-hydration
-  // leaves assigned chips in zones with an empty pool — recreating chips duplicates them.
   if (block.querySelector('.rte-drag-drop-fill__chip')) return
 
   const q = block.getAttribute('data-question-text') ?? ''
@@ -192,6 +246,7 @@ function removeOrphanDragDropSiblings(block: HTMLElement) {
       /gap/.test(text)
     const isPoolOnlySibling =
       (sibling.classList.contains('rte-drag-drop-fill__pool') ||
+        sibling.classList.contains('rte-drag-drop-fill__bank') ||
         sibling.classList.contains('rte-drag-drop-fill__pool-items') ||
         Boolean(sibling.querySelector('.rte-drag-drop-fill__pool-items, .rte-drag-drop-fill__chip'))) &&
       !sibling.querySelector('table, [data-type="radio-group"], .rte-radio-group') &&
@@ -222,8 +277,8 @@ export function attachDragDropBlockBehavior(
       releaseForeignDragDropChildren(block)
       block.dataset.ddContentReleased = '1'
     }
+    upgradeToMatchingLayout(block)
   }
-  upgradeLegacyLayout(block)
   ensurePoolChips(block)
   if (examMode) {
     removeOrphanDragDropSiblings(block)
@@ -236,7 +291,7 @@ export function attachDragDropBlockBehavior(
   const returnChipToPool = (chip: HTMLElement, fromZone: HTMLElement | null, notify = true) => {
     if (!poolContainer) return
     if (fromZone) {
-      showZoneEmpty(fromZone)
+      showZoneEmpty(fromZone, examMode)
       const gapId = fromZone.dataset.gapId ?? fromZone.getAttribute('data-gap-id') ?? ''
       if (gapId && notify) notifyChange(zoneKey(gapId), '')
     }
@@ -261,16 +316,16 @@ export function attachDragDropBlockBehavior(
     }
 
     if (sourceZone && sourceZone !== zone) {
-      showZoneEmpty(sourceZone)
+      showZoneEmpty(sourceZone, examMode)
       const oldGapId = sourceZone.dataset.gapId ?? sourceZone.getAttribute('data-gap-id') ?? ''
       if (oldGapId && notify) notifyChange(zoneKey(oldGapId), '')
     }
 
-    block.querySelectorAll<HTMLElement>('.rte-drag-drop-fill__drop').forEach((other) => {
+    queryDropZones(block).forEach((other) => {
       if (other === zone) return
       const chipInOther = getChipInZone(other)
       if (chipInOther === chip) {
-        showZoneEmpty(other)
+        showZoneEmpty(other, examMode)
         const otherGapId = other.dataset.gapId ?? other.getAttribute('data-gap-id') ?? ''
         if (otherGapId && notify) notifyChange(zoneKey(otherGapId), '')
       }
@@ -279,8 +334,8 @@ export function attachDragDropBlockBehavior(
     zone.appendChild(chip)
     chip.style.visibility = 'visible'
     chip.classList.add('rte-drag-drop-fill__chip--in-zone')
-    hideZoneNumber(zone)
-    zone.classList.add('rte-drag-drop-fill__drop--filled', 'rte-drag-drop-fill__drop--populated')
+    hideZoneNumber(zone, examMode)
+    markZoneFilled(zone, examMode)
     zone.dataset.dropValue = value
     if (notify) notifyChange(zoneKey(gapId), value)
   }
@@ -295,7 +350,7 @@ export function attachDragDropBlockBehavior(
     chip.dataset.chipIndex = chip.dataset.chipIndex ?? String(index)
   })
 
-  block.querySelectorAll<HTMLElement>('.rte-drag-drop-fill__drop').forEach((zone, index) => {
+  queryDropZones(block).forEach((zone, index) => {
     const gapId =
       zone.dataset.gapId?.trim() ||
       zone.getAttribute('data-gap-id')?.trim() ||
@@ -313,7 +368,7 @@ export function attachDragDropBlockBehavior(
           (c) => chipValue(c) === saved,
         ) ?? null
       if (chip) {
-        moveChipToZone(chip, zone, chip.closest<HTMLElement>('.rte-drag-drop-fill__drop'), false)
+        moveChipToZone(chip, zone, closestDropZone(chip), false)
       }
     }
   })
@@ -322,7 +377,7 @@ export function attachDragDropBlockBehavior(
 
   const cleanups: Array<() => void> = []
 
-  block.querySelectorAll<HTMLElement>('.rte-drag-drop-fill__drop').forEach((zone) => {
+  queryDropZones(block).forEach((zone) => {
     const onDblClick = () => {
       const chipInZone = getChipInZone(zone)
       if (chipInZone) returnChipToPool(chipInZone, zone)

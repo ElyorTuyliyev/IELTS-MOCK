@@ -1,5 +1,13 @@
 const OVERALL_MODULE_COUNT = 4
 
+/** IELTS band 0–9 from correct/total, rounded to nearest 0.5 (IELTSDA-style). */
+export function calculateBandScore(correct: number, total: number): number {
+  if (total <= 0) return 0
+  const ratio = correct / total
+  const rawBand = ratio * 9
+  return Math.round(rawBand * 2) / 2
+}
+
 /** Overall = (L + R + W + S) / 4, rounded to nearest 0.5 (matches backend). */
 export function computeOverallModuleScore(
   listening?: number | null,

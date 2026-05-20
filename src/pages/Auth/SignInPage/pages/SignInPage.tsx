@@ -16,7 +16,8 @@ import { useToast } from "../../../../components/common/Toast";
 
 import { ROUTES_PATH } from "../../../../routes";
 import { useAppDispatch } from "../../../../store/hooks";
-import { setAuthSession } from "../../../../store/slices/authSlice";
+import { clearAuth, setAuthSession } from "../../../../store/slices/authSlice";
+import { isAuthTokenOversized } from "../../../../helpers/authToken";
 import {
   AUTH_CHART_BARS,
   AUTH_PAGINATION_DOTS,
@@ -91,6 +92,8 @@ export function SignInPage() {
     });
 
     try {
+      dispatch(clearAuth())
+
       const result = await loginMutation({
         variables: {
           email: normalizedEmail,
@@ -119,6 +122,11 @@ export function SignInPage() {
 
       if (!loginData?.token) {
         toast.error(apolloErrorMessage ?? 'Incorrect email or password.');
+        return;
+      }
+
+      if (isAuthTokenOversized(loginData.token)) {
+        toast.error('Session token is too large. Please contact support.');
         return;
       }
 

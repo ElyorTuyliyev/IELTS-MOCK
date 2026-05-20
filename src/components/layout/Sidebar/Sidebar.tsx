@@ -19,13 +19,13 @@ import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 import { selectAuthToken, selectUserRole } from "../../../store";
 import { clearAuth, hasRequiredRole } from "../../../store/slices/authSlice";
 import { ROUTES_PATH, SIDEBAR_ROUTE_GROUPS } from "../../../routes";
-import { SIDEBAR_ICONS } from "../../../routes/sidebarIcons";
+import { SIDEBAR_ICONS, type SidebarIconKey } from "../../../routes/sidebarIcons";
 import { agentLog } from "../../../utils/agentLog";
 import { SidebarCollapsedPopover, SidebarCollapsedPopoverPaper, SidebarRoot } from "./Sidebar.style";
 
 type CollapsedSubmenuState = {
   label: string;
-  children: Array<{ label: string; path?: string }>;
+  children: Array<{ label: string; icon: SidebarIconKey; path?: string }>;
   anchorEl: HTMLElement;
 };
 
@@ -56,8 +56,17 @@ export function Sidebar() {
   }>({ epoch: navEpoch, value: null });
   const collapsedSubmenu =
     collapsedSubmenuState.epoch === navEpoch ? collapsedSubmenuState.value : null;
-  const setCollapsedSubmenu = (value: CollapsedSubmenuState | null) => {
-    setCollapsedSubmenuState({ epoch: navEpoch, value });
+  const setCollapsedSubmenu = (
+    value:
+      | CollapsedSubmenuState
+      | null
+      | ((current: CollapsedSubmenuState | null) => CollapsedSubmenuState | null),
+  ) => {
+    setCollapsedSubmenuState((prev) => {
+      const current = prev.epoch === navEpoch ? prev.value : null;
+      const next = typeof value === "function" ? value(current) : value;
+      return { epoch: navEpoch, value: next };
+    });
   };
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedItems, setExpandedItems] = useState<
@@ -89,11 +98,10 @@ export function Sidebar() {
       availableExamCredits?: number;
     } | null;
   }>(ME_CENTER_QUERY, {
-    skip: !authToken,
+    skip: !authToken || (role !== "center" && role !== "student"),
+    fetchPolicy: "cache-and-network",
   });
 
-  const showExamCredits =
-    role === "center" || role === "super_admin";
   const availableExamCredits = meCenterData?.meCenter?.availableExamCredits ?? 0;
 
   const visibleGroups = useMemo(() => {
@@ -238,9 +246,12 @@ export function Sidebar() {
     }
   }, [expandedItems]);
 
-  const renderSidebarIcon = (iconKey: keyof typeof SIDEBAR_ICONS) => {
+  const renderSidebarIcon = (
+    iconKey: SidebarIconKey,
+    className = "sidebar__link-icon-svg",
+  ) => {
     const Icon = SIDEBAR_ICONS[iconKey];
-    return <Icon className="sidebar__link-icon-svg" fontSize="small" />;
+    return <Icon className={className} fontSize="small" />;
   };
 
   const wrapWithTooltip = (
@@ -264,7 +275,7 @@ export function Sidebar() {
     item: {
       label: string;
       path?: string;
-      children?: Array<{ label: string; path?: string }>;
+      children?: Array<{ label: string; icon: SidebarIconKey; path?: string }>;
     },
     event: MouseEvent<HTMLButtonElement>,
   ) => {
@@ -446,9 +457,14 @@ export function Sidebar() {
                               >
                                 <Box
                                   component="span"
-                                  className="sidebar__sublink-dot"
+                                  className="sidebar__sublink-icon"
                                   aria-hidden="true"
-                                />
+                                >
+                                  {renderSidebarIcon(
+                                    child.icon,
+                                    "sidebar__sublink-icon-svg",
+                                  )}
+                                </Box>
                                 <span>{child.label}</span>
                               </Button>
                             </Box>
@@ -465,7 +481,7 @@ export function Sidebar() {
       </Box>
 
       <Box component="footer" className="sidebar__footer">
-        {showExamCredits && role === "center" ? (
+        {role === "center" ? (
           <Box className="sidebar__credits" sx={{ mb: 1.5, px: 0.5 }}>
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
               Available exams
@@ -540,9 +556,14 @@ export function Sidebar() {
               >
                 <Box
                   component="span"
-                  className="sidebar__collapsed-popover-dot"
+                  className="sidebar__collapsed-popover-icon"
                   aria-hidden="true"
-                />
+                >
+                  {renderSidebarIcon(
+                    child.icon,
+                    "sidebar__collapsed-popover-icon-svg",
+                  )}
+                </Box>
                 <span>{child.label}</span>
               </Button>
             </Box>

@@ -46,7 +46,13 @@ export function BuyPlanPage() {
   )
 
   const [submitPurchase, { loading: submitting }] = useMutation(SUBMIT_PLAN_PURCHASE_MUTATION, {
-    refetchQueries: ['PurchaseHistory', 'MeCenterPlanSummary'],
+    refetchQueries: [
+      'PurchaseHistory',
+      'MeCenter',
+      'MeCenterCredits',
+      'MeCenterPlanSummary',
+      'GetAllCenters',
+    ],
   })
 
   const plans = data?.findAllExamPlans ?? []

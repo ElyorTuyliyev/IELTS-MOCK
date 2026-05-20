@@ -524,6 +524,16 @@ export const AllStudentsPageRoot = styled.div`
     font-weight: 600;
   }
 
+  .students-modal__photo-preview {
+    width: 112px;
+    height: 132px;
+    object-fit: cover;
+    object-position: center top;
+    border-radius: 8px;
+    border: 1px solid ${c.border.medium};
+    filter: grayscale(1);
+  }
+
   .students-modal__add-field {
     align-self: flex-start;
     display: inline-flex;
@@ -804,6 +814,16 @@ export const allStudentsModalGlobalStyles = css`
     margin-top: 8px;
     color: ${c.text.subtle};
     font-weight: 600;
+  }
+
+  .students-modal__photo-preview {
+    width: 112px;
+    height: 132px;
+    object-fit: cover;
+    object-position: center top;
+    border-radius: 8px;
+    border: 1px solid ${c.border.medium};
+    filter: grayscale(1);
   }
 
   .students-modal__add-field {

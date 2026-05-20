@@ -28,11 +28,6 @@ const palette = {
   surfaceMuted: c.surface.muted,
   text: c.text.primary,
   muted: c.text.secondary,
-  exampleBg: c.info.bg,
-  exampleBorder: c.info.border,
-  exampleText: c.info.darker,
-  primaryDark: c.slate[900],
-  primaryHover: c.text.primary,
 }
 
 function countGaps(text: string): number {
@@ -103,14 +98,11 @@ function Panel({
   )
 }
 
-const primaryButtonSx = {
-  bgcolor: palette.primaryDark,
-  color: c.white,
+const fullWidthActionSx = {
   textTransform: 'none' as const,
   fontWeight: 600,
   borderRadius: '10px',
   py: 1.15,
-  '&:hover': { bgcolor: palette.primaryHover },
 }
 
 export function DragDropFillBlankDialog({
@@ -131,7 +123,6 @@ export function DragDropFillBlankDialog({
   const [gapAnswers, setGapAnswers] = useState<string[]>([])
   const [distractors, setDistractors] = useState<DistractorRow[]>([])
 
-   
   useEffect(() => {
     if (!open) return
     setQuestionText('')
@@ -139,15 +130,13 @@ export function DragDropFillBlankDialog({
     setStartNumber(String(Math.max(1, Math.floor(defaultStartNumber))))
     setGapAnswers([])
     setDistractors([])
+    setTargetsLabel('Categories')
+    setPoolLabel('Options')
   }, [open, defaultStartNumber])
-   
 
-   
   useEffect(() => {
-    // Keep answer inputs in sync with number of blanks in question text.
     setGapAnswers((prev) => syncGapAnswers(questionText, prev))
   }, [questionText])
-   
 
   const gapCount = useMemo(() => countGaps(questionText), [questionText])
 
@@ -173,7 +162,7 @@ export function DragDropFillBlankDialog({
       textarea.focus()
       textarea.setSelectionRange(cursor, cursor)
     })
-  }, [questionInputRef, questionText])
+  }, [questionText])
 
   const handleGapAnswer = useCallback((index: number, value: string) => {
     setGapAnswers((current) => current.map((a, i) => (i === index ? value : a)))
@@ -238,7 +227,7 @@ export function DragDropFillBlankDialog({
   const textFieldSx = {
     '& .MuiOutlinedInput-root': { borderRadius: '10px' },
     '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
-      borderColor: c.info.light,
+      borderColor: c.primary.main,
       borderWidth: 2,
     },
   } as const
@@ -320,21 +309,6 @@ export function DragDropFillBlankDialog({
       </Box>
 
       <DialogContent sx={{ pt: 2, pb: 2, px: 3, bgcolor: palette.surfaceMuted }}>
-        <Box
-          sx={{
-            mb: 2.25,
-            p: 1.75,
-            borderRadius: '12px',
-            bgcolor: palette.exampleBg,
-            border: `1px solid ${palette.exampleBorder}`,
-          }}
-        >
-          <Typography variant="body2" sx={{ color: palette.exampleText, lineHeight: 1.6, fontSize: '0.875rem' }}>
-            <strong>Example:</strong> &quot;The {DRAG_DROP_GAP_TOKEN} is the largest planet in our {DRAG_DROP_GAP_TOKEN}.&quot;
-            Then add two gap answers below.
-          </Typography>
-        </Box>
-
         <Panel title="Question mode">
           <RadioGroup value={mode} onChange={(_, v) => setMode(v as 'shuffled' | 'ordered')}>
             <FormControlLabel
@@ -475,7 +449,7 @@ export function DragDropFillBlankDialog({
               </Box>
             ))
           )}
-          <Button type="button" fullWidth variant="primary" onClick={handleAppendGap} sx={{ ...primaryButtonSx, mt: gapAnswers.length ? 1 : 0 }}>
+          <Button type="button" fullWidth variant="primary" onClick={handleAppendGap} sx={{ ...fullWidthActionSx, mt: gapAnswers.length ? 1 : 0 }}>
             Add gap answer ({DRAG_DROP_GAP_TOKEN} to question)
           </Button>
         </Panel>
@@ -518,7 +492,7 @@ export function DragDropFillBlankDialog({
               </IconButton>
             </Box>
           ))}
-          <Button type="button" fullWidth variant="primary" onClick={handleAddDistractor} sx={{ ...primaryButtonSx, mt: distractors.length ? 1 : 0 }}>
+          <Button type="button" fullWidth variant="primary" onClick={handleAddDistractor} sx={{ ...fullWidthActionSx, mt: distractors.length ? 1 : 0 }}>
             Add distractor
           </Button>
         </Panel>
@@ -551,7 +525,7 @@ export function DragDropFillBlankDialog({
         >
           Cancel
         </Button>
-        <Button type="button" variant="primary" disableElevation onClick={handleInsert} sx={{ ...primaryButtonSx, px: 2.75 }}>
+        <Button type="button" variant="primary" disableElevation onClick={handleInsert} sx={{ px: 2.75, textTransform: 'none', fontWeight: 600, borderRadius: '10px' }}>
           Insert
         </Button>
       </DialogActions>

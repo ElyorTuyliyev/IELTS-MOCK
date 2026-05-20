@@ -1,17 +1,16 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useRef, useState, type ChangeEvent } from 'react'
 import { useMutation } from '@apollo/client/react'
-import { useNavigate } from 'react-router-dom'
 
 import { useToast } from '../../../components/common/Toast'
 import { normalizeUzPhoneDigits } from '../../../components/common/PhoneInput'
 import { normalizeEmail, validateGmailField } from '../../../utils/emailValidation'
 import { validatePasswordField } from '../../../utils/passwordValidation'
-import { ROUTES_PATH } from '../../../routes'
 import { selectUserRole } from '../../../store'
 import { useAppSelector } from '../../../store/hooks'
 import { USER_ROLES } from '../../../store/slices/authSlice'
 import { agentLog } from '../../../utils/agentLog'
 import { CREATE_CENTER_MUTATION } from '../../AddCenter/api/createCenterMutation'
+import { UPDATE_CENTER_MUTATION } from '../../AddCenter/api/updateCenterMutation'
 import { REMOVE_CENTER_MUTATION } from '../api/deleteCenterMutation'
 import type {
   CreateCenterMutationResponse,
@@ -19,7 +18,11 @@ import type {
   DeleteCenterMutationResponse,
   DeleteCenterMutationVariables,
   EditableCenter,
+  UpdateCenterMutationResponse,
+  UpdateCenterMutationVariables,
 } from '@/types/centers'
+
+export type CenterModalMode = 'create' | 'edit'
 
 type UseCenterFormParams = {
   refetchCenters: () => Promise<unknown>
@@ -27,7 +30,6 @@ type UseCenterFormParams = {
 
 export function useCenterForm({ refetchCenters }: UseCenterFormParams) {
   const toast = useToast()
-  const navigate = useNavigate()
   const role = useAppSelector(selectUserRole)
   const canCreateCenter = role === USER_ROLES.superAdmin
   const canDeleteCenter = role === USER_ROLES.superAdmin
@@ -38,6 +40,11 @@ export function useCenterForm({ refetchCenters }: UseCenterFormParams) {
     CreateCenterMutationVariables
   >(CREATE_CENTER_MUTATION)
 
+  const [updateCenter, { loading: isUpdatingCenter }] = useMutation<
+    UpdateCenterMutationResponse,
+    UpdateCenterMutationVariables
+  >(UPDATE_CENTER_MUTATION)
+
   const [deleteCenterMutation] = useMutation<
     DeleteCenterMutationResponse,
     DeleteCenterMutationVariables
@@ -45,23 +52,30 @@ export function useCenterForm({ refetchCenters }: UseCenterFormParams) {
 
   const isDeletingRef = useRef(false)
 
-  // Modal state
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [modalMode, setModalMode] = useState<CenterModalMode | null>(null)
+  const [editingCenterId, setEditingCenterId] = useState('')
   const [centerName, setCenterName] = useState('')
   const [email, setEmail] = useState('')
   const [logoDataUrl, setLogoDataUrl] = useState('')
   const [logoFileName, setLogoFileName] = useState('')
+  const [hasNewLogoUpload, setHasNewLogoUpload] = useState(false)
   const [phone, setPhone] = useState('')
   const [address, setAddress] = useState('')
   const [managerName, setManagerName] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
 
+  const isModalOpen = modalMode !== null
+  const isEditMode = modalMode === 'edit'
+  const isSaving = isCreatingCenter || isUpdatingCenter
+
   const resetForm = useCallback(() => {
+    setEditingCenterId('')
     setCenterName('')
     setEmail('')
     setLogoDataUrl('')
     setLogoFileName('')
+    setHasNewLogoUpload(false)
     setPhone('')
     setAddress('')
     setManagerName('')
@@ -69,22 +83,51 @@ export function useCenterForm({ refetchCenters }: UseCenterFormParams) {
     setConfirmPassword('')
   }, [])
 
-  const openModal = useCallback(() => {
+  const closeModal = useCallback(() => {
+    setModalMode(null)
     resetForm()
-    setIsModalOpen(true)
   }, [resetForm])
 
-  const closeModal = useCallback(() => {
-    setIsModalOpen(false)
+  const openModalForCreate = useCallback(() => {
     resetForm()
+    setModalMode('create')
   }, [resetForm])
+
+  const populateFormFromCenter = useCallback((row: EditableCenter) => {
+    setEditingCenterId(row.id)
+    setCenterName(row.name ?? '')
+    setManagerName(row.manager ?? '')
+    setAddress(row.address ?? '')
+    setPhone(row.phone ?? '')
+    setEmail(row.email ?? '')
+    setLogoDataUrl(row.logo ?? '')
+    setLogoFileName(row.logo ? 'existing-logo' : '')
+    setHasNewLogoUpload(false)
+    setPassword('')
+    setConfirmPassword('')
+  }, [])
+
+  const handleAddCenter = useCallback(() => {
+    if (!canCreateCenter) return
+    openModalForCreate()
+  }, [canCreateCenter, openModalForCreate])
+
+  const handleEditCenter = useCallback(
+    (row: EditableCenter) => {
+      if (!canEditCenter || !row.id) return
+      populateFormFromCenter(row)
+      setModalMode('edit')
+    },
+    [canEditCenter, populateFormFromCenter],
+  )
 
   const handleLogoFileChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
+    (event: ChangeEvent<HTMLInputElement>) => {
       const selectedFile = event.target.files?.[0] ?? null
       if (!selectedFile) {
         setLogoDataUrl('')
         setLogoFileName('')
+        setHasNewLogoUpload(false)
         return
       }
 
@@ -92,6 +135,7 @@ export function useCenterForm({ refetchCenters }: UseCenterFormParams) {
         toast.error('Select an image file for the logo (png, jpg, webp...).')
         setLogoDataUrl('')
         setLogoFileName('')
+        setHasNewLogoUpload(false)
         return
       }
 
@@ -100,13 +144,18 @@ export function useCenterForm({ refetchCenters }: UseCenterFormParams) {
         const result = typeof reader.result === 'string' ? reader.result : ''
         setLogoDataUrl(result)
         setLogoFileName(selectedFile.name)
+        setHasNewLogoUpload(true)
       }
       reader.readAsDataURL(selectedFile)
     },
     [toast],
   )
 
-  const handleCreateCenter = useCallback(async () => {
+  const handleSaveCenter = useCallback(async () => {
+    if (!modalMode) {
+      return
+    }
+
     const normalizedName = centerName.trim()
     const normalizedManager = managerName.trim()
     const normalizedAddress = address.trim()
@@ -132,55 +181,79 @@ export function useCenterForm({ refetchCenters }: UseCenterFormParams) {
       return
     }
 
-    if (!logoDataUrl) {
+    if (!isEditMode && !logoDataUrl) {
       toast.error('Logo is required.')
       return
     }
 
-    if (!trimmedPassword) {
+    if (!isEditMode && !trimmedPassword) {
       toast.error('Password is required.')
       return
     }
 
-    const passwordValidation = validatePasswordField(trimmedPassword)
-    if (passwordValidation !== true) {
-      toast.error(passwordValidation)
-      return
+    if (trimmedPassword) {
+      const passwordValidation = validatePasswordField(trimmedPassword)
+      if (passwordValidation !== true) {
+        toast.error(passwordValidation)
+        return
+      }
     }
 
-    if (trimmedPassword !== trimmedConfirmPassword) {
+    if (trimmedPassword && trimmedPassword !== trimmedConfirmPassword) {
       toast.error('Password and confirm password do not match.')
       return
     }
 
     try {
-      const result = await createCenter({
-        variables: {
-          name: normalizedName,
-          manager: normalizedManager,
-          address: normalizedAddress,
-          phone: normalizedPhone,
-          email: normalizedEmail,
-          password: trimmedPassword,
-          logo: logoDataUrl,
-          establishedAt: new Date().toISOString(),
-        },
-      })
+      let mutationCenter: { _id: string } | null = null
+      let apolloErrorMessage: string | null = null
 
-      if (!result.data?.createCenter?._id) {
-        toast.error(result.error?.message ?? 'Failed to create center.')
+      if (isEditMode) {
+        const result = await updateCenter({
+          variables: {
+            _id: editingCenterId,
+            name: normalizedName,
+            manager: normalizedManager,
+            address: normalizedAddress,
+            phone: normalizedPhone,
+            email: normalizedEmail,
+            ...(trimmedPassword ? { password: trimmedPassword } : {}),
+            ...(hasNewLogoUpload && logoDataUrl ? { logo: logoDataUrl } : {}),
+            establishedAt: new Date().toISOString(),
+          },
+        })
+        mutationCenter = result.data?.updateCenter ?? null
+        apolloErrorMessage = result.error?.message ?? null
+      } else {
+        const result = await createCenter({
+          variables: {
+            name: normalizedName,
+            manager: normalizedManager,
+            address: normalizedAddress,
+            phone: normalizedPhone,
+            email: normalizedEmail,
+            password: trimmedPassword,
+            logo: logoDataUrl,
+            establishedAt: new Date().toISOString(),
+          },
+        })
+        mutationCenter = result.data?.createCenter ?? null
+        apolloErrorMessage = result.error?.message ?? null
+      }
+
+      if (!mutationCenter?._id) {
+        toast.error(apolloErrorMessage ?? 'Failed to save center.')
         return
       }
 
       await refetchCenters()
       closeModal()
-      toast.success('Center created successfully.')
+      toast.success(isEditMode ? 'Center updated successfully.' : 'Center created successfully.')
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to create center.',
-      )
+      toast.error(error instanceof Error ? error.message : 'Failed to save center.')
     }
   }, [
+    modalMode,
     centerName,
     managerName,
     address,
@@ -189,13 +262,16 @@ export function useCenterForm({ refetchCenters }: UseCenterFormParams) {
     password,
     confirmPassword,
     logoDataUrl,
+    isEditMode,
+    editingCenterId,
+    hasNewLogoUpload,
+    updateCenter,
     createCenter,
     refetchCenters,
     closeModal,
     toast,
   ])
 
-  // FIX: uses ref to prevent DataGrid column churn; adds confirmation dialog
   const handleDeleteCenter = useCallback(
     async (id: string) => {
       if (!canDeleteCenter || !id || isDeletingRef.current) return
@@ -232,7 +308,6 @@ export function useCenterForm({ refetchCenters }: UseCenterFormParams) {
           },
         })
 
-        // FIX: show delete error to user instead of swallowing
         if (!result.data?.removeCenter) {
           toast.error(result.error?.message ?? 'Failed to delete center.')
           return
@@ -259,33 +334,13 @@ export function useCenterForm({ refetchCenters }: UseCenterFormParams) {
     [canDeleteCenter, deleteCenterMutation, refetchCenters, toast],
   )
 
-  const handleEditCenter = useCallback(
-    (row: EditableCenter) => {
-      if (!canEditCenter || !row.id) return
-      navigate(ROUTES_PATH.addCenter, { state: { mode: 'edit', center: row } })
-    },
-    [canEditCenter, navigate],
-  )
-
-  const handleViewCenter = useCallback(
-    (row: EditableCenter) => {
-      if (!row.id) return
-      navigate(ROUTES_PATH.addCenter, { state: { mode: 'view', center: row } })
-    },
-    [navigate],
-  )
-
   return {
-    // permissions
     canCreateCenter,
     canDeleteCenter,
     canEditCenter,
-
-    // modal state
     isModalOpen,
-    isCreatingCenter,
-
-    // form fields
+    modalMode,
+    isSaving,
     centerName,
     email,
     logoDataUrl,
@@ -295,8 +350,6 @@ export function useCenterForm({ refetchCenters }: UseCenterFormParams) {
     managerName,
     password,
     confirmPassword,
-
-    // setters
     setCenterName,
     setEmail,
     setPhone,
@@ -304,14 +357,11 @@ export function useCenterForm({ refetchCenters }: UseCenterFormParams) {
     setManagerName,
     setPassword,
     setConfirmPassword,
-
-    // actions
-    openModal,
-    closeModal,
-    handleLogoFileChange,
-    handleCreateCenter,
+    handleAddCenter,
     handleDeleteCenter,
     handleEditCenter,
-    handleViewCenter,
+    handleLogoFileChange,
+    handleSaveCenter,
+    closeModal,
   }
 }

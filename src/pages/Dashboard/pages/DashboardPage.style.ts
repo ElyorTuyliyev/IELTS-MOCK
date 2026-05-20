@@ -10,7 +10,7 @@ export const DashboardPageRoot = styled.div`
 
   .dashboard-screen__stats {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: ${theme.spacing(2.25)};
   }
 
@@ -411,6 +411,43 @@ export const DashboardPageRoot = styled.div`
     line-height: 1.1;
   }
 
+  .dashboard-line-chart__month-table {
+    margin-top: ${theme.spacing(2.5)};
+    padding-top: ${theme.spacing(2)};
+    border-top: 1px solid ${c.border.soft};
+  }
+
+  .dashboard-line-chart__month-table-title {
+    margin: 0 0 ${theme.spacing(1.5)};
+    color: ${c.text.primary};
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+
+  .dashboard-line-chart__month-table-head,
+  .dashboard-line-chart__month-table-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: ${theme.spacing(2)};
+    align-items: center;
+    padding: 8px 0;
+    color: ${c.text.secondary};
+    font-size: 0.88rem;
+  }
+
+  .dashboard-line-chart__month-table-head {
+    padding-top: 0;
+    color: ${c.text.muted};
+    font-weight: 600;
+    border-bottom: 1px solid ${c.border.soft};
+  }
+
+  .dashboard-line-chart__month-table-row strong {
+    color: ${c.text.primary};
+    font-size: 0.92rem;
+    font-weight: 700;
+  }
+
   .dashboard-average {
     display: flex;
     flex-direction: column;
@@ -476,11 +513,13 @@ export const DashboardPageRoot = styled.div`
   }
 
   @media (max-width: 1380px) {
-    .dashboard-screen__stats,
+    .dashboard-screen__stats {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .dashboard-screen__analytics {
       grid-template-columns: 1fr;
     }
-
   }
 
   @media (max-width: 860px) {
@@ -494,6 +533,7 @@ export const DashboardPageRoot = styled.div`
     }
 
     .dashboard-screen__stats {
+      grid-template-columns: 1fr;
       gap: ${theme.spacing(1.75)};
     }
 

@@ -91,6 +91,24 @@ export const ExamDetailsRoot = styled.div`
     flex-wrap: wrap;
   }
 
+  .exam-details__active-toggle-wrap {
+    display: grid;
+    gap: 4px;
+    max-width: 280px;
+  }
+
+  .exam-details__active-toggle .MuiFormControlLabel-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: ${c.text.secondary};
+  }
+
+  .exam-details__active-toggle-hint {
+    display: block;
+    line-height: 1.35;
+    padding-left: 4px;
+  }
+
   .exam-details__start-exam-btn.MuiButton-root {
     min-height: 34px;
     padding: 0 16px;
@@ -170,6 +188,25 @@ export const ExamDetailsRoot = styled.div`
 
   .exam-details__enroll-btn.MuiButton-root:hover {
     box-shadow: 0 6px 16px ${tokens.rgba.primary_28};
+  }
+
+  .exam-details__assign-search {
+    margin-top: ${theme.spacing(0.5)};
+    margin-bottom: ${theme.spacing(1.5)};
+  }
+
+  .exam-details__assign-student-list {
+    display: grid;
+    gap: ${theme.spacing(0.5)};
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  .exam-details__assign-empty {
+    font-size: 14px;
+    color: ${c.text.muted};
+    padding: ${theme.spacing(1)} 0;
   }
 
   /* ── DataGrid ── */

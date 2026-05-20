@@ -1,7 +1,9 @@
 import {
+  memo,
   useCallback,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
   type ChangeEvent,
@@ -28,6 +30,7 @@ import Placeholder from '@tiptap/extension-placeholder'
 import StarterKit from '@tiptap/starter-kit'
 
 import { RichTextEditorExpandBackdrop, RichTextEditorRoot } from './RichTextEditor.styles'
+import { lockExpandedEditorBody, unlockExpandedEditorBody } from './utils/expandedBodyLock'
 import { BlankAnswerDialog } from './BlankAnswerDialog'
 import { BlankAnswer } from './extensions/blankAnswerExtension'
 import { DragDropFillBlank } from './extensions/dragDropFillBlankExtension'
@@ -202,6 +205,8 @@ function TableDeleteCorner({ editor }: { editor: Editor }) {
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
   const activeTableRef = useRef<HTMLTableElement | null>(null)
   const rafRef = useRef<number | null>(null)
+  const pointerRafRef = useRef<number | null>(null)
+  const lastTargetRef = useRef<EventTarget | null>(null)
 
   useEffect(() => {
     const root = editor.view.dom as HTMLElement | null
@@ -228,20 +233,21 @@ function TableDeleteCorner({ editor }: { editor: Editor }) {
       })
     }
 
+    const resolveTableFromTarget = (target: EventTarget | null) => {
+      if (!(target instanceof Node)) return null
+      if (!root.contains(target)) return null
+      return (target as Element).closest('table') as HTMLTableElement | null
+    }
+
     const onPointerMove = (e: PointerEvent) => {
-      const target = e.target as EventTarget | null
-      if (!(target instanceof Node)) {
-        setFromTable(null)
-        return
-      }
-      if (!root.contains(target)) {
-        setFromTable(null)
-        return
-      }
-      const el = target as Element
-      const table = el.closest('table') as HTMLTableElement | null
-      if (table === activeTableRef.current) return
-      setFromTable(table)
+      lastTargetRef.current = e.target
+      if (pointerRafRef.current != null) return
+      pointerRafRef.current = window.requestAnimationFrame(() => {
+        pointerRafRef.current = null
+        const table = resolveTableFromTarget(lastTargetRef.current)
+        if (table === activeTableRef.current) return
+        setFromTable(table)
+      })
     }
     const onPointerLeave = () => setFromTable(null)
 
@@ -256,6 +262,10 @@ function TableDeleteCorner({ editor }: { editor: Editor }) {
       if (rafRef.current != null) {
         cancelAnimationFrame(rafRef.current)
         rafRef.current = null
+      }
+      if (pointerRafRef.current != null) {
+        cancelAnimationFrame(pointerRafRef.current)
+        pointerRafRef.current = null
       }
     }
   }, [editor])
@@ -604,7 +614,7 @@ function FontSizeToolbarInput({ editor }: { editor: Editor }) {
   )
 }
 
-function RichTextToolbar({
+const RichTextToolbar = memo(function RichTextToolbar({
   editor,
   textColorInputRef,
   highlightInputRef,
@@ -633,6 +643,29 @@ function RichTextToolbar({
   expanded: boolean
   onToggleExpand: () => void
 }) {
+  const toolbarRafRef = useRef<number | null>(null)
+  const [, setToolbarTick] = useState(0)
+
+  useEffect(() => {
+    const scheduleRefresh = () => {
+      if (toolbarRafRef.current != null) return
+      toolbarRafRef.current = window.requestAnimationFrame(() => {
+        toolbarRafRef.current = null
+        setToolbarTick((n) => n + 1)
+      })
+    }
+    editor.on('selectionUpdate', scheduleRefresh)
+    editor.on('transaction', scheduleRefresh)
+    return () => {
+      editor.off('selectionUpdate', scheduleRefresh)
+      editor.off('transaction', scheduleRefresh)
+      if (toolbarRafRef.current != null) {
+        cancelAnimationFrame(toolbarRafRef.current)
+        toolbarRafRef.current = null
+      }
+    }
+  }, [editor])
+
   const blockValue = blockTypeValue(editor)
   const canSink = editor.can().sinkListItem('listItem')
   const canLift = editor.can().liftListItem('listItem')
@@ -915,7 +948,7 @@ function RichTextToolbar({
       </div>
     </div>
   )
-}
+})
 
 export function RichTextEditor({
   value,
@@ -926,8 +959,6 @@ export function RichTextEditor({
   readOnly = false,
   priorQuestionHtml = [],
 }: RichTextEditorProps) {
-  const [, setToolbarTick] = useState(0)
-  const toolbarRafRef = useRef<number | null>(null)
   const [expanded, setExpanded] = useState(false)
   const [radioModalOpen, setRadioModalOpen] = useState(false)
   const [radioDefaultQuestionNumber, setRadioDefaultQuestionNumber] = useState(1)
@@ -941,16 +972,9 @@ export function RichTextEditor({
   const imageRef = useRef<HTMLInputElement>(null)
   const lastEmittedHtmlRef = useRef<string | null>(null)
   const instanceId = useId()
-  const scheduleToolbarRefresh = useCallback(() => {
-    if (toolbarRafRef.current != null) return
-    toolbarRafRef.current = window.requestAnimationFrame(() => {
-      toolbarRafRef.current = null
-      setToolbarTick((n) => n + 1)
-    })
-  }, [])
 
-  const editor = useEditor({
-    extensions: [
+  const extensions = useMemo(
+    () => [
       StarterKit.configure({
         // We add custom Link/Underline extensions below; disable in StarterKit to avoid duplicates.
         link: false,
@@ -986,40 +1010,35 @@ export function RichTextEditor({
         emptyEditorClass: 'is-editor-empty',
       }),
     ],
-    content: value || '<p></p>',
-    immediatelyRender: false,
-    shouldRerenderOnTransaction: false,
-    editable: !readOnly,
-    onUpdate: ({ editor: ed }) => {
-      const html = patchDragDropAttrsInHtml(ed.getHTML(), ed)
-      lastEmittedHtmlRef.current = html
-      onChange(html)
-      scheduleToolbarRefresh()
-    },
-    onSelectionUpdate: () => {
-      scheduleToolbarRefresh()
-    },
-    editorProps: {
-      attributes: {
-        class: 'tiptap',
-        spellcheck: 'true',
+    [placeholder],
+  )
+
+  const editor = useEditor(
+    {
+      extensions,
+      content: value || '<p></p>',
+      immediatelyRender: false,
+      shouldRerenderOnTransaction: false,
+      editable: !readOnly,
+      onUpdate: ({ editor: ed }) => {
+        const html = patchDragDropAttrsInHtml(ed.getHTML(), ed)
+        lastEmittedHtmlRef.current = html
+        onChange(html)
+      },
+      editorProps: {
+        attributes: {
+          class: 'tiptap',
+          spellcheck: 'true',
+        },
       },
     },
-  })
+    [extensions],
+  )
 
   useEffect(() => {
     if (!editor) return
     editor.setEditable(!readOnly)
   }, [editor, readOnly])
-
-  useEffect(() => {
-    return () => {
-      if (toolbarRafRef.current != null) {
-        cancelAnimationFrame(toolbarRafRef.current)
-        toolbarRafRef.current = null
-      }
-    }
-  }, [])
 
   useEffect(() => {
     if (!editor) return
@@ -1036,7 +1055,7 @@ export function RichTextEditor({
 
   // Row height resize for tables (drag near bottom border)
   useEffect(() => {
-    if (!editor) return
+    if (!editor || expanded) return
 
     const root = editor.view.dom as HTMLElement
     let dragging = false
@@ -1044,6 +1063,10 @@ export function RichTextEditor({
     let startHeight = 0
     let activeRow: HTMLTableRowElement | null = null
     let activePointerId: number | null = null
+    let hoverRaf: number | null = null
+    let lastClientX = 0
+    let lastClientY = 0
+    let cursorNearRow = false
 
     const EDGE_PX = 7
     const MIN_ROW_HEIGHT = 24
@@ -1067,6 +1090,12 @@ export function RichTextEditor({
       return el.closest('td,th') as HTMLElement | null
     }
 
+    const setCursorNearRow = (near: boolean) => {
+      if (near === cursorNearRow) return
+      cursorNearRow = near
+      root.classList.toggle('rte-resize-row-cursor', near)
+    }
+
     const onDragMove = (e: PointerEvent) => {
       if (!dragging || !activeRow) return
       if (activePointerId != null && e.pointerId !== activePointerId) return
@@ -1081,10 +1110,20 @@ export function RichTextEditor({
       startHeight = 0
       activeRow = null
       activePointerId = null
-      root.classList.remove('rte-resize-row-cursor')
+      setCursorNearRow(false)
       window.removeEventListener('pointermove', onDragMove, true)
       window.removeEventListener('pointerup', stopDrag, true)
       window.removeEventListener('pointercancel', stopDrag, true)
+    }
+
+    const runHoverProbe = () => {
+      hoverRaf = null
+      const cell = cellAtPointer(lastClientX, lastClientY)
+      if (!cell) {
+        setCursorNearRow(false)
+        return
+      }
+      setCursorNearRow(isNearBottomEdge(cell, lastClientY))
     }
 
     const onPointerMove = (e: PointerEvent) => {
@@ -1093,16 +1132,10 @@ export function RichTextEditor({
         return
       }
 
-      const cell = cellAtPointer(e.clientX, e.clientY)
-      if (!cell) {
-        root.classList.remove('rte-resize-row-cursor')
-        return
-      }
-      if (isNearBottomEdge(cell, e.clientY)) {
-        root.classList.add('rte-resize-row-cursor')
-      } else {
-        root.classList.remove('rte-resize-row-cursor')
-      }
+      lastClientX = e.clientX
+      lastClientY = e.clientY
+      if (hoverRaf != null) return
+      hoverRaf = window.requestAnimationFrame(runHoverProbe)
     }
 
     const onPointerDown = (e: PointerEvent) => {
@@ -1131,26 +1164,37 @@ export function RichTextEditor({
       window.addEventListener('pointercancel', stopDrag, { passive: true, capture: true })
     }
 
-    root.addEventListener('pointermove', onPointerMove, { passive: false, capture: true })
+    root.addEventListener('pointermove', onPointerMove, { passive: true, capture: true })
     root.addEventListener('pointerdown', onPointerDown, { passive: false, capture: true })
 
     return () => {
       root.removeEventListener('pointermove', onPointerMove, true)
       root.removeEventListener('pointerdown', onPointerDown, true)
+      if (hoverRaf != null) {
+        cancelAnimationFrame(hoverRaf)
+        hoverRaf = null
+      }
       stopDrag()
     }
-  }, [editor])
+  }, [editor, expanded])
+
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return
+    const frame = requestAnimationFrame(() => {
+      window.dispatchEvent(new Event('resize'))
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [expanded, editor])
 
   useEffect(() => {
     if (!expanded) return
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    lockExpandedEditorBody()
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setExpanded(false)
     }
     window.addEventListener('keydown', onKeyDown)
     return () => {
-      document.body.style.overflow = prevOverflow
+      unlockExpandedEditorBody()
       window.removeEventListener('keydown', onKeyDown)
     }
   }, [expanded])
@@ -1190,11 +1234,24 @@ export function RichTextEditor({
     [editor],
   )
 
-  if (!editor) {
-    return null
-  }
-
   const rootClassName = `rich-text-editor${expanded ? ' rte-root--expanded' : ''}`
+  const rootStyle = {
+    '--rte-min-height': `${minHeight}px`,
+    '--rte-max-height': `${maxHeight}px`,
+  } as CSSProperties
+
+  if (!editor) {
+    return (
+      <RichTextEditorRoot
+        className={rootClassName}
+        style={rootStyle}
+        data-rich-editor={instanceId}
+        aria-busy="true"
+      >
+        <Box className="rte-body" sx={{ minHeight }} />
+      </RichTextEditorRoot>
+    )
+  }
 
   return (
     <>
@@ -1274,12 +1331,7 @@ export function RichTextEditor({
       ) : null}
       <RichTextEditorRoot
         className={rootClassName}
-        style={
-          {
-            '--rte-min-height': `${minHeight}px`,
-            '--rte-max-height': `${maxHeight}px`,
-          } as CSSProperties
-        }
+        style={rootStyle}
         data-rich-editor={instanceId}
       >
         {!readOnly ? (
@@ -1309,7 +1361,7 @@ export function RichTextEditor({
             onToggleExpand={() => setExpanded((v) => !v)}
           />
         ) : null}
-        {!readOnly ? <TableDeleteCorner editor={editor} /> : null}
+        {!readOnly && !expanded ? <TableDeleteCorner editor={editor} /> : null}
         <Box className="rte-body">
           <EditorContent editor={editor} />
         </Box>

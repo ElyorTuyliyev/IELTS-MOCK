@@ -2,8 +2,10 @@ import { Box } from '@mui/material'
 import type { GridColDef } from '@mui/x-data-grid'
 
 import { Button } from '../../../components/common/Button'
+import { MenuActionCell } from '../../../components/common/MenuAction'
 import type { PaymentRecord, PendingPlanPurchase } from '../../Billing/api/billingQueries'
 import { BillingStatusChip } from '../../Billing/components/BillingStatusChip'
+import { PaymentRowActionsMenu } from '../components/PaymentRowActionsMenu'
 import { formatPaymentDate } from '../components/paymentUtils'
 
 export type PendingRow = PendingPlanPurchase & { centerName: string }
@@ -26,27 +28,37 @@ export function createPendingColumns({
       field: 'createdAt',
       headerName: 'Submitted',
       flex: 1,
-      minWidth: 160,
+      minWidth: 150,
       valueFormatter: (value) => formatPaymentDate(String(value)),
     },
-    { field: 'centerName', headerName: 'Center', flex: 1, minWidth: 160 },
-    { field: 'planName', headerName: 'Plan', flex: 1, minWidth: 140 },
+    { field: 'centerName', headerName: 'Center', flex: 1.1, minWidth: 150 },
+    { field: 'planName', headerName: 'Plan', flex: 1, minWidth: 130 },
     {
       field: 'examCount',
       headerName: 'Credits',
-      width: 100,
-      type: 'number',
+      width: 96,
+      align: 'center',
+      headerAlign: 'center',
+      renderCell: ({ value }) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>
+          <span className="payments-table__credits">{String(value)}</span>
+        </Box>
+      ),
     },
     {
       field: 'amount',
       headerName: 'Amount',
       width: 110,
-      valueFormatter: (value) => `$${Number(value).toFixed(2)}`,
+      renderCell: ({ value }) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+          <span className="payments-table__amount">${Number(value).toFixed(2)}</span>
+        </Box>
+      ),
     },
     {
       field: 'status',
       headerName: 'Status',
-      width: 160,
+      width: 168,
       sortable: false,
       renderCell: ({ row }) => (
         <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
@@ -58,18 +70,24 @@ export function createPendingColumns({
       field: 'centerNote',
       headerName: 'Center note',
       flex: 1,
-      minWidth: 180,
-      valueFormatter: (value) => (value ? String(value) : '—'),
+      minWidth: 160,
+      sortable: false,
+      renderCell: ({ value }) => (
+        <span className="payments-table__note" title={value ? String(value) : undefined}>
+          {value ? String(value) : '—'}
+        </span>
+      ),
     },
     {
       field: 'actions',
       headerName: 'Actions',
-      width: 220,
+      width: 130,
       sortable: false,
       filterable: false,
+      disableColumnMenu: true,
       renderCell: ({ row }) => (
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', height: '100%' }}>
-          <Button variant="primary" onClick={() => onReview(row)}>
+        <Box className="payments-table__actions" sx={{ height: '100%' }}>
+          <Button variant="primary" size="sm" onClick={() => onReview(row)}>
             Review
           </Button>
         </Box>
@@ -87,23 +105,37 @@ export function createPaymentColumns({
       field: 'paidAt',
       headerName: 'Paid at',
       flex: 1,
-      minWidth: 160,
+      minWidth: 150,
       valueFormatter: (value) => formatPaymentDate(String(value)),
     },
-    { field: 'centerName', headerName: 'Center', flex: 1, minWidth: 150 },
+    { field: 'centerName', headerName: 'Center', flex: 1.1, minWidth: 140 },
     {
       field: 'examCreditsAdded',
       headerName: 'Credits',
-      width: 90,
-      valueFormatter: (value) => (value != null ? String(value) : '—'),
+      width: 96,
+      align: 'center',
+      headerAlign: 'center',
+      renderCell: ({ value }) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%' }}>
+          {value != null ? (
+            <span className="payments-table__credits">{String(value)}</span>
+          ) : (
+            <span className="payments-table__note">—</span>
+          )}
+        </Box>
+      ),
     },
     {
       field: 'amount',
-      headerName: 'Amount (USD)',
-      width: 120,
-      valueFormatter: (value) => `$${Number(value).toFixed(2)}`,
+      headerName: 'Amount',
+      width: 110,
+      renderCell: ({ value }) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+          <span className="payments-table__amount">${Number(value).toFixed(2)}</span>
+        </Box>
+      ),
     },
-    { field: 'method', headerName: 'Method', width: 130 },
+    { field: 'method', headerName: 'Method', width: 120 },
     {
       field: 'status',
       headerName: 'Status',
@@ -115,29 +147,48 @@ export function createPaymentColumns({
         </Box>
       ),
     },
-    { field: 'source', headerName: 'Source', width: 130 },
+    {
+      field: 'source',
+      headerName: 'Source',
+      width: 130,
+      sortable: false,
+      renderCell: ({ value }) => (
+        <span
+          className={
+            value === 'Plan approval'
+              ? 'payments-table__source payments-table__source--plan'
+              : 'payments-table__source'
+          }
+        >
+          {String(value)}
+        </span>
+      ),
+    },
     {
       field: 'note',
       headerName: 'Note',
       flex: 1,
-      minWidth: 160,
-      valueFormatter: (value) => (value ? String(value) : '—'),
+      minWidth: 140,
+      sortable: false,
+      renderCell: ({ value }) => (
+        <span className="payments-table__note" title={value ? String(value) : undefined}>
+          {value ? String(value) : '—'}
+        </span>
+      ),
     },
     {
       field: 'actions',
-      headerName: 'Actions',
-      width: 180,
+      headerName: '',
+      width: 64,
       sortable: false,
       filterable: false,
+      disableColumnMenu: true,
+      align: 'center',
+      headerAlign: 'center',
       renderCell: ({ row }) => (
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', height: '100%' }}>
-          <Button variant="secondary" onClick={() => onEdit(row)}>
-            Edit
-          </Button>
-          <Button variant="secondary" onClick={() => onDelete(row)}>
-            Delete
-          </Button>
-        </Box>
+        <MenuActionCell>
+          <PaymentRowActionsMenu row={row} onEdit={onEdit} onDelete={onDelete} />
+        </MenuActionCell>
       ),
     },
   ]

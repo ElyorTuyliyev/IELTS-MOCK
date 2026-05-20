@@ -24,8 +24,11 @@ export function AddCenterPage() {
                 {form.isViewMode ? 'View Center' : form.isEditMode ? 'Update Center' : 'Add New Center'}
               </Typography>
               <Typography component="p" className="add-center-page__description">
-                Create a new branch profile with its core contact details,
-                manager ownership, and starting capacity.
+                {form.isViewMode
+                  ? 'Review branch profile, contact details, and manager information.'
+                  : form.isEditMode
+                    ? 'Update branch profile, contact details, and manager information.'
+                    : 'Create a new branch profile with its core contact details and manager ownership.'}
               </Typography>
             </Box>
 

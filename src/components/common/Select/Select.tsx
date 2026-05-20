@@ -1,5 +1,11 @@
 import { forwardRef, type ReactNode } from 'react'
-import { MenuItem, type TextFieldProps } from '@mui/material'
+import {
+  MenuItem,
+  type SelectProps as MuiSelectProps,
+  type SxProps,
+  type TextFieldProps,
+  type Theme,
+} from '@mui/material'
 
 import { c, tokens } from '../../../theme'
 import type { AppSelectSize } from './Select.style'
@@ -21,10 +27,10 @@ export type SelectProps = Omit<TextFieldProps, 'select' | 'size'> & {
   options?: SelectOption[]
 }
 
-const defaultMenuProps: TextFieldProps['slotProps'] = {
-  select: {
-    MenuProps: {
-      PaperProps: {
+const defaultSelectSlot: Partial<MuiSelectProps> = {
+  MenuProps: {
+    slotProps: {
+      paper: {
         elevation: 0,
         sx: {
           mt: 0.75,
@@ -35,16 +41,45 @@ const defaultMenuProps: TextFieldProps['slotProps'] = {
         },
       },
     },
-    IconComponent: () => (
-      <SelectChevronWrap className="app-select__icon" aria-hidden>
-        <SelectChevronIcon />
-      </SelectChevronWrap>
-    ),
   },
+  IconComponent: () => (
+    <SelectChevronWrap className="app-select__icon" aria-hidden>
+      <SelectChevronIcon />
+    </SelectChevronWrap>
+  ),
 }
 
 function getMuiSize(appSize: AppSelectSize): TextFieldProps['size'] {
   return appSize === 'sm' ? 'small' : 'medium'
+}
+
+function resolveSelectSlotProps(
+  slotProps: TextFieldProps['slotProps'],
+): Partial<MuiSelectProps> {
+  const selectSlotProps = slotProps?.select
+  if (typeof selectSlotProps === 'function') {
+    return defaultSelectSlot
+  }
+
+  const incoming = (selectSlotProps ?? {}) as Partial<MuiSelectProps>
+  const defaultPaperSx = (defaultSelectSlot.MenuProps?.slotProps?.paper as { sx?: SxProps<Theme> } | undefined)
+    ?.sx
+  const incomingPaperSx = (incoming.MenuProps?.slotProps?.paper as { sx?: SxProps<Theme> } | undefined)?.sx
+
+  return {
+    ...defaultSelectSlot,
+    ...incoming,
+    MenuProps: {
+      ...defaultSelectSlot.MenuProps,
+      ...incoming.MenuProps,
+      slotProps: {
+        paper: {
+          elevation: 0,
+          sx: [defaultPaperSx, incomingPaperSx].filter(Boolean) as SxProps<Theme>,
+        },
+      },
+    },
+  }
 }
 
 export const Select = forwardRef<HTMLDivElement, SelectProps>(function Select(
@@ -58,32 +93,6 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(function Select(
   },
   ref,
 ) {
-  const selectSlotProps = slotProps?.select
-  const defaultSelectSlot = defaultMenuProps?.select
-  const mergedSelectSlot =
-    typeof selectSlotProps === 'function'
-      ? selectSlotProps
-      : {
-          ...defaultSelectSlot,
-          ...selectSlotProps,
-          MenuProps: {
-            ...defaultSelectSlot?.MenuProps,
-            ...selectSlotProps?.MenuProps,
-            PaperProps: {
-              ...defaultSelectSlot?.MenuProps?.PaperProps,
-              ...selectSlotProps?.MenuProps?.PaperProps,
-              sx: {
-                ...(typeof defaultSelectSlot?.MenuProps?.PaperProps?.sx === 'object'
-                  ? defaultSelectSlot.MenuProps.PaperProps.sx
-                  : {}),
-                ...(typeof selectSlotProps?.MenuProps?.PaperProps?.sx === 'object'
-                  ? selectSlotProps.MenuProps.PaperProps.sx
-                  : {}),
-              },
-            },
-          },
-        }
-
   const renderedOptions =
     options?.map((option) => (
       <StyledMenuItem
@@ -106,7 +115,7 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(function Select(
       className={['app-select', className].filter(Boolean).join(' ')}
       slotProps={{
         ...slotProps,
-        select: mergedSelectSlot,
+        select: resolveSelectSlotProps(slotProps),
       }}
     >
       {renderedOptions}

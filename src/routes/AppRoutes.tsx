@@ -25,8 +25,8 @@ const StudentExamReviewPage = lazy(() =>
 const CentersPage = lazy(() =>
   import('../pages/Centers').then((m) => ({ default: m.CentersPage })),
 )
-const AddCenterPage = lazy(() =>
-  import('../pages/AddCenter').then((m) => ({ default: m.AddCenterPage })),
+const CenterViewPage = lazy(() =>
+  import('../pages/Centers').then((m) => ({ default: m.CenterViewPage })),
 )
 
 const ListeningQuestionsPage = lazy(() =>
@@ -47,9 +47,7 @@ const AddQuestionPage = lazy(() =>
 const AllStudentsPage = lazy(() =>
   import('../pages/AllStudents').then((m) => ({ default: m.AllStudentsPage })),
 )
-const StatisticsPage = lazy(() =>
-  import('../pages/Statistics').then((m) => ({ default: m.StatisticsPage })),
-)
+
 const PaymentsPage = lazy(() =>
   import('../pages/Payments').then((m) => ({ default: m.PaymentsPage })),
 )
@@ -58,6 +56,9 @@ const ExamPlansPage = lazy(() =>
 )
 const BuyPlanPage = lazy(() =>
   import('../pages/BuyPlan').then((m) => ({ default: m.BuyPlanPage })),
+)
+const CenterExamPaymentsPage = lazy(() =>
+  import('../pages/CenterExamPayments').then((m) => ({ default: m.CenterExamPaymentsPage })),
 )
 const PurchaseHistoryRedirect = lazy(() =>
   import('../pages/PurchaseHistory').then((m) => ({ default: m.PurchaseHistoryRedirect })),
@@ -80,6 +81,12 @@ const StudentExamPlayerPage = lazy(() =>
 const StudentMyExamsPage = lazy(() =>
   import('../pages/StudentMyExams').then((m) => ({ default: m.StudentMyExamsPage })),
 )
+const StudentMyExamReviewPage = lazy(() =>
+  import('../pages/StudentMyExamReview').then((m) => ({ default: m.StudentMyExamReviewPage })),
+)
+const StudentCertificatesPage = lazy(() =>
+  import('../pages/StudentCertificates').then((m) => ({ default: m.StudentCertificatesPage })),
+)
 const CertificatesPage = lazy(() =>
   import('../pages/Certificates').then((m) => ({ default: m.CertificatesPage })),
 )
@@ -88,6 +95,15 @@ const NotFoundPage = lazy(() =>
 )
 const NotificationsPage = lazy(() =>
   import('../pages/Notifications').then((m) => ({ default: m.NotificationsPage })),
+)
+const HelpPage = lazy(() =>
+  import('../pages/Help').then((m) => ({ default: m.HelpPage })),
+)
+const PaymentRequestPage = lazy(() =>
+  import('../pages/PaymentRequest').then((m) => ({ default: m.PaymentRequestPage })),
+)
+const StatisticsPage = lazy(() =>
+  import('../pages/Statistics').then((m) => ({ default: m.StatisticsPage })),
 )
 
 type AppRouteConfig = {
@@ -167,8 +183,18 @@ const appRoutes: AppRouteConfig[] = [
     allowedRoles: studentOnly,
   },
   {
+    path: ROUTES_PATH.studentMyExamReview,
+    element: <StudentMyExamReviewPage />,
+    allowedRoles: studentOnly,
+  },
+  {
     path: ROUTES_PATH.studentExamPlayer,
     element: <StudentExamPlayerPage />,
+    allowedRoles: studentOnly,
+  },
+  {
+    path: ROUTES_PATH.studentCertificates,
+    element: <StudentCertificatesPage />,
     allowedRoles: studentOnly,
   },
   {
@@ -177,8 +203,13 @@ const appRoutes: AppRouteConfig[] = [
     allowedRoles: centerRoles,
   },
   {
+    path: ROUTES_PATH.centerView,
+    element: <CenterViewPage />,
+    allowedRoles: superAdminOnly,
+  },
+  {
     path: ROUTES_PATH.addCenter,
-    element: <AddCenterPage />,
+    element: <Navigate to={ROUTES_PATH.center} replace />,
     allowedRoles: superAdminOnly,
   },
   {
@@ -283,6 +314,11 @@ const appRoutes: AppRouteConfig[] = [
     allowedRoles: [USER_ROLES.center],
   },
   {
+    path: ROUTES_PATH.centerPayments,
+    element: <CenterExamPaymentsPage />,
+    allowedRoles: [USER_ROLES.center],
+  },
+  {
     path: ROUTES_PATH.purchaseHistory,
     element: <PurchaseHistoryRedirect />,
     allowedRoles: centerRoles,
@@ -299,8 +335,8 @@ const appRoutes: AppRouteConfig[] = [
   },
   {
     path: ROUTES_PATH.help,
-    element: <NotFoundPage />,
-    allowedRoles: superAdminOnly,
+    element: <HelpPage />,
+    allowedRoles: allRoles,
   },
   {
     path: ROUTES_PATH.notifications,
@@ -323,6 +359,10 @@ const appRoutes: AppRouteConfig[] = [
     path: ROUTES_PATH.studentLeadJoin,
     element: <StudentLeadSignupPage />,
   },
+  {
+    path: ROUTES_PATH.paymentRequest,
+    element: <PaymentRequestPage />,
+  },
 ]
 
 export function AppRoutes() {
@@ -338,6 +378,8 @@ export function AppRoutes() {
             route.path === ROUTES_PATH.studentJoin ||
             route.path === ROUTES_PATH.studentLeadJoin ? (
               <PublicOnlyRoute element={route.element} />
+            ) : route.path === ROUTES_PATH.paymentRequest ? (
+              route.element
             ) : route.allowedRoles ? (
               <ProtectedRoute
                 element={route.element}

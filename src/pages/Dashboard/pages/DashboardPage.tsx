@@ -8,6 +8,7 @@ import { Alert, Box, Typography } from '@mui/material'
 import { c, tokens } from '../../../theme'
 import { Layout } from '../../../components/layout'
 import { Select } from '../../../components/common/Select'
+import { FIND_ALL_EXAMS_QUERY } from '../../CreateExam/api/findAllExamsQuery'
 import { FIND_ALL_QUESTIONS_QUERY, type FindAllQuestionsResponse, type GroupedQuestionItem } from '../../Questions/api/findAllQuestionsQuery'
 import { selectAuthToken, selectUserRole } from '../../../store'
 import { useAppSelector } from '../../../store/hooks'
@@ -17,6 +18,7 @@ import {
   type StudentDashboardStatsResponse,
 } from '../api/studentDashboardStatsQuery'
 import { DashboardPageRoot } from './DashboardPage.style'
+import { StudentDashboardPage } from './StudentDashboardPage'
 
 const ME_CENTER_CREDITS_QUERY = gql`
   query MeCenterCredits {
@@ -43,8 +45,6 @@ function parseMonthKey(ym: string): { monthLabel: string; yearLabel: string } {
   }
 }
 
-const CHART_Y_MAX = 1000
-const CHART_Y_TICKS = [1000, 100, 50, 10, 0] as const
 const CHART_TICK_TOP_PX = [18, 74, 130, 186, 242] as const
 const CHART_CONTENT_TOP_PX = 18
 const CHART_CANVAS_HEIGHT_PX = 280
@@ -52,9 +52,33 @@ const CHART_CANVAS_PADDING_BOTTOM_PX = 84
 const CHART_COLUMN_HEIGHT_PX =
   CHART_CANVAS_HEIGHT_PX - CHART_CONTENT_TOP_PX - CHART_CANVAS_PADDING_BOTTOM_PX
 
-function tickValueToBottomPx(value: number) {
-  const clamped = Math.max(0, Math.min(value, CHART_Y_MAX))
-  const valuesAsc = [...CHART_Y_TICKS].reverse()
+type ChartScale = {
+  yMax: number
+  ticks: number[]
+}
+
+function buildChartScale(maxValue: number): ChartScale {
+  if (maxValue <= 0) {
+    return { yMax: 10, ticks: [10, 8, 5, 2, 0] }
+  }
+
+  const padded = Math.ceil(maxValue * 1.15)
+  const magnitude = 10 ** Math.floor(Math.log10(padded))
+  const normalized = padded / magnitude
+  const nice =
+    normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10
+  const yMax = nice * magnitude
+
+  const ticks = [0, 1, 2, 3, 4].map((index) =>
+    Math.round((yMax * (4 - index)) / 4),
+  )
+
+  return { yMax, ticks }
+}
+
+function tickValueToBottomPx(value: number, scale: ChartScale) {
+  const clamped = Math.max(0, Math.min(value, scale.yMax))
+  const valuesAsc = [...scale.ticks].reverse()
   const bottomsAsc = CHART_TICK_TOP_PX.map(
     (top) => CHART_COLUMN_HEIGHT_PX - (top - CHART_CONTENT_TOP_PX),
   ).reverse()
@@ -71,11 +95,13 @@ function tickValueToBottomPx(value: number) {
   return bottomsAsc[bottomsAsc.length - 1]
 }
 
-const CHART_ZERO_BOTTOM_PX = tickValueToBottomPx(0)
-
-function getLineSegmentStyle(startValue: number, endValue: number): CSSProperties {
-  const startBottom = tickValueToBottomPx(startValue)
-  const endBottom = tickValueToBottomPx(endValue)
+function getLineSegmentStyle(
+  startValue: number,
+  endValue: number,
+  scale: ChartScale,
+): CSSProperties {
+  const startBottom = tickValueToBottomPx(startValue, scale)
+  const endBottom = tickValueToBottomPx(endValue, scale)
   const delta = endBottom - startBottom
   const width = Math.sqrt(58 ** 2 + delta ** 2)
   const angle = Math.atan2(delta, 58) * (180 / Math.PI)
@@ -171,6 +197,26 @@ function resolveIeltsModule(q: GroupedQuestionItem['questions'][number]): Questi
   return q.type === 'input' && !hasOptions ? 'Writing' : 'Listening'
 }
 
+function getCenterIdFromToken(token: string | null): string | null {
+  if (!token) {
+    return null
+  }
+
+  const parts = token.split('.')
+  if (parts.length < 2) {
+    return null
+  }
+
+  try {
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')
+    const payload = JSON.parse(atob(padded)) as { centerId?: string | null }
+    return payload.centerId ?? null
+  } catch {
+    return null
+  }
+}
+
 function buildQuestionModuleStats(groups: GroupedQuestionItem[] | undefined) {
   const allQuestions = (groups ?? []).flatMap((group) => group.questions)
   const groupMap = new Map<string, QuestionModuleType>()
@@ -196,7 +242,7 @@ function buildQuestionModuleStats(groups: GroupedQuestionItem[] | undefined) {
   }
 }
 
-export function DashboardPage() {
+export function AdminDashboardPage() {
   const token = useAppSelector(selectAuthToken)
   const role = useAppSelector(selectUserRole)
   const loadStudentStats = Boolean(
@@ -216,6 +262,12 @@ export function DashboardPage() {
     skip: !loadStudentStats,
   })
 
+  const { data: examsData } = useQuery<{
+    findAllExams: Array<{ _id: string; centerId?: string | null }>
+  }>(FIND_ALL_EXAMS_QUERY, {
+    skip: !loadStudentStats,
+  })
+
   const { data: meCenterData } = useQuery<{
     meCenter?: { availableExamCredits?: number } | null
   }>(ME_CENTER_CREDITS_QUERY, {
@@ -224,6 +276,15 @@ export function DashboardPage() {
 
   const stats = statsData?.studentDashboardStats
   const availableExamCredits = meCenterData?.meCenter?.availableExamCredits ?? 0
+  const actorCenterId = useMemo(() => getCenterIdFromToken(token), [token])
+
+  const examCount = useMemo(() => {
+    const exams = examsData?.findAllExams ?? []
+    if (role === USER_ROLES.center && actorCenterId) {
+      return exams.filter((exam) => exam.centerId === actorCenterId).length
+    }
+    return exams.length
+  }, [actorCenterId, examsData?.findAllExams, role])
 
   const aggregatedMonthly = useMemo(() => {
     if (!stats?.centers?.length) {
@@ -276,6 +337,27 @@ export function DashboardPage() {
       }))
   }, [aggregatedMonthly, chartPeriod])
 
+  const chartScale = useMemo(() => {
+    const maxBars = Math.max(0, ...chartPoints.map((point) => point.bars))
+    return buildChartScale(maxBars)
+  }, [chartPoints])
+
+  const chartZeroBottomPx = useMemo(
+    () => tickValueToBottomPx(0, chartScale),
+    [chartScale],
+  )
+
+  const monthlyStudentRows = useMemo(() => {
+    if (!aggregatedMonthly?.length) {
+      return null
+    }
+
+    return aggregatedMonthly.map((row) => ({
+      label: `${row.monthLabel} ${row.yearLabel}`.trim(),
+      count: row.bars,
+    }))
+  }, [aggregatedMonthly])
+
   const studentSparkBars = useMemo(() => {
     if (!aggregatedMonthly?.length) {
       return DEFAULT_STUDENT_SPARK
@@ -327,8 +409,17 @@ export function DashboardPage() {
     }))
   }, [questionModuleStats])
 
+  const totalStudentsValue =
+    loadStudentStats && stats ? String(stats.totals.totalStudents) : loadStudentStats ? '…' : '—'
+
   const newStudentValue =
     loadStudentStats && stats ? String(stats.totals.newStudentsThisMonth) : loadStudentStats ? '…' : '—'
+
+  const examsValue = loadStudentStats
+    ? examsData
+      ? String(examCount)
+      : '…'
+    : '—'
 
   return (
     <Layout>
@@ -353,32 +444,43 @@ export function DashboardPage() {
               <Box className="dashboard-stat__header">
                 <Box>
                   <Typography component="p" className="dashboard-stat__eyebrow">
-                    Need to grade
+                    Total students
                   </Typography>
                   <Box className="dashboard-stat__value-row">
                     <Typography component="h2" className="dashboard-stat__value">
-                      87%
-                    </Typography>
-                    <Typography component="span" className="dashboard-stat__suffix">
-                      Grade
+                      {totalStudentsValue}
                     </Typography>
                   </Box>
                   <Typography component="span" className="dashboard-stat__delta">
-                    ↗ +4.56%
+                    {loadStudentStats && stats
+                      ? `${stats.totals.newStudentsThisMonth} joined this month`
+                      : 'All registered students'}
                   </Typography>
                 </Box>
                 <Box className="dashboard-stat__visual">
-                  <Box className="dashboard-stat__ring">
-                    <Typography component="span" className="dashboard-stat__ring-value">
-                      87%
-                    </Typography>
-                  </Box>
+                  <Box className="dashboard-stat__badge">👥</Box>
                 </Box>
+              </Box>
+              <Box className="dashboard-stat__sparkbars">
+                {studentSparkBars.map((bar, index) => (
+                  <Box
+                    key={`total-spark-${bar}-${index}`}
+                    className="dashboard-stat__sparkbar"
+                    sx={
+                      {
+                        '--bar-height': `${bar + 10}px`,
+                        '--bar-opacity': index % 3 === 0 ? 1 : 0.42,
+                      } as CSSProperties
+                    }
+                  />
+                ))}
               </Box>
               <Box className="dashboard-stat__footer">
                 <Box className="dashboard-stat__footer-icon">◔</Box>
                 <Typography component="p" className="dashboard-stat__footer-text">
-                  yearly student exam test online system
+                  {role === USER_ROLES.superAdmin
+                    ? 'Students registered across all centers'
+                    : 'Students registered at your center'}
                 </Typography>
               </Box>
             </Box>
@@ -431,6 +533,42 @@ export function DashboardPage() {
                   {role === USER_ROLES.superAdmin
                     ? 'New students registered this month (all centers combined)'
                     : 'New students registered this month (your center)'}
+                </Typography>
+              </Box>
+            </Box>
+
+            <Box
+              className="dashboard-stat"
+              sx={
+                {
+                  '--accent': c.chart.medium,
+                  '--soft-accent': tokens.rgba.chartMedium_12,
+                  '--delta-color': c.chart.delta,
+                } as CSSProperties
+              }
+            >
+              <Box className="dashboard-stat__header">
+                <Box>
+                  <Typography component="p" className="dashboard-stat__eyebrow">
+                    Exams
+                  </Typography>
+                  <Box className="dashboard-stat__value-row">
+                    <Typography component="h2" className="dashboard-stat__value">
+                      {examsValue}
+                    </Typography>
+                  </Box>
+                  <Typography component="span" className="dashboard-stat__delta">
+                    {role === USER_ROLES.center ? 'Exams at your center' : 'Exams in the system'}
+                  </Typography>
+                </Box>
+                <Box className="dashboard-stat__visual">
+                  <Box className="dashboard-stat__badge">📝</Box>
+                </Box>
+              </Box>
+              <Box className="dashboard-stat__footer">
+                <Box className="dashboard-stat__footer-icon">◌</Box>
+                <Typography component="p" className="dashboard-stat__footer-text">
+                  Mock exams you can schedule and assign to students
                 </Typography>
               </Box>
             </Box>
@@ -571,7 +709,7 @@ export function DashboardPage() {
               </Box>
 
               <Box className="dashboard-line-chart__canvas">
-                {CHART_Y_TICKS.slice(0, -1).map((value, index) => (
+                {chartScale.ticks.slice(0, -1).map((value, index) => (
                   <Box
                     key={`grid-${value}`}
                     className="dashboard-line-chart__grid-line"
@@ -579,7 +717,7 @@ export function DashboardPage() {
                   />
                 ))}
 
-                {CHART_Y_TICKS.map((value, index) => (
+                {chartScale.ticks.map((value, index) => (
                   <Box
                     key={`ylabel-${value}`}
                     className="dashboard-line-chart__y-label"
@@ -596,22 +734,26 @@ export function DashboardPage() {
                         className="dashboard-line-chart__bar"
                         sx={
                           {
-                            '--bar-bottom': `${CHART_ZERO_BOTTOM_PX}px`,
-                            '--bar-height': `${Math.max(0, tickValueToBottomPx(item.bars) - CHART_ZERO_BOTTOM_PX)}px`,
+                            '--bar-bottom': `${chartZeroBottomPx}px`,
+                            '--bar-height': `${Math.max(0, tickValueToBottomPx(item.bars, chartScale) - chartZeroBottomPx)}px`,
                           } as CSSProperties
                         }
                       />
                       {index < chartPoints.length - 1 ? (
                         <Box
                           className="dashboard-line-chart__line-segment"
-                          sx={getLineSegmentStyle(item.line, chartPoints[index + 1].line)}
+                          sx={getLineSegmentStyle(
+                            item.line,
+                            chartPoints[index + 1].line,
+                            chartScale,
+                          )}
                         />
                       ) : null}
                       <Box
                         className="dashboard-line-chart__point"
                         sx={
                           {
-                            '--point-bottom': `${tickValueToBottomPx(item.line) - 5}px`,
+                            '--point-bottom': `${tickValueToBottomPx(item.line, chartScale) - 5}px`,
                           } as CSSProperties
                         }
                       />
@@ -631,6 +773,24 @@ export function DashboardPage() {
                   ))}
                 </Box>
               </Box>
+
+              {monthlyStudentRows ? (
+                <Box className="dashboard-line-chart__month-table">
+                  <Typography component="h3" className="dashboard-line-chart__month-table-title">
+                    Students per month
+                  </Typography>
+                  <Box className="dashboard-line-chart__month-table-head">
+                    <span>Month</span>
+                    <span>New students</span>
+                  </Box>
+                  {monthlyStudentRows.map((row) => (
+                    <Box key={row.label} className="dashboard-line-chart__month-table-row">
+                      <span>{row.label}</span>
+                      <strong>{row.count}</strong>
+                    </Box>
+                  ))}
+                </Box>
+              ) : null}
             </Box>
 
             <Box className="dashboard-screen__panel dashboard-average">
@@ -702,4 +862,14 @@ export function DashboardPage() {
       </DashboardPageRoot>
     </Layout>
   )
+}
+
+export function DashboardPage() {
+  const role = useAppSelector(selectUserRole)
+
+  if (role === USER_ROLES.student) {
+    return <StudentDashboardPage />
+  }
+
+  return <AdminDashboardPage />
 }

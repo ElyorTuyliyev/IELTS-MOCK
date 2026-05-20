@@ -32,7 +32,8 @@ export function ExamDetailsPage() {
   const location = useLocation()
   const locationState = location.state as LocationState | null
 
-  const { data, loading, error } = useQuery<FindAllExamsQueryResponse>(FIND_ALL_EXAMS_QUERY)
+  const { data, loading, error, refetch: refetchExams } =
+    useQuery<FindAllExamsQueryResponse>(FIND_ALL_EXAMS_QUERY)
   const {
     data: usersData,
     loading: usersLoading,
@@ -45,10 +46,15 @@ export function ExamDetailsPage() {
     refetch: refetchStudentExams,
   } = useQuery<FindAllStudentExamsQueryResponse>(FIND_ALL_STUDENT_EXAMS_QUERY)
 
+  const refetchExamData = useCallback(() => {
+    void refetchExams()
+    void refetchStudentExams()
+  }, [refetchExams, refetchStudentExams])
+
   const exam = useMemo(() => {
-    const fromState = locationState?.exam
-    if (fromState && fromState._id === examId) return fromState
-    return (data?.findAllExams ?? []).find((item) => item._id === examId) ?? null
+    const fromQuery = (data?.findAllExams ?? []).find((item) => item._id === examId) ?? null
+    if (fromQuery) return fromQuery
+    return locationState?.exam ?? null
   }, [data?.findAllExams, examId, locationState?.exam])
 
   const canAssign = userRole === USER_ROLES.center || userRole === USER_ROLES.superAdmin
@@ -115,14 +121,18 @@ export function ExamDetailsPage() {
             <ExamInfoCard
               exam={exam}
               studentExams={studentExamsData?.findAllStudentExams ?? []}
+              studentUsers={usersData?.findAllUsers ?? []}
               isArchived={exam.isCompleted}
               canStart={canAssign}
+              canManageActive={canAssign}
               onExamStarted={handleEnrolled}
+              onExamActiveChanged={refetchExamData}
             />
 
             {canAssign ? (
               <StudentEnrollSection
                 examId={exam._id}
+                examPrice={exam.price ?? 0}
                 isArchived={exam.isCompleted}
                 studentOptions={studentOptions}
                 usersLoading={usersLoading}
@@ -137,6 +147,7 @@ export function ExamDetailsPage() {
 
             <EnrolledStudentsTable
               examId={exam._id}
+              examPrice={exam.price ?? 0}
               isArchived={exam.isCompleted}
               studentExams={studentExamsData?.findAllStudentExams ?? []}
               users={usersData?.findAllUsers ?? []}

@@ -36,6 +36,8 @@ import {
   clearExamSession,
   useSplitResize,
   useStudentExamAccess,
+  useExamTextHighlight,
+  useStudentExamExitGuard,
 } from '../hooks'
 import {
   loadExamSession,
@@ -43,9 +45,11 @@ import {
   type ExamSessionInitial,
 } from '../utils/examSessionPersistence'
 import {
+  ExamHighlightFloatingToolbar,
   ListeningModuleContent,
   ListeningStartOverlay,
   ReadingModuleContent,
+  StudentExamExitConfirmDialog,
   StudentExamFinishModal,
   StudentExamFooter,
   StudentExamPlayerHeader,
@@ -53,6 +57,7 @@ import {
   SpeakingModuleContent,
   WritingModuleContent,
 } from '../components'
+import { printWritingExam } from '../utils/printWritingExam'
 
 export function StudentExamPlayerPage() {
   const navigate = useNavigate()
@@ -65,6 +70,7 @@ export function StudentExamPlayerPage() {
   const moduleContentRef = useRef<HTMLDivElement | null>(null)
   const splitContainerRef = useRef<HTMLDivElement | null>(null)
   const examMainRef = useRef<HTMLDivElement | null>(null)
+  const examPlayerRootRef = useRef<HTMLDivElement | null>(null)
   const previousModuleRef = useRef<ModuleName>(MODULE_ORDER[0])
 
   const { examId, denyState, accessLoading, access, enrollment } = useStudentExamAccess({
@@ -89,7 +95,12 @@ export function StudentExamPlayerPage() {
     if (!snapshot) {
       return null
     }
-    return resolveExamSessionInitial(snapshot, examId, enrollment?.questionIds, moduleData)
+    return resolveExamSessionInitial(
+      snapshot,
+      examId,
+      enrollment?.questionIds ?? undefined,
+      moduleData,
+    )
   }, [
     access?.allowed,
     accessLoading,
@@ -215,7 +226,7 @@ export function StudentExamPlayerPage() {
       !resolvedDenyState &&
       sessionInitial !== undefined &&
       (didApplySessionInitialRef.current || sessionInitial === null),
-    questionIds: enrollment?.questionIds,
+    questionIds: enrollment?.questionIds ?? undefined,
     navigation: { moduleIndex, part, activeQuestion },
     listeningStarted,
     listeningPlayed,
@@ -413,6 +424,60 @@ export function StudentExamPlayerPage() {
     [activeModule, blankValues, choiceValues, dragDropValues, visibleParts, writingAnswers],
   )
 
+  const writingTaskHtml = useMemo(() => {
+    if (activeModule !== 'writing') return undefined
+    const combined = currentPartQuestions
+      .map((q) => q.html?.trim())
+      .filter(Boolean)
+      .join('')
+    return combined || undefined
+  }, [activeModule, currentPartQuestions])
+
+  const writingPrintParts = useMemo(() => {
+    return moduleData.grouped.writing
+      .filter((writingPart) => writingPart.questions.length > 0)
+      .map((writingPart) => {
+        const taskHtml = writingPart.questions
+          .map((q) => q.html?.trim())
+          .filter(Boolean)
+          .join('')
+        return {
+          partNumber: writingPart.partNumber,
+          passageHtml: writingPart.passageHtml,
+          taskHtml: taskHtml || undefined,
+          answer: writingAnswers[`writing-part-${writingPart.partNumber}`] ?? '',
+        }
+      })
+  }, [moduleData.grouped.writing, writingAnswers])
+
+  const handlePrintWriting = useCallback(() => {
+    printWritingExam(writingPrintParts, summaryTestName)
+  }, [summaryTestName, writingPrintParts])
+
+  const examGuardEnabled =
+    Boolean(access?.allowed) &&
+    !finishModalOpen &&
+    !resolvedDenyState &&
+    hasAnyQuestions
+
+  const { exitDialogOpen, stayOnExam, confirmLeave } = useStudentExamExitGuard({
+    enabled: examGuardEnabled,
+  })
+
+  const highlightsEnabled = !finishModalOpen
+
+  const {
+    activeColor: highlightActiveColor,
+    toolbarOpen: highlightToolbarOpen,
+    toolbarPosition: highlightToolbarPosition,
+    selectColor: onHighlightSelectColor,
+    clearSelectionHighlights: onHighlightClear,
+  } = useExamTextHighlight({
+    rootRef: examPlayerRootRef,
+    enabled: highlightsEnabled,
+    bindKey: `${activeModule}-${part}-${hasAnyQuestions}-${loading}`,
+  })
+
   const moduleInstructionPrefix =
     activeModule === 'listening'
       ? 'Listen and answer questions'
@@ -456,7 +521,7 @@ export function StudentExamPlayerPage() {
   }
 
   return (
-    <StudentExamPlayerRoot>
+    <StudentExamPlayerRoot ref={examPlayerRootRef}>
       <audio ref={audioRef} preload="auto" />
 
       <StudentExamPlayerHeader
@@ -468,6 +533,16 @@ export function StudentExamPlayerPage() {
         onAdvanceModule={goToModuleIndex}
         onFinishExam={handleFinishExam}
       />
+
+      {highlightsEnabled ? (
+        <ExamHighlightFloatingToolbar
+          open={highlightToolbarOpen}
+          position={highlightToolbarPosition}
+          activeColor={highlightActiveColor}
+          onSelectColor={onHighlightSelectColor}
+          onClear={onHighlightClear}
+        />
+      ) : null}
 
       <Box ref={examMainRef} className="student-exam-player__main">
         {currentPartQuestions.length > 0 && (
@@ -505,10 +580,12 @@ export function StudentExamPlayerPage() {
             splitContainerRef={splitContainerRef}
             splitLeftWidth={splitLeftWidth}
             currentPartPassage={currentPartPassage}
+            writingTaskHtml={writingTaskHtml}
             currentWritingWordCount={currentWritingWordCount}
             currentWritingAnswer={currentWritingAnswer}
             onStartResize={startResize}
             onChangeWritingAnswer={handleWritingChange}
+            onPrintWriting={handlePrintWriting}
           />
         ) : activeModule === 'speaking' ? (
           <SpeakingModuleContent
@@ -591,6 +668,12 @@ export function StudentExamPlayerPage() {
         summaryDuration={summaryDuration}
         submittedAtLabel={submittedAtLabel}
         onContinue={handleFinishContinue}
+      />
+
+      <StudentExamExitConfirmDialog
+        open={exitDialogOpen}
+        onStay={stayOnExam}
+        onLeave={confirmLeave}
       />
     </StudentExamPlayerRoot>
   )

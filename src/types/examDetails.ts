@@ -7,7 +7,10 @@ export type Exam = {
   startTime: string
   endTime: string
   price: number
+  showPrice?: boolean
+  isUpcomingVisibleToStudents?: boolean
   isActive: boolean
+  isStoredActive?: boolean
   isCompleted: boolean
 }
 
@@ -26,6 +29,7 @@ export type StudentExam = {
   completedAt?: string | null
   isCompleted: boolean
   isReleased: boolean
+  isApproved: boolean
   questionIds?: string[] | null
   listeningScore?: number | null
   readingScore?: number | null
@@ -46,11 +50,22 @@ export type FindAllStudentExamsQueryResponse = {
   findAllStudentExams: StudentExam[]
 }
 
+export type AssignPaymentStatusOption = 'approved' | 'pending'
+
 export type CreateStudentExamMutationResponse = {
   createStudentExam: {
-    _id: string
-    studentId: string
-    examId: string
+    studentExam: {
+      _id: string
+      studentId: string
+      examId: string
+      isApproved?: boolean
+    }
+    payment?: {
+      _id: string
+      status: string
+      paymentRequestToken?: string | null
+    } | null
+    paymentRequestUrl?: string | null
   }
 }
 
@@ -58,6 +73,9 @@ export type CreateStudentExamMutationVariables = {
   input: {
     studentId: string
     examId: string
+    isApproved?: boolean
+    createPayment?: boolean
+    paymentStatus?: AssignPaymentStatusOption
   }
 }
 

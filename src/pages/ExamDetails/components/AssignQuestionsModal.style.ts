@@ -83,6 +83,62 @@ export const AssignQuestionsRoot = styled(Dialog)`
     font-style: italic;
   }
 
+  .aq__mode-picker {
+    padding: 16px 28px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .aq__mode-picker-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: ${c.text.secondary};
+  }
+
+  .aq__mode-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .aq__mode-btn.MuiButton-root {
+    min-height: 48px;
+    border-radius: 12px;
+    text-transform: none;
+    font-weight: 700;
+    font-size: 14px;
+    border-width: 2px;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .aq__mode-btn--active.MuiButton-root {
+    border-color: ${c.primary.main};
+    background: ${c.primary.tintStrong};
+    color: ${c.primary.dark};
+    box-shadow: 0 2px 8px ${tokens.rgba.primary_18};
+  }
+
+  .aq__mode-btn:not(.aq__mode-btn--active).MuiButton-root {
+    border-color: ${c.border.strong};
+    color: ${c.text.muted};
+    background: ${c.background.card};
+  }
+
+  .aq__mode-btn:not(.aq__mode-btn--active).MuiButton-root:hover {
+    border-color: ${c.indigo.soft};
+    background: ${c.primary.tint};
+  }
+
+  .aq__mode-hint {
+    font-size: 13px;
+    color: ${c.text.disabled};
+    text-align: center;
+    padding: 24px 16px 8px;
+    line-height: 1.5;
+  }
+
   .aq__tabs {
     padding: 0 28px;
     border-bottom: 1px solid ${c.background.subtle};

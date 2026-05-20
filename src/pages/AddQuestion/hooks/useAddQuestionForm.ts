@@ -6,7 +6,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { selectAuthToken } from "../../../store";
 import { useAppSelector } from "../../../store/hooks";
 import { useToast } from "../../../components/common/Toast";
-import { getQuestionsListPath, ROUTES_PATH } from "../../../routes/paths";
+import { getQuestionsListPath } from "../../../routes/paths";
 import { QUESTION_TEMPLATES, type IeltsModule } from "../AddQuestionPage.constants";
 import { CREATE_QUESTION_MUTATION } from "../api/createQuestionMutation";
 import { FIND_ALL_MODULES_FOR_QUESTION_QUERY, type FindAllModulesResponse } from "../api/findAllModulesForQuestionQuery";

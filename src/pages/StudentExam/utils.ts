@@ -5,6 +5,7 @@ import {
   stripOrphanDragDropExamArtifacts,
 } from '../../components/common/RichTextEditor/utils/dragDropExamContentRelease'
 import type { ModuleName } from './constants'
+import { tryParseCompositeAnswerStorageKey } from './utils/answerStorageKeys'
 
 export type BackendQuestion = {
   _id: string
@@ -20,6 +21,7 @@ export type BackendQuestion = {
   partId?: string | null
   placementNumber?: number | null
   listeningAudio?: string | null
+  speakingAudio?: string | null
   passageHtml?: string | null
   questionsHtml?: string | null
   options?: Array<{ title?: string | null; isCorrectAnswer?: boolean | null }> | null
@@ -405,6 +407,24 @@ export function repairDragDropHtml(html: string): string {
   return fixed
 }
 
+function radioQuestionLineBeforeGroup(group: HTMLElement): HTMLElement | null {
+  let prev: Element | null = group.previousElementSibling
+  while (prev && (prev.tagName === 'BR' || (prev.tagName === 'P' && !prev.textContent?.trim()))) {
+    prev = prev.previousElementSibling
+  }
+  if (prev?.matches('p, h1, h2, h3, h4, h5, h6')) {
+    return prev as HTMLElement
+  }
+  return null
+}
+
+function extractRadioGroupQuestionNumber(group: HTMLElement): string | null {
+  const line = radioQuestionLineBeforeGroup(group)
+  if (!line) return null
+  const match = (line.textContent ?? '').trim().match(/^Q(\d+)\b/i)
+  return match?.[1] ?? null
+}
+
 function markRadioQuestionLine(element: HTMLElement): void {
   if (!/^Q\d+/i.test((element.textContent ?? '').trim())) return
   element.classList.add('rte-radio-question')
@@ -412,12 +432,9 @@ function markRadioQuestionLine(element: HTMLElement): void {
 
 function boldRadioQuestionPrefixes(root: HTMLElement): void {
   root.querySelectorAll<HTMLElement>('[data-type="radio-group"], .rte-radio-group').forEach((group) => {
-    let prev: Element | null = group.previousElementSibling
-    while (prev && (prev.tagName === 'BR' || (prev.tagName === 'P' && !prev.textContent?.trim()))) {
-      prev = prev.previousElementSibling
-    }
-    if (prev?.matches('p, h1, h2, h3, h4, h5, h6')) {
-      markRadioQuestionLine(prev as HTMLElement)
+    const line = radioQuestionLineBeforeGroup(group)
+    if (line) {
+      markRadioQuestionLine(line)
     }
   })
 }
@@ -441,27 +458,6 @@ function sanitizeExamChoiceGroups(root: HTMLElement): void {
     })
 }
 
-function questionNumberBeforeChoiceGroup(group: HTMLElement): string {
-  let prev: Element | null = group.previousElementSibling
-  while (prev) {
-    if (prev.tagName === 'BR') {
-      prev = prev.previousElementSibling
-      continue
-    }
-    const text = (prev.textContent ?? '').trim()
-    if (!text) {
-      prev = prev.previousElementSibling
-      continue
-    }
-    if (prev.matches('p, h1, h2, h3, h4, h5, h6, strong, li, span')) {
-      const qMatch = text.match(/^Q(\d+)\b/i) ?? text.match(/\bQ(\d+)\b/i)
-      if (qMatch) return qMatch[1]
-    }
-    break
-  }
-  return ''
-}
-
 function assignChoiceGroupKeys(root: HTMLElement, keyPrefix: string, questionDbId?: string): void {
   let radioSeq = 0
   const qid = questionDbId?.trim() ?? ''
@@ -471,10 +467,14 @@ function assignChoiceGroupKeys(root: HTMLElement, keyPrefix: string, questionDbI
     )
     .forEach((group) => {
       const storageKey = `${keyPrefix}:choice:radio:${radioSeq}`
-      const slotKey = `radio-${radioSeq + 1}`
+      const questionNumber = extractRadioGroupQuestionNumber(group)
+      const slotKey = questionNumber ? `Q${questionNumber}` : `radio-${radioSeq + 1}`
       radioSeq += 1
       group.setAttribute('data-choice-key', storageKey)
       group.setAttribute('data-slot-key', slotKey)
+      if (questionNumber) {
+        group.setAttribute('data-question-number', questionNumber)
+      }
       if (qid) {
         group.setAttribute('data-question-id', qid)
       }
@@ -791,6 +791,23 @@ function digitsFromAnswerKeyTail(raw: string): string | null {
   return raw.match(/\d+/)?.[0] ?? null
 }
 
+function footerQuestionIdFromChoiceStorageKey(key: string): string | null {
+  const radioChoiceMatch = key.match(/:choice:radio:(\d+)$/)
+  if (!radioChoiceMatch) return null
+  const radioIndex = Number(radioChoiceMatch[1])
+  if (!Number.isFinite(radioIndex) || radioIndex < 0) return null
+
+  const listeningPartMatch = key.match(/^part-(\d+)-chunk-\d+:/)
+  if (listeningPartMatch) {
+    const part = Number(listeningPartMatch[1])
+    if (Number.isFinite(part) && part > 0) {
+      return String(listeningPartQuestionStart(part) + radioIndex)
+    }
+  }
+
+  return String(radioIndex + 1)
+}
+
 /** Question numbers with answers for footer chip colors. */
 export function collectAnsweredQuestionIds(
   blankValues: Record<string, string>,
@@ -827,11 +844,22 @@ export function collectAnsweredQuestionIds(
 
   for (const [key, value] of Object.entries(choiceValues ?? {})) {
     if (!value.trim()) continue
-    const radioChoiceMatch = key.match(/:choice:radio:(\d+)$/)
-    if (radioChoiceMatch) {
-      answered.add(String(Number(radioChoiceMatch[1]) + 1))
+
+    const composite = tryParseCompositeAnswerStorageKey(key)
+    if (composite) {
+      const qSlotMatch = composite.slotKey.match(/^Q(\d+)$/i)
+      if (qSlotMatch) {
+        answered.add(qSlotMatch[1])
+        continue
+      }
+    }
+
+    const fromChoiceKey = footerQuestionIdFromChoiceStorageKey(key)
+    if (fromChoiceKey) {
+      answered.add(fromChoiceKey)
       continue
     }
+
     const choiceMatch = key.match(/:choice:(\d+)$/)
     if (choiceMatch) {
       answered.add(choiceMatch[1])

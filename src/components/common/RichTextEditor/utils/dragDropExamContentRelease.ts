@@ -18,6 +18,7 @@ function isDragDropInternalChild(child: Element): boolean {
     child.classList.contains('rte-drag-drop-fill__instruction') ||
     child.classList.contains('rte-drag-drop-fill__layout') ||
     child.classList.contains('rte-drag-drop-fill__question') ||
+    child.classList.contains('rte-drag-drop-fill__bank') ||
     child.classList.contains('rte-drag-drop-fill__pool') ||
     child.classList.contains('rte-drag-drop-fill__close') ||
     child.classList.contains('rte-drag-drop-fill__badge') ||
@@ -104,10 +105,12 @@ export function releaseExamContentFromDragDropElement(
   const fromQ = gapNumbers.length > 0 ? Math.max(...gapNumbers) + 1 : 16
 
   let sectionAnchor: Element | null = null
-  block.querySelectorAll('p, h1, h2, h3, h4, h5, h6, strong, li').forEach((el) => {
-    if (sectionAnchor || isInsideDragDropChrome(el)) return
-    if (isLaterSectionHeading(el, fromQ)) sectionAnchor = el
-  })
+  for (const el of block.querySelectorAll('p, h1, h2, h3, h4, h5, h6, strong, li')) {
+    if (sectionAnchor || isInsideDragDropChrome(el)) continue
+    if (isLaterSectionHeading(el, fromQ)) {
+      sectionAnchor = el
+    }
+  }
 
   if (sectionAnchor) {
     const nodesToMove: Node[] = []
